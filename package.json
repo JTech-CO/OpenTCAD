@@ -1,0 +1,22 @@
+{
+  "name": "opentcad",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bilingual open-source semiconductor process and device simulation workspace",
+  "engines": {
+    "node": ">=22 <25",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @opentcad/web",
+    "build": "npm run build --workspace @opentcad/web",
+    "preview": "npm run preview --workspace @opentcad/web",
+    "lint": "npm run lint --workspace @opentcad/web",
+    "test": "npm run test --workspace @opentcad/web",
+    "coverage": "npm run coverage --workspace @opentcad/web",
+    "check": "npm run lint && npm run test && npm run build"
+  }
+}

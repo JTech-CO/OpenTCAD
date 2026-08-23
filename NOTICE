@@ -1,0 +1,21 @@
+OpenTCAD
+Copyright (c) 2026 JTech-CO
+
+English
+-------
+The MIT License in LICENSE applies only to original OpenTCAD code and new
+documentation in this repository. It does not relicense third-party software.
+
+This foundation release does not include SUPREM-IV.GS, Gmsh, DEVSIM, or their
+binaries. Future integrations must preserve each project's license, notices,
+source provenance, and distribution restrictions in a separate component
+inventory before any image or release artifact is published.
+
+한국어
+------
+LICENSE의 MIT 라이선스는 이 저장소의 OpenTCAD 고유 코드와 새 문서에만
+적용되며 제3자 소프트웨어를 다시 라이선스하지 않습니다.
+
+이번 기반 릴리스에는 SUPREM-IV.GS, Gmsh, DEVSIM 또는 그 바이너리가 포함되지
+않습니다. 향후 통합 시 이미지나 릴리스 산출물을 게시하기 전에 각 프로젝트의
+라이선스, 고지, 소스 출처, 배포 제한을 별도 구성요소 목록에 보존해야 합니다.
