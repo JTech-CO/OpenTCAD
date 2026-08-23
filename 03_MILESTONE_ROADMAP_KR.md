@@ -1,4 +1,4 @@
-# TCAD Webapp Cross-Platform Porting — Milestone Roadmap
+# TCAD Webapp Cross-Platform Porting - Milestone Roadmap
 
 > **계획 기준:** 1명 전담 엔지니어 + 수치/라이선스 검토 지원  
 > **예상 기간:** 순차 24–30주, 일부 병렬화 시 20–26주  
@@ -53,7 +53,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M0 — Discovery, Licensing, Baseline Freeze
+# M0 - Discovery, Licensing, Baseline Freeze
 
 **기간:** 1–2주  
 **목표:** 구현 전에 배포 가능 범위, 현행 동작, 수치 기준, 포팅 경계를 확정한다.
@@ -123,7 +123,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M1 — Reproducibility and Numerical Validation Foundation
+# M1 - Reproducibility and Numerical Validation Foundation
 
 **기간:** 2–3주  
 **목표:** 포팅 전후 결과를 객관적으로 비교할 수 있는 자동 검증 체계를 만든다.
@@ -193,7 +193,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M2 — Runtime Abstraction and Sandbox Broker
+# M2 - Runtime Abstraction and Sandbox Broker
 
 **기간:** 4–5주  
 **목표:** Podman 결합을 제거하고 Docker/Podman에서 같은 보안·수명주기 계약을 실행한다.
@@ -276,7 +276,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M3 — Portable Local Stack, Launcher, Doctor
+# M3 - Portable Local Stack, Launcher, Doctor
 
 **기간:** 3–4주  
 **목표:** host에 Python/Node/PostgreSQL/Redis를 직접 설치하지 않고 한 번에 로컬 서버를 실행한다.
@@ -354,7 +354,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M4 — Windows 11 Qualification
+# M4 - Windows 11 Qualification
 
 **기간:** 2–3주  
 **목표:** Windows 11 x64에서 설치·실행·업데이트·복구를 정식 지원한다.
@@ -422,7 +422,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M5 — macOS and Multi-Architecture Qualification
+# M5 - macOS and Multi-Architecture Qualification
 
 **기간:** 3–5주  
 **목표:** macOS Intel/Apple Silicon을 지원하고 native arm64 또는 emulation 정책을 확정한다.
@@ -488,7 +488,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M6 — Correctness, Numerical Stability, Data Safety Burn-down
+# M6 - Correctness, Numerical Stability, Data Safety Burn-down
 
 **기간:** 3–4주  
 **목표:** 포팅 중 드러난 결함과 기존 silent correctness·state·data 문제를 기능 추가 전에 제거한다.
@@ -553,7 +553,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M7 — Project Portability, Provenance, Diagnostics, Extension Contracts
+# M7 - Project Portability, Provenance, Diagnostics, Extension Contracts
 
 **기간:** 3–4주  
 **목표:** 결과를 다른 OS에서 재현하고 향후 엔진을 안전하게 추가할 수 있는 계약을 제공한다.
@@ -619,7 +619,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M8 — Release Hardening and 1.0 GA
+# M8 - Release Hardening and 1.0 GA
 
 **기간:** 2–3주  
 **목표:** 보안·라이선스·운영·문서·릴리스 체계를 완결한다.

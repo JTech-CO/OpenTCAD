@@ -40,9 +40,8 @@ The preview server binds to `127.0.0.1`. The build output is `frontend/dist/` an
 ## Quality gates
 
 ```bash
-npm run lint
-npm run test
-npm run build
+npm run check
+npm run coverage
 ```
 
 No solver output or numerical baseline is changed by this foundation milestone. All visible curves are deterministic reference-preview data and are marked as such in the interface.
@@ -54,6 +53,7 @@ No solver output or numerical baseline is changed by this foundation milestone. 
 | [Architecture](docs/en/architecture.md) | [아키텍처](docs/ko/architecture.md) |
 | [Development](docs/en/development.md) | [개발](docs/ko/development.md) |
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
+| [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
 

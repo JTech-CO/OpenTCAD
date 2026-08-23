@@ -89,4 +89,8 @@ describe("OpenTCAD static foundation", () => {
   it("keeps English and Korean translation keys in parity", () => {
     expect(Object.keys(ko).sort()).toEqual(Object.keys(en).sort());
   });
+
+  it("keeps Korean UI copy free from em dash punctuation", () => {
+    expect(Object.values(ko).filter((message) => message.includes("\u2014"))).toEqual([]);
+  });
 });

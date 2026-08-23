@@ -40,9 +40,8 @@ npm run preview
 ## 품질 게이트
 
 ```bash
-npm run lint
-npm run test
-npm run build
+npm run check
+npm run coverage
 ```
 
 이번 기반 마일스톤은 솔버 출력이나 수치 기준선을 변경하지 않습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
@@ -54,6 +53,7 @@ npm run build
 | [Architecture](docs/en/architecture.md) | [아키텍처](docs/ko/architecture.md) |
 | [Development](docs/en/development.md) | [개발](docs/ko/development.md) |
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
+| [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
 

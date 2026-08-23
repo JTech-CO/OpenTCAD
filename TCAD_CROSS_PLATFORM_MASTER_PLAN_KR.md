@@ -1,4 +1,4 @@
-# TCAD Webapp Cross-Platform Porting — Master Planning Document
+# TCAD Webapp Cross-Platform Porting - Master Planning Document
 
 **작성 기준일:** 2026-08-23  
 **구성:** 제품·기술 기획 + Codex 하네스 + 마일스톤 + 초기 백로그
@@ -8,7 +8,7 @@
 
 <!-- BEGIN: 01_PRODUCT_TECHNICAL_PLAN_KR.md -->
 
-# TCAD Webapp Cross-Platform Porting — 제품·기술 기획서
+# TCAD Webapp Cross-Platform Porting - 제품·기술 기획서
 
 > **가칭:** TCAD Webapp Portable / TCAD Local  
 > **문서 상태:** Draft for Architecture Review  
@@ -148,13 +148,13 @@ SUPREM-IV.GS 인터프리터는 인식하지 못한 첫 토큰을 `/bin/bash`로
 
 ### 4.1 제품 목표
 
-- **G1 — 설치 가능성:** 컨테이너 런타임 설치 후 저장소 clone과 한 개의 launcher 명령으로 실행
-- **G2 — 플랫폼 동등성:** 지원 플랫폼에서 동일 프로젝트를 열고 공정→구조→소자 해석 흐름 수행
-- **G3 — 안전성:** 악의적 `.in`이 호스트·네트워크·다른 잡·다른 사용자 데이터에 접근하지 못함
-- **G4 — 재현성:** 실행 결과가 입력과 solver/runtime provenance에 연결됨
-- **G5 — 오류 투명성:** 인프라 오류, 입력 오류, solver crash, non-convergence, parse 오류를 구분해 표시
-- **G6 — 확장성:** 새 공정 엔진·메셔·소자 엔진·후처리기를 고정 계약으로 추가 가능
-- **G7 — 유지보수성:** Docker/Podman 차이가 도메인 로직에 누출되지 않음
+- **G1 - 설치 가능성:** 컨테이너 런타임 설치 후 저장소 clone과 한 개의 launcher 명령으로 실행
+- **G2 - 플랫폼 동등성:** 지원 플랫폼에서 동일 프로젝트를 열고 공정→구조→소자 해석 흐름 수행
+- **G3 - 안전성:** 악의적 `.in`이 호스트·네트워크·다른 잡·다른 사용자 데이터에 접근하지 못함
+- **G4 - 재현성:** 실행 결과가 입력과 solver/runtime provenance에 연결됨
+- **G5 - 오류 투명성:** 인프라 오류, 입력 오류, solver crash, non-convergence, parse 오류를 구분해 표시
+- **G6 - 확장성:** 새 공정 엔진·메셔·소자 엔진·후처리기를 고정 계약으로 추가 가능
+- **G7 - 유지보수성:** Docker/Podman 차이가 도메인 로직에 누출되지 않음
 
 ### 4.2 1.0 범위
 
@@ -222,7 +222,7 @@ Windows와 macOS에서는 Linux 컨테이너가 호스트 커널에서 직접 �
 | macOS 14+ | arm64 | Docker Desktop | Podman Machine | 정식 지원, SUPREM은 초기 emulation 가능 |
 | macOS 13+ | x86-64 | Docker Desktop | Podman Machine | 유지 지원 |
 | Ubuntu 24.04 / Debian 12 | x86-64 | rootless Podman | Docker Engine | 정식 지원 |
-| Linux | arm64 | Podman/Docker | — | 실험 지원, M5 결과에 따라 승격 |
+| Linux | arm64 | Podman/Docker | - | 실험 지원, M5 결과에 따라 승격 |
 
 ### 6.3 Apple Silicon 정책
 
@@ -236,45 +236,45 @@ Windows와 macOS에서는 Linux 컨테이너가 호스트 커널에서 직접 �
 
 ## 7. Architecture Decision Records
 
-### ADR-001 — 네이티브 solver 포팅 대신 OCI 컨테이너 포팅
+### ADR-001 - 네이티브 solver 포팅 대신 OCI 컨테이너 포팅
 
 - **상태:** Proposed / 우선 채택
 - **결정:** SUPREM·Gmsh·DEVSIM은 Linux 이미지로 유지한다.
 - **이유:** 오래된 빌드 도구·POSIX 가정·보안 격리·결과 재현성을 한 환경에 고정할 수 있다.
 - **대가:** Windows/macOS에서 컨테이너 런타임과 Linux VM이 필요하다.
 
-### ADR-002 — 런타임 중립 Sandbox Runtime 인터페이스
+### ADR-002 - 런타임 중립 Sandbox Runtime 인터페이스
 
 - **상태:** Proposed
 - **결정:** 워커는 `podman` 또는 `docker` 명령을 직접 만들지 않는다. 고정된 `SandboxSpec`을 런타임 계층에 전달한다.
 - **이유:** 엔진 차이를 격리하고, 정책 테스트와 mock runtime을 가능하게 한다.
 
-### ADR-003 — Docker/Podman socket은 Sandbox Broker만 보유
+### ADR-003 - Docker/Podman socket은 Sandbox Broker만 보유
 
 - **상태:** Proposed / 보안 필수
 - **결정:** API와 일반 워커가 raw engine socket에 접근하지 않는다. Broker는 승인된 이미지 digest·고정 entrypoint·고정 mount·상한만 허용한다.
 - **이유:** Docker socket은 사실상 호스트 전체 제어권이다. `.in`이 임의 셸이므로 권한 경계를 좁혀야 한다.
 
-### ADR-004 — 패키지형 로컬 모드는 잡별 managed volume 사용
+### ADR-004 - 패키지형 로컬 모드는 잡별 managed volume 사용
 
 - **상태:** Proposed
 - **결정:** host bind mount 대신 `tcad-job-<uuid>` 볼륨을 만들고 입력을 tar stream으로 넣고 산출물을 회수한 뒤 제거한다.
 - **이유:** OS 경로·파일 공유·권한·성능·symlink 차이를 제거하고 잡 간 격리를 명확히 한다.
 - **예외:** 개발 프로필에서만 명시적 bind mount 허용.
 
-### ADR-005 — 로컬 모드와 공유 서버 모드 분리
+### ADR-005 - 로컬 모드와 공유 서버 모드 분리
 
 - **상태:** Proposed
 - **결정:** `TCAD_MODE=local|shared|server`를 둔다.
 - **보안:** 인증 생략 또는 자동 owner는 `127.0.0.1`/`::1` 바인딩에서만 허용하고, 외부 바인딩이면 부팅을 거부한다.
 
-### ADR-006 — solver 버전 업그레이드와 포팅을 분리
+### ADR-006 - solver 버전 업그레이드와 포팅을 분리
 
 - **상태:** Proposed
 - **결정:** 포팅 기준선은 현행 DEVSIM 2.10.1과 현재 SUPREM 패치셋이다. DEVSIM 2.11.x 등 업그레이드는 별도 RFC·골든 검증 후 진행한다.
 - **이유:** 플랫폼 변화와 수치 엔진 변화가 동시에 일어나면 원인 분리가 불가능하다.
 
-### ADR-007 — 상류 소스와 제품 코드의 라이선스 경계를 명시
+### ADR-007 - 상류 소스와 제품 코드의 라이선스 경계를 명시
 
 - **상태:** Blocked pending legal review
 - **결정:** 앱 코드 라이선스, SUPREM 상류 라이선스, Gmsh GPL, DEVSIM Apache-2.0을 별도 NOTICE·배포 단위로 관리한다.
@@ -840,14 +840,14 @@ M1에서 실측 후 확정하며, 초기 기준은 다음과 같다.
 
 | Gate | Ubuntu hosted | Windows hosted | macOS hosted | Self-hosted required |
 |---|---:|---:|---:|---:|
-| Lint/unit | ✓ | ✓ | ✓ | — |
-| API/frontend integration | ✓ | ✓ | ✓ | — |
-| Container build amd64 | ✓ | — | — | optional |
-| Container build arm64 | emulated build | — | — | Apple Silicon verification |
+| Lint/unit | ✓ | ✓ | ✓ | - |
+| API/frontend integration | ✓ | ✓ | ✓ | - |
+| Container build amd64 | ✓ | - | - | optional |
+| Container build arm64 | emulated build | - | - | Apple Silicon verification |
 | Real Docker E2E | ✓ | limited | limited | Windows + macOS |
-| Real rootless Podman E2E | ✓ | — | — | Windows/macOS Podman Machine |
-| Numerical golden | ✓ | — | — | Windows x64, macOS arm64, Linux |
-| Upgrade/backup | ✓ | — | — | each supported platform before release |
+| Real rootless Podman E2E | ✓ | - | - | Windows/macOS Podman Machine |
+| Numerical golden | ✓ | - | - | Windows x64, macOS arm64, Linux |
+| Upgrade/backup | ✓ | - | - | each supported platform before release |
 
 GitHub-hosted runner의 VM 중첩·Docker Desktop 제약 때문에, **실제 Desktop qualification은 self-hosted 또는 수동 서명된 release checklist**가 필요하다.
 
@@ -920,21 +920,21 @@ GitHub-hosted runner의 VM 중첩·Docker Desktop 제약 때문에, **실제 Des
 
 ### 19.2 선택지
 
-#### Option A — Mixed-license source distribution
+#### Option A - Mixed-license source distribution
 
 - 앱 코드에 명확한 MIT 또는 Apache-2.0 적용
 - SUPREM 디렉터리와 이미지에 원 라이선스 그대로 표시
 - `THIRD_PARTY_LICENSES.md`, source offer, provenance 제공
 - 제품을 “MIT 프로젝트”가 아니라 “앱 코드 MIT + bundled components under their own licenses”로 설명
 
-#### Option B — Optional SUPREM component
+#### Option B - Optional SUPREM component
 
 - 앱·DEVSIM·UI는 permissive license로 배포
 - SUPREM source/image는 사용자가 별도 취득·빌드
 - launcher가 checksum과 호환 버전을 검증
 - 재배포 위험은 낮지만 첫 설치가 복잡해짐
 
-#### Option C — 권리자 명시 허가
+#### Option C - 권리자 명시 허가
 
 - Stanford 또는 관련 권리자에게 사전 빌드 이미지·교육/상업 배포 범위를 확인
 - 허가 문서를 provenance에 보관
@@ -1090,7 +1090,7 @@ GitHub-hosted runner의 VM 중첩·Docker Desktop 제약 때문에, **실제 Des
 
 <!-- BEGIN: 02_CODEX_HARNESS_KR.md -->
 
-# TCAD Webapp Cross-Platform Porting — Codex Engineering Harness
+# TCAD Webapp Cross-Platform Porting - Codex Engineering Harness
 
 > **용도:** Codex, Claude Code, 기타 코딩 에이전트가 이 저장소에서 변경을 수행할 때 적용하는 단일 작업 규약  
 > **원칙:** 보안·수치 정확성·데이터 보존을 편의보다 우선한다.  
@@ -1282,7 +1282,7 @@ project:
 
 ## 6. 표준 작업 루프
 
-### Step 1 — Baseline 고정
+### Step 1 - Baseline 고정
 
 - 현재 commit과 branch를 기록한다.
 - 현재 unit/integration/E2E 결과를 기록한다.
@@ -1290,7 +1290,7 @@ project:
 - runtime 작업이면 container/volume 목록과 runtime version을 기록한다.
 - 새 실패가 기존 failure인지 구분한다.
 
-### Step 2 — 최소 실패 테스트 작성
+### Step 2 - 최소 실패 테스트 작성
 
 - 버그는 수정 전에 실패하는 test 또는 deterministic diagnostic로 재현한다.
 - UI 입력 버그는 `fill()`만 사용하지 말고 실제 key sequence와 중간 상태를 테스트한다.
@@ -1298,21 +1298,21 @@ project:
 - sandbox는 mock argv snapshot뿐 아니라 실제 runtime에서 정책을 확인한다.
 - 수치 결함은 구조/곡선의 핵심 metric을 assertion한다.
 
-### Step 3 — 원인 범위 축소
+### Step 3 - 원인 범위 축소
 
 - 한 번에 하나의 가설만 검증한다.
 - 로그를 늘릴 때 secret/source 전체를 출력하지 않는다.
 - old C 문제는 sanitizer/debug build와 최소 deck을 사용한다.
 - Docker/Podman 차이는 domain logic에서 우회하지 말고 adapter capability에서 분리한다.
 
-### Step 4 — 최소 변경
+### Step 4 - 최소 변경
 
 - public contract를 유지한다.
 - 새 abstraction은 실제로 두 backend가 필요할 때 도입한다.
 - broad rename/formatting을 기능 변경과 분리한다.
 - compatibility shim에는 제거 조건과 milestone을 적는다.
 
-### Step 5 — 다층 검증
+### Step 5 - 다층 검증
 
 - 변경 파일 unit
 - 관련 integration
@@ -1323,7 +1323,7 @@ project:
 - cleanup/orphan 검사
 - migration/backup이 관련되면 restore
 
-### Step 6 — 보고
+### Step 6 - 보고
 
 PR 또는 작업 결과에 다음을 포함한다.
 
@@ -1813,7 +1813,7 @@ backend/app/runner/runner.py, 관련 Containerfile, 관련 테스트,
 
 <!-- BEGIN: 03_MILESTONE_ROADMAP_KR.md -->
 
-# TCAD Webapp Cross-Platform Porting — Milestone Roadmap
+# TCAD Webapp Cross-Platform Porting - Milestone Roadmap
 
 > **계획 기준:** 1명 전담 엔지니어 + 수치/라이선스 검토 지원  
 > **예상 기간:** 순차 24–30주, 일부 병렬화 시 20–26주  
@@ -1868,7 +1868,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M0 — Discovery, Licensing, Baseline Freeze
+# M0 - Discovery, Licensing, Baseline Freeze
 
 **기간:** 1–2주  
 **목표:** 구현 전에 배포 가능 범위, 현행 동작, 수치 기준, 포팅 경계를 확정한다.
@@ -1938,7 +1938,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M1 — Reproducibility and Numerical Validation Foundation
+# M1 - Reproducibility and Numerical Validation Foundation
 
 **기간:** 2–3주  
 **목표:** 포팅 전후 결과를 객관적으로 비교할 수 있는 자동 검증 체계를 만든다.
@@ -2008,7 +2008,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M2 — Runtime Abstraction and Sandbox Broker
+# M2 - Runtime Abstraction and Sandbox Broker
 
 **기간:** 4–5주  
 **목표:** Podman 결합을 제거하고 Docker/Podman에서 같은 보안·수명주기 계약을 실행한다.
@@ -2091,7 +2091,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M3 — Portable Local Stack, Launcher, Doctor
+# M3 - Portable Local Stack, Launcher, Doctor
 
 **기간:** 3–4주  
 **목표:** host에 Python/Node/PostgreSQL/Redis를 직접 설치하지 않고 한 번에 로컬 서버를 실행한다.
@@ -2169,7 +2169,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M4 — Windows 11 Qualification
+# M4 - Windows 11 Qualification
 
 **기간:** 2–3주  
 **목표:** Windows 11 x64에서 설치·실행·업데이트·복구를 정식 지원한다.
@@ -2237,7 +2237,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M5 — macOS and Multi-Architecture Qualification
+# M5 - macOS and Multi-Architecture Qualification
 
 **기간:** 3–5주  
 **목표:** macOS Intel/Apple Silicon을 지원하고 native arm64 또는 emulation 정책을 확정한다.
@@ -2303,7 +2303,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M6 — Correctness, Numerical Stability, Data Safety Burn-down
+# M6 - Correctness, Numerical Stability, Data Safety Burn-down
 
 **기간:** 3–4주  
 **목표:** 포팅 중 드러난 결함과 기존 silent correctness·state·data 문제를 기능 추가 전에 제거한다.
@@ -2368,7 +2368,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M7 — Project Portability, Provenance, Diagnostics, Extension Contracts
+# M7 - Project Portability, Provenance, Diagnostics, Extension Contracts
 
 **기간:** 3–4주  
 **목표:** 결과를 다른 OS에서 재현하고 향후 엔진을 안전하게 추가할 수 있는 계약을 제공한다.
@@ -2434,7 +2434,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-# M8 — Release Hardening and 1.0 GA
+# M8 - Release Hardening and 1.0 GA
 
 **기간:** 2–3주  
 **목표:** 보안·라이선스·운영·문서·릴리스 체계를 완결한다.
@@ -2598,7 +2598,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 <!-- BEGIN: 04_INITIAL_BACKLOG_KR.md -->
 
-# TCAD Webapp Cross-Platform Porting — Initial Epic & Issue Backlog
+# TCAD Webapp Cross-Platform Porting - Initial Epic & Issue Backlog
 
 > 이 문서는 GitHub Issue로 옮기기 위한 초기 분해안이다. 실제 구현 전에 각 이슈는 `02_CODEX_HARNESS_KR.md`의 Issue Intake Contract로 보완한다.
 
@@ -2611,7 +2611,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC LIC — 라이선스·출처·배포
+## EPIC LIC - 라이선스·출처·배포
 
 ### LIC-001 [P0/L5] 루트 라이선스 상태 확정
 
@@ -2637,7 +2637,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC BASE — 기준선·코퍼스·CI
+## EPIC BASE - 기준선·코퍼스·CI
 
 ### BASE-001 [P0/L4] Linux 현행 baseline report
 
@@ -2669,7 +2669,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC RUNTIME — Runtime abstraction
+## EPIC RUNTIME - Runtime abstraction
 
 ### RUN-001 [P0/L3] 현행 Podman 실행 characterization
 
@@ -2701,7 +2701,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC BROKER — Sandbox Broker·잡 볼륨
+## EPIC BROKER - Sandbox Broker·잡 볼륨
 
 ### BRK-001 [P0/L3] Broker threat model and protocol
 
@@ -2737,7 +2737,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC PKG — Local stack·launcher·운영
+## EPIC PKG - Local stack·launcher·운영
 
 ### PKG-001 [P0/L3] Compose local profile
 
@@ -2763,7 +2763,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC WIN — Windows qualification
+## EPIC WIN - Windows qualification
 
 ### WIN-001 [P1/L2] PowerShell launcher encoding/path
 
@@ -2783,7 +2783,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC MAC — macOS·arm64
+## EPIC MAC - macOS·arm64
 
 ### MAC-001 [P0/L4] Image platform inventory
 
@@ -2803,7 +2803,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC CORR — Correctness·수치 안정성
+## EPIC CORR - Correctness·수치 안정성
 
 ### CORR-001 [P0/L4] Interface stable identity/uniqueness
 
@@ -2831,7 +2831,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC DATA — 데이터·프로젝트 재현성
+## EPIC DATA - 데이터·프로젝트 재현성
 
 ### DATA-001 [P0/L2] Partial edit vs executable spec 분리
 
@@ -2853,7 +2853,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC UX — 상태·입력·진단·교육 표시
+## EPIC UX - 상태·입력·진단·교육 표시
 
 ### UX-001 [P1/L2] Stale request identity/abort
 
@@ -2875,7 +2875,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC DIAG — 관측성·지원 번들
+## EPIC DIAG - 관측성·지원 번들
 
 ### DIAG-001 [P1/L2] Structured log schema
 
@@ -2889,7 +2889,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC EXT — 안전한 확장 계약
+## EPIC EXT - 안전한 확장 계약
 
 ### EXT-001 [P2/L2] Engine capability manifest schema
 
@@ -2905,7 +2905,7 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## EPIC REL — Release hardening
+## EPIC REL - Release hardening
 
 ### REL-001 [P0/L3] Malicious deck/output/archive security suite
 

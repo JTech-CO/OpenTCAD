@@ -1,4 +1,4 @@
-# TCAD Webapp Cross-Platform Porting — Initial Epic & Issue Backlog
+# TCAD Webapp Cross-Platform Porting - Initial Epic & Issue Backlog
 
 > 이 문서는 GitHub Issue로 옮기기 위한 초기 분해안이다. 실제 구현 전에 각 이슈는 `02_CODEX_HARNESS_KR.md`의 Issue Intake Contract로 보완한다.
 
@@ -11,7 +11,7 @@
 
 ---
 
-## EPIC LIC — 라이선스·출처·배포
+## EPIC LIC - 라이선스·출처·배포
 
 ### LIC-001 [P0/L5] 루트 라이선스 상태 확정
 
@@ -37,7 +37,7 @@
 
 ---
 
-## EPIC BASE — 기준선·코퍼스·CI
+## EPIC BASE - 기준선·코퍼스·CI
 
 ### BASE-001 [P0/L4] Linux 현행 baseline report
 
@@ -69,7 +69,7 @@
 
 ---
 
-## EPIC RUNTIME — Runtime abstraction
+## EPIC RUNTIME - Runtime abstraction
 
 ### RUN-001 [P0/L3] 현행 Podman 실행 characterization
 
@@ -101,7 +101,7 @@
 
 ---
 
-## EPIC BROKER — Sandbox Broker·잡 볼륨
+## EPIC BROKER - Sandbox Broker·잡 볼륨
 
 ### BRK-001 [P0/L3] Broker threat model and protocol
 
@@ -137,7 +137,7 @@
 
 ---
 
-## EPIC PKG — Local stack·launcher·운영
+## EPIC PKG - Local stack·launcher·운영
 
 ### PKG-001 [P0/L3] Compose local profile
 
@@ -163,7 +163,7 @@
 
 ---
 
-## EPIC WIN — Windows qualification
+## EPIC WIN - Windows qualification
 
 ### WIN-001 [P1/L2] PowerShell launcher encoding/path
 
@@ -183,7 +183,7 @@
 
 ---
 
-## EPIC MAC — macOS·arm64
+## EPIC MAC - macOS·arm64
 
 ### MAC-001 [P0/L4] Image platform inventory
 
@@ -203,7 +203,7 @@
 
 ---
 
-## EPIC CORR — Correctness·수치 안정성
+## EPIC CORR - Correctness·수치 안정성
 
 ### CORR-001 [P0/L4] Interface stable identity/uniqueness
 
@@ -231,7 +231,7 @@
 
 ---
 
-## EPIC DATA — 데이터·프로젝트 재현성
+## EPIC DATA - 데이터·프로젝트 재현성
 
 ### DATA-001 [P0/L2] Partial edit vs executable spec 분리
 
@@ -253,7 +253,7 @@
 
 ---
 
-## EPIC UX — 상태·입력·진단·교육 표시
+## EPIC UX - 상태·입력·진단·교육 표시
 
 ### UX-001 [P1/L2] Stale request identity/abort
 
@@ -275,7 +275,7 @@
 
 ---
 
-## EPIC DIAG — 관측성·지원 번들
+## EPIC DIAG - 관측성·지원 번들
 
 ### DIAG-001 [P1/L2] Structured log schema
 
@@ -289,7 +289,7 @@
 
 ---
 
-## EPIC EXT — 안전한 확장 계약
+## EPIC EXT - 안전한 확장 계약
 
 ### EXT-001 [P2/L2] Engine capability manifest schema
 
@@ -305,7 +305,7 @@
 
 ---
 
-## EPIC REL — Release hardening
+## EPIC REL - Release hardening
 
 ### REL-001 [P0/L3] Malicious deck/output/archive security suite
 
