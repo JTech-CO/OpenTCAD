@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-24",
+  "milestone": "M0",
+  "observationId": "base001-process-1d-boron-docker-desktop",
+  "status": "observed-ineligible",
+  "baselinePromotionAllowed": false,
+  "baselineEligibility": "ineligible",
+  "reference": {
+    "repository": "https://github.com/ypooh2042/tcad-webapp",
+    "commit": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+    "sourceOrBinaryCopiedIntoOpenTCAD": false
+  },
+  "environment": {
+    "required": {
+      "runtime": "podman",
+      "operatingSystem": "linux",
+      "architecture": "amd64",
+      "rootless": true
+    },
+    "observed": {
+      "host": "Windows 11 with WSL2",
+      "runtime": "docker",
+      "runtimeVersion": "29.6.2",
+      "runtimeProduct": "Docker Desktop 4.84.0",
+      "operatingSystem": "linux",
+      "architecture": "amd64",
+      "kernel": "6.18.33.2-microsoft-standard-WSL2",
+      "rootless": false
+    },
+    "profileMismatches": [
+      "runtime",
+      "rootless"
+    ]
+  },
+  "build": {
+    "windowsCheckoutAttempt": {
+      "status": "failed",
+      "classification": "crlf-patch-context-mismatch",
+      "published": false
+    },
+    "rawGitArchiveContext": {
+      "coreAutocrlf": false,
+      "archiveSha256": "5384852ab39ea10cb8a3e595fea4703cd72c3525e70494d6a2c126e6edb0cd68",
+      "checkedGitBlobsMatch": true
+    },
+    "baseImageIndexes": [
+      {
+        "reference": "docker.io/library/debian:bookworm",
+        "digest": "sha256:813017f3d62be4b5891a7acca6a01bdcd4b8513daa81b1ab99d3a50385b26931",
+        "linuxAmd64Manifest": "sha256:88a7d30d49e1d13f0aac17b0e5fb9e291717e3a7c4a512fe56636db576383b8a"
+      },
+      {
+        "reference": "docker.io/library/debian:bookworm-slim",
+        "digest": "sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
+        "linuxAmd64Manifest": "sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143"
+      }
+    ],
+    "firstImage": {
+      "reference": "opentcad-reference/suprem:13bce4a",
+      "digest": "sha256:325fdd0f81712519764ceb78baf728afea899357728cc5e05a5bebc5c30bf865"
+    },
+    "noCacheRebuild": {
+      "reference": "opentcad-reference/suprem:13bce4a-rebuild",
+      "digest": "sha256:f8c5ee27667205ae5cfdcd0ccfcb1822d9d1b59a8db69973cd6e9fd6c6aa0126",
+      "sameImageDigest": false,
+      "sameConfig": true,
+      "sameLayers": false
+    },
+    "reproducibleImage": false,
+    "distribution": "local-reference-only-not-for-publication"
+  },
+  "sbom": {
+    "format": "SPDX-2.3",
+    "sha256": "5635a9af153fedba88fc170d87d26cbeea0cc4b37f42168ac5e36d3cc02b27a2",
+    "bytes": 631471,
+    "packages": 130,
+    "licenseConcludedValues": [
+      "NOASSERTION"
+    ],
+    "licenseReviewComplete": false,
+    "committed": false
+  },
+  "case": {
+    "id": "process-1d-boron",
+    "input": {
+      "relativePath": "SUPREM4GS/examples/exam1/boron.in",
+      "gitBlob": "c28fd878ccb9ac2cc687b0a882ec4a51d91a05d9",
+      "sha256": "fab7228f69773505c35941fe3842e1ed936fbd639b533f990148ee1f1dba9684",
+      "matchesFrozenCommit": true
+    },
+    "repeats": 5,
+    "exitCodes": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "semanticStatus": "failed-declared-log-policy",
+    "logFindingsPerRun": [
+      {
+        "id": "unknown-command-parameter",
+        "stream": "stderr",
+        "count": 2
+      },
+      {
+        "id": "command-input-error",
+        "stream": "stderr",
+        "count": 1
+      }
+    ],
+    "requiredArtifact": {
+      "id": "structure",
+      "bytes": 5784,
+      "sha256": "971dfc50e3de397659663e244a118d3be61bf5a2730f069ed10d2cd6cf7bb45b",
+      "exactlyRepeatable": true,
+      "matchesFrozenReferenceFixtureGitBlob": true,
+      "referenceFixtureGitBlob": "ec08539c5a4e5070d04c197249c4b5956a1632df"
+    },
+    "recordCounts": {
+      "nodes": 43,
+      "elements": 42,
+      "regions": 2,
+      "boundaries": 0,
+      "exactlyRepeatable": true
+    },
+    "optionalPlotArtifactPresent": false
+  },
+  "externalEvidence": {
+    "manifestRecordedAt": "2026-08-23T16:52:58.386Z",
+    "manifestSha256": "834de693bccd2a264fd11a315cc9f74fe3f333a60f65b6e258c04194bb03f726",
+    "rawArtifactsCommitted": false,
+    "absolutePathRecorded": false,
+    "collectorFiles": [
+      {
+        "path": "tools/observe-reference-run.mjs",
+        "sha256": "657b3c735da965e45c009dbec52a5f541c62aa44153f28a5ddec33c8dc47abb3"
+      },
+      {
+        "path": "validation/baseline/observation.mjs",
+        "sha256": "619c63b4a67eeac991c32fe373cedbe467248c1f924d4d0c0b3c0264e27841c3"
+      },
+      {
+        "path": "validation/plans/base001-process-1d-boron.json",
+        "sha256": "caecc34586db431648e23f1fd74e9322cd7db2d34bdf7834e7bbe0f375372a97"
+      }
+    ]
+  },
+  "m0Result": {
+    "base001Status": "pending",
+    "m0Exit": "not-met",
+    "remainingGates": [
+      "qualified solver and reference-patch license review",
+      "Linux x86-64 rootless Podman reproduction",
+      "reproducible immutable image build",
+      "SBOM license conclusion review",
+      "clean input deck with no unlisted log failure",
+      "NMOS and CMOS process-device evidence",
+      "cancellation, timeout, output-limit, and restart observations",
+      "semiconductor numerical review and maintainer approval"
+    ]
+  }
+}

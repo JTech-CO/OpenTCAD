@@ -15,12 +15,16 @@ No file in this M1 foundation is a numerical baseline or solver result.
 | BASE-004 DEVSIM I-V corpus | Candidate manifest | Four device cases are declared; curves and metrics remain empty |
 | BASE-005 comparator and report | Foundation implemented | Exact hash, topology, scalar, curve, repeatability, JSON, and HTML contracts have unit tests |
 | BASE-006 pull-request CI | Foundation extended | Repository, M0, M1, punctuation, lint, test, and build gates run in CI |
-| Reproducible image lock | Quarantined | Six mutable image references are mirrored but cannot be approved without digests and SBOMs |
+| BASE-001 external observation | Harness implemented, result ineligible | Five exact structure outputs were observed, but log failures, Docker/non-rootless execution, and image rebuild drift block promotion |
+| Reproducible image lock | Quarantined | Six mutable image references are mirrored; one local digest and SBOM observation does not satisfy reproducible-build or license-review gates |
 | M1 exit | Not met | Linux baselines, five-run variance, and numerical PR smoke remain pending |
 
 ## Artifacts
 
 - [Validation contract](validation-contract.md)
+- [BASE-001 external observation](../m0/base001-reference-observation.md)
+- [Reference observation plan](../../../validation/plans/base001-process-1d-boron.json)
+- [Reference observation tests](../../../validation/baseline/observation.test.mjs)
 - [Candidate corpus](../../../validation/corpus/index.json)
 - [M1 foundation manifest](../../../validation/manifests/m1-foundation.json)
 - [Image lock quarantine](../../../validation/manifests/image-lock.json)

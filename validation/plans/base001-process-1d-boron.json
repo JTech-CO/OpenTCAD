@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M0",
+  "observationId": "base001-process-1d-boron",
+  "caseId": "process-1d-boron",
+  "classification": "non-baseline-portability-observation",
+  "baselinePromotionAllowed": false,
+  "reference": {
+    "repository": "https://github.com/ypooh2042/tcad-webapp",
+    "commit": "13bce4a9daba5796ceee633fb8cd0c870465f766"
+  },
+  "requiredProfile": {
+    "runtime": "podman",
+    "operatingSystem": "linux",
+    "architecture": "amd64",
+    "rootless": true
+  },
+  "image": {
+    "reference": "opentcad-reference/suprem:13bce4a",
+    "distribution": "local-reference-only-not-for-publication"
+  },
+  "invocation": {
+    "args": [
+      "run",
+      "--interactive",
+      "--rm",
+      "--name",
+      "opentcad-base001-boron-{runNumber}",
+      "--network",
+      "none",
+      "--read-only",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--pids-limit",
+      "128",
+      "--memory",
+      "1g",
+      "--cpus",
+      "2",
+      "--tmpfs",
+      "/tmp:rw,noexec,nosuid,nodev,size=64m",
+      "--mount",
+      "type=bind,source={runDir},target=/work",
+      "{image}"
+    ],
+    "stdinInputId": "process-deck",
+    "timeoutMs": 120000,
+    "repeats": 5,
+    "environmentAllowlist": []
+  },
+  "logPolicy": {
+    "mode": "fail-on-match",
+    "failurePatterns": [
+      {
+        "id": "unknown-command-parameter",
+        "stream": "stderr",
+        "substring": "does not exist for this command"
+      },
+      {
+        "id": "command-input-error",
+        "stream": "stderr",
+        "substring": "errors detected on command input"
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "id": "process-deck",
+      "kind": "suprem-input",
+      "relativePath": "SUPREM4GS/examples/exam1/boron.in"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "structure",
+      "kind": "suprem-structure",
+      "relativePath": "boron.str",
+      "required": true
+    },
+    {
+      "id": "plot",
+      "kind": "postscript-plot",
+      "relativePath": "output.ps",
+      "required": false
+    }
+  ],
+  "metrics": [
+    {
+      "id": "structure-record-counts",
+      "kind": "line-prefix-counts",
+      "artifactId": "structure",
+      "prefixes": {
+        "nodes": "c ",
+        "elements": "t ",
+        "regions": "r ",
+        "boundaries": "b "
+      }
+    }
+  ]
+}

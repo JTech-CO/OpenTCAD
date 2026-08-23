@@ -57,3 +57,5 @@ This policy governs work from M0 forward. It does not by itself certify any work
 ## M0 source-access record
 
 On 2026-08-23, M0 inventory review read the frozen reference's SUPREM license and provenance, backend dependency declaration, Compose service definitions, and three Containerfiles. The purpose was licensing, dependency, image, sandbox, and architecture characterization. No reference application source was copied into OpenTCAD.
+
+On 2026-08-24, the BASE-001 observer also read the public 1D boron example deck and compared the generated structure only by hash with the frozen test-fixture Git blob. The observer built and ran the frozen external tree locally, inspected externally visible logs, and recorded normalized facts. Raw source, patches, binaries, images, logs, structures, plots, and the SBOM remain outside OpenTCAD. The observation harness was independently written from OpenTCAD evidence requirements and does not reproduce reference application control flow or organization.
