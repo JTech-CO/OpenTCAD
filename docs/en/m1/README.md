@@ -15,8 +15,8 @@ No file in this M1 foundation is a numerical baseline or solver result.
 | BASE-004 DEVSIM I-V corpus | Candidate manifest | Four device cases are declared; curves and metrics remain empty |
 | BASE-005 comparator and report | Foundation implemented | Exact hash, topology, scalar, curve, repeatability, JSON, and HTML contracts have unit tests |
 | BASE-006 pull-request CI | Foundation extended | Repository, M0, M1, punctuation, lint, test, and build gates run in CI |
-| BASE-001 external observation | Harness implemented, result ineligible | Five exact structure outputs were observed, but log failures, Docker/non-rootless execution, and image rebuild drift block promotion |
-| Reproducible image lock | Quarantined | Six mutable image references are mirrored; one local digest and SBOM observation does not satisfy reproducible-build or license-review gates |
+| BASE-001 external observation | Harness implemented, result ineligible | Rootless Podman matched five Docker structure outputs exactly, but log failures, image rebuild drift, rights, SBOM, and review gates block promotion |
+| Reproducible image lock | Quarantined | Six mutable references remain quarantined; Docker and Podman identities drifted, and only the Docker image has an external unreviewed SBOM |
 | M1 exit | Not met | Linux baselines, five-run variance, and numerical PR smoke remain pending |
 
 ## Artifacts

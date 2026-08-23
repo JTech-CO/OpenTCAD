@@ -19,7 +19,7 @@ The detailed planning source is `03_MILESTONE_ROADMAP_KR.md`. This bilingual sum
 
 ## Current status
 
-The foundation milestone is complete and deployed on GitHub Pages. M0 remains active, with frozen provenance, licensing, architecture, and baseline records in the [M0 workboard](m0/README.md). A five-run Windows Docker Desktop observation produced repeatable structure evidence but remains ineligible because required runtime, rootless, clean-log, and reproducible-image gates failed. M1 is `gated-active`: the [validation foundation](m1/README.md) implements candidate manifests and tested comparators but contains no fixtures or numerical baseline. Solver distribution remains blocked because the SUPREM notice and reference patches are not cleared for the intended bundle. The upstream application remains read-only evidence and is not copied into this MIT repository.
+The foundation milestone is complete and deployed on GitHub Pages. M0 remains active, with frozen provenance, licensing, architecture, and baseline records in the [M0 workboard](m0/README.md). Windows Docker Desktop and WSL2 rootless Podman each produced five exact structure outputs; the Podman run met the declared environment profile, but clean-log, reproducible-image, SBOM, rights, and numerical-review gates still fail. M1 is `gated-active`: the [validation foundation](m1/README.md) implements candidate manifests and tested comparators but contains no fixtures or numerical baseline. Solver distribution remains blocked because the SUPREM notice and reference patches are not cleared for the intended bundle. The upstream application remains read-only evidence and is not copied into this MIT repository.
 
 ## Static and local delivery
 
