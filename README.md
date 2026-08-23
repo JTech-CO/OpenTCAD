@@ -8,7 +8,7 @@ OpenTCAD is an open-source, bilingual workspace for learning semiconductor proce
 
 ## What is available now
 
-This repository is at the **project foundation milestone**. It includes:
+The project foundation is complete, **M0 is active**, and engine-independent M1 work is `gated-active`. The repository currently includes:
 
 - a responsive English/Korean React workspace;
 - a deterministic, clearly labelled reference workflow for process profiles, device cross-sections, and I–V curves;
@@ -44,7 +44,7 @@ npm run check
 npm run coverage
 ```
 
-This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline; all visible curves remain deterministic reference-preview data and are marked as such in the interface.
+This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement without claiming OCI runtime or solver evidence. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
 
 ## Documentation
 
@@ -56,6 +56,7 @@ This repository stores no solver output or numerical baseline. The external [BAS
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
 | [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
 | [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
+| [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |

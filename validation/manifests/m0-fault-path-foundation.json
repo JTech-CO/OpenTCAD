@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M0",
+  "recordId": "M0-FAULT-PATH-CONTRACT-001",
+  "status": "contract-tested",
+  "evidenceClass": "engine-independent",
+  "baselinePromotionAllowed": false,
+  "solverEvidenceObserved": false,
+  "containerRuntimeEvidenceObserved": false,
+  "classifications": [
+    "succeeded",
+    "nonzero-exit",
+    "timed-out",
+    "cancelled",
+    "output-limit-exceeded",
+    "spawn-failed",
+    "worker-crashed",
+    "worker-error"
+  ],
+  "controls": [
+    {
+      "id": "timeout",
+      "classification": "timed-out",
+      "terminatesActiveProcess": true,
+      "resetsWorker": true
+    },
+    {
+      "id": "cancellation",
+      "classification": "cancelled",
+      "terminatesActiveProcess": true,
+      "resetsWorker": true
+    },
+    {
+      "id": "combined-output-cap",
+      "classification": "output-limit-exceeded",
+      "captureNeverExceedsDeclaredLimit": true,
+      "terminatesActiveProcess": true,
+      "resetsWorker": true
+    },
+    {
+      "id": "worker-recovery",
+      "nextJobRequiresNewGeneration": true,
+      "healthyWorkerReuseObserved": true,
+      "postFaultSuccessObserved": true
+    }
+  ],
+  "testContract": {
+    "command": "npm run test:validation",
+    "implementation": "validation/faults/supervisor.mjs",
+    "worker": "validation/faults/command-worker.mjs",
+    "fixture": "validation/faults/fixtures/fault-command.mjs",
+    "tests": "validation/faults/supervisor.test.mjs",
+    "usesRealChildProcesses": true,
+    "usesSolver": false,
+    "usesContainerRuntime": false
+  },
+  "remainingGates": [
+    "Docker and Podman adapter fault injection",
+    "container identity cleanup and orphan count evidence",
+    "real SUPREM, remesh, and DEVSIM cancellation evidence",
+    "worker, broker, runtime, and host crash recovery evidence",
+    "native Windows, macOS, and Linux qualification"
+  ]
+}

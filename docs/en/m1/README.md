@@ -17,6 +17,7 @@ No file in this M1 foundation is a numerical baseline or solver result.
 | BASE-006 pull-request CI | Foundation extended | Repository, M0, M1, punctuation, lint, test, and build gates run in CI |
 | BASE-001 external observation | Harness implemented, run results ineligible | Rootless Podman matched five Docker structure outputs and a controlled image rebuild is exact, but log, rights, corpus, SBOM-review, and approval gates block promotion |
 | Reproducible image lock | Controlled observation, release lock quarantined | A digest-, snapshot-, and timestamp-pinned Podman image rebuilt exactly and has an external unreviewed SBOM; no solver image is approved for release |
+| M0 fault-path foundation | Engine-independent contract tested | Real child processes cover timeout, cancellation, output cap, and worker reset; OCI and solver evidence remains pending |
 | M1 exit | Not met | Linux baselines, five-run variance, and numerical PR smoke remain pending |
 
 ## Artifacts
@@ -25,6 +26,8 @@ No file in this M1 foundation is a numerical baseline or solver result.
 - [BASE-001 external observation](../m0/base001-reference-observation.md)
 - [Reference observation plan](../../../validation/plans/base001-process-1d-boron.json)
 - [Reference observation tests](../../../validation/baseline/observation.test.mjs)
+- [Fault-path contract](../m0/fault-path-foundation.md)
+- [Fault-path supervisor tests](../../../validation/faults/supervisor.test.mjs)
 - [Candidate corpus](../../../validation/corpus/index.json)
 - [M1 foundation manifest](../../../validation/manifests/m1-foundation.json)
 - [Image lock quarantine](../../../validation/manifests/image-lock.json)

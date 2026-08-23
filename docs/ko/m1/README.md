@@ -17,6 +17,7 @@ M1은 `gated-active` 상태입니다. OpenTCAD은 엔진 독립 검증 계약을
 | BASE-006 PR CI | 기반 확장 | 저장소, M0, M1, 문장부호, lint, test, build gate를 CI에서 실행 |
 | BASE-001 외부 관찰 | 하네스 구현, 실행 결과 ineligible | Rootless Podman이 Docker structure 출력 5회와 일치하고 통제 image 재빌드도 정확하지만 log, 권리, corpus, SBOM 검토, 승인 게이트로 승격 차단 |
 | 재현 가능 image lock | 통제 관찰, release lock 격리 | Digest, snapshot, timestamp를 고정한 Podman image가 정확히 재빌드되고 외부 미검토 SBOM도 있으나 release 승인 solver image는 없음 |
+| M0 장애 경로 기반 | 엔진 독립 계약 test 완료 | 실제 자식 프로세스로 timeout, 취소, 출력 상한, worker 초기화를 검사했으나 OCI 및 solver 증거는 대기 상태 |
 | M1 종료 | 미충족 | Linux 기준선, 5회 반복 분산, numerical PR smoke가 대기 상태 |
 
 ## 산출물
@@ -25,6 +26,8 @@ M1은 `gated-active` 상태입니다. OpenTCAD은 엔진 독립 검증 계약을
 - [BASE-001 외부 관찰](../m0/base001-reference-observation.md)
 - [참조 관찰 계획](../../../validation/plans/base001-process-1d-boron.json)
 - [참조 관찰 test](../../../validation/baseline/observation.test.mjs)
+- [장애 경로 계약](../m0/fault-path-foundation.md)
+- [장애 경로 supervisor test](../../../validation/faults/supervisor.test.mjs)
 - [후보 코퍼스](../../../validation/corpus/index.json)
 - [M1 기반 manifest](../../../validation/manifests/m1-foundation.json)
 - [Image lock 격리 기록](../../../validation/manifests/image-lock.json)

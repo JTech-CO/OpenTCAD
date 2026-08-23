@@ -97,5 +97,5 @@ The command exits nonzero when a process fails, a required artifact is absent, a
 1. Obtain qualified review of SUPREM and reference-patch rights.
 2. Review the SBOM license evidence and approve or reject an authorized release image recipe.
 3. Replace or correct the failing plot commands using an authorized, independently reviewed fixture.
-4. Add NMOS and CMOS process-device observations plus fault-path tests.
+4. Add NMOS and CMOS process-device observations, then run the tested fault contract through real Docker and Podman adapters.
 5. Promote evidence only through explicit maintainer and semiconductor numerical review.

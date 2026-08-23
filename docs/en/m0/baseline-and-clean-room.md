@@ -16,7 +16,7 @@ The machine-readable record is [`m0/BASELINE_FREEZE.json`](../../../m0/BASELINE_
 
 The OpenTCAD static foundation builds, passes nine deterministic UI tests, has no known npm audit finding, and deploys to GitHub Pages. Its process profile and I-V curve are labeled reference preview data. This evidence verifies the UI foundation only.
 
-No SUPREM or DEVSIM numerical result has been verified in OpenTCAD. The Linux reference run, three golden cases, repeated-run variance, immutable solver image digests, and fault-path observations remain pending.
+No SUPREM or DEVSIM numerical result has been verified in OpenTCAD. The Linux reference run, three golden cases, repeated-run variance, immutable solver image digests, and real-runtime fault-path observations remain pending. A separate engine-independent supervisor verifies the process-control contract only; it does not satisfy solver or OCI runtime evidence.
 
 ## Required execution evidence
 
