@@ -44,7 +44,7 @@ npm run check
 npm run coverage
 ```
 
-이번 기반 마일스톤은 솔버 출력이나 수치 기준선을 변경하지 않습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
+이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
 
 ## 문서
 
@@ -55,6 +55,7 @@ npm run coverage
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
 | [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
+| [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |

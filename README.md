@@ -44,7 +44,7 @@ npm run check
 npm run coverage
 ```
 
-No solver output or numerical baseline is changed by this foundation milestone. All visible curves are deterministic reference-preview data and are marked as such in the interface.
+This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline; all visible curves remain deterministic reference-preview data and are marked as such in the interface.
 
 ## Documentation
 
@@ -55,6 +55,7 @@ No solver output or numerical baseline is changed by this foundation milestone. 
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
 | [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
+| [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |

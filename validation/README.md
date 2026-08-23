@@ -4,9 +4,11 @@
 
 This directory contains engine-independent M1 validation contracts. It contains no solver, authorized fixture, numerical baseline, or golden result.
 
+- `baseline/`: external observation hashing, profile, log-policy, timeout, and repeatability code with unit tests
 - `comparators/`: exact, topology, scalar, curve, repeatability, and report code with unit tests
 - `corpus/`: candidate coverage manifest with null baseline values
 - `manifests/`: gated M1 status and quarantined image references
-- `schemas/`: JSON schemas for corpus and report envelopes
+- `plans/`: non-promoting external reference observation plans with no expected values
+- `schemas/`: JSON schemas for corpus, report, observation plan, and observation envelopes
 
-Run `npm run test:validation` and `npm run check:m1`. There is intentionally no baseline-update command.
+Run `npm run test:validation` and `npm run check:m1`. Use `npm run observe:base001 -- --help` to inspect the external-only observation interface. There is intentionally no baseline-update command, and the observer cannot write evidence inside OpenTCAD.

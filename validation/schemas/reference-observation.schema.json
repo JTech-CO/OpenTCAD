@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opentcad:schema:reference-observation:1",
+  "title": "OpenTCAD external reference observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "milestone",
+    "observationId",
+    "caseId",
+    "recordedAt",
+    "status",
+    "classification",
+    "baselinePromotionAllowed",
+    "baselineEligibility",
+    "collector",
+    "reference",
+    "hostCollector",
+    "requiredProfile",
+    "observedProfile",
+    "profileEvaluation",
+    "image",
+    "commandContract",
+    "inputs",
+    "probes",
+    "runs",
+    "repeatability",
+    "outstandingGates"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "milestone": { "const": "M0" },
+    "observationId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["completed", "failed"] },
+    "classification": { "const": "non-baseline-portability-observation" },
+    "baselinePromotionAllowed": { "const": false },
+    "baselineEligibility": { "enum": ["ineligible", "review-required"] },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interfaceVersion", "files"],
+      "properties": {
+        "interfaceVersion": { "const": 1 },
+        "files": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        }
+      }
+    },
+    "reference": { "type": "object" },
+    "hostCollector": { "type": "object" },
+    "requiredProfile": { "type": "object" },
+    "observedProfile": { "type": "object" },
+    "profileEvaluation": {
+      "type": "object",
+      "required": ["meetsRequiredProfile", "checks", "mismatches"],
+      "properties": {
+        "meetsRequiredProfile": { "type": "boolean" },
+        "checks": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "mismatches": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "image": { "type": "object" },
+    "commandContract": { "type": "object" },
+    "inputs": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "probes": { "type": "object" },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["runNumber", "status", "command", "artifacts", "metrics"],
+        "properties": {
+          "runNumber": { "type": "integer", "minimum": 1 },
+          "status": { "enum": ["completed", "failed"] },
+          "command": { "type": "object" },
+          "cleanup": { "type": ["object", "null"] },
+          "artifacts": { "type": "array", "items": { "type": "object" } },
+          "metrics": { "type": "array", "items": { "type": "object" } }
+        }
+      }
+    },
+    "repeatability": {
+      "type": "object",
+      "required": ["artifacts", "metrics"],
+      "properties": {
+        "artifacts": { "type": "array", "items": { "type": "object" } },
+        "metrics": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "outstandingGates": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+  }
+}

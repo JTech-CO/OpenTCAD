@@ -57,3 +57,5 @@ OpenTCAD은 참조 애플리케이션 코드, 문장, asset, 내부 구성을 �
 ## M0 소스 접근 기록
 
 2026-08-23 M0 인벤토리 검토에서 고정 참조본의 SUPREM 라이선스와 provenance, backend 의존성 선언, Compose 서비스 정의, Containerfile 3개를 읽었습니다. 목적은 라이선스, 의존성, 이미지, sandbox, 아키텍처 특성 기록이었습니다. 참조 애플리케이션 source는 OpenTCAD에 복사하지 않았습니다.
+
+2026-08-24 BASE-001 관찰자는 공개 1D boron example deck도 읽고 생성 structure를 고정 test fixture Git blob과 hash로만 비교했습니다. 관찰자는 외부 고정 tree를 로컬에서 build하고 실행했으며 외부에서 보이는 log를 확인하고 정규화한 사실만 기록했습니다. 원본 source, patch, binary, image, log, structure, plot, SBOM은 OpenTCAD 밖에 유지합니다. 관찰 하네스는 OpenTCAD 증거 요구사항을 바탕으로 독립 작성했으며 참조 애플리케이션의 control flow나 구성을 재현하지 않습니다.

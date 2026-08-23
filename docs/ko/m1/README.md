@@ -15,12 +15,16 @@ M1은 `gated-active` 상태입니다. OpenTCAD은 엔진 독립 검증 계약을
 | BASE-004 DEVSIM I-V 코퍼스 | 후보 manifest | 소자 case 4개를 선언했으며 curve와 metric은 비어 있음 |
 | BASE-005 comparator 및 report | 기반 구현 | Exact hash, topology, scalar, curve, repeatability, JSON, HTML 계약과 unit test 구현 |
 | BASE-006 PR CI | 기반 확장 | 저장소, M0, M1, 문장부호, lint, test, build gate를 CI에서 실행 |
-| 재현 가능 image lock | 격리 | 가변 이미지 참조 6개를 반영했으나 digest와 SBOM 없이는 승인 불가 |
+| BASE-001 외부 관찰 | 하네스 구현, 결과 ineligible | Structure 출력 5회는 정확히 같지만 log 실패, Docker 및 non-rootless 실행, image 재빌드 drift로 승격 차단 |
+| 재현 가능 image lock | 격리 | 가변 image 참조 6개를 반영했으며 로컬 digest와 SBOM 관찰 1건만으로 재현 build 및 license 검토 게이트를 충족하지 못함 |
 | M1 종료 | 미충족 | Linux 기준선, 5회 반복 분산, numerical PR smoke가 대기 상태 |
 
 ## 산출물
 
 - [검증 계약](validation-contract.md)
+- [BASE-001 외부 관찰](../m0/base001-reference-observation.md)
+- [참조 관찰 계획](../../../validation/plans/base001-process-1d-boron.json)
+- [참조 관찰 test](../../../validation/baseline/observation.test.mjs)
 - [후보 코퍼스](../../../validation/corpus/index.json)
 - [M1 기반 manifest](../../../validation/manifests/m1-foundation.json)
 - [Image lock 격리 기록](../../../validation/manifests/image-lock.json)

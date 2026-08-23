@@ -22,23 +22,26 @@ This is an engineering distribution gate, not legal advice.
 |---|---|---|
 | LIC-001 OpenTCAD root license | Complete | `LICENSE`, `NOTICE`, and GitHub license recognition |
 | LIC-002 SUPREM distribution decision | Blocked | Qualified review or written permission is required |
-| LIC-003 third-party and image inventory | In progress | Critical inventory is frozen; image digests and SBOMs remain open |
+| LIC-003 third-party and image inventory | In progress | One local image digest and external SBOM were observed; license conclusions and reproducible builds remain open |
 | LIC-004 release image policy | Not started | Must reject unapproved or unpinned images |
-| BASE-001 Linux reference baseline | Pending | Requires an authorized solver environment and immutable images |
+| BASE-001 Linux reference baseline | In progress, not met | Harness implemented; Docker Desktop observation is ineligible because runtime, rootless, log, and image-rebuild gates failed |
 | Current architecture record | Draft complete | Target and reference boundaries are recorded |
-| Portability spikes | Pending | Begin only after the reference baseline can be reproduced |
+| Portability spikes | Preflight observed | Windows Docker Desktop produced diagnostic evidence but no support claim |
 | M0 exit gate | Not met | Numerical, platform, and support-matrix evidence remains open |
 
 ## M0 artifacts
 
 - [License strategy](license-strategy.md)
 - [Baseline and clean-room policy](baseline-and-clean-room.md)
+- [BASE-001 reference observation harness](base001-reference-observation.md)
 - [Current architecture](current-architecture.md)
 - [Portability spike report](portability-spike-report.md)
 - [Machine-readable dependency and image inventory](../../../m0/DEPENDENCY_AND_IMAGE_INVENTORY.json)
 - [Machine-readable baseline freeze](../../../m0/BASELINE_FREEZE.json)
+- [Machine-readable ineligible Docker observation](../../../m0/BASE001_DOCKER_OBSERVATION.json)
+- [Five-run 1D observation plan](../../../validation/plans/base001-process-1d-boron.json)
 
-`npm run check:m0` validates the records, local evidence hashes, immutable-commit formatting, image approval rules, and English/Korean document pairs.
+`npm run check:m0` validates the records, local evidence hashes, immutable-commit formatting, image approval rules, English/Korean document pairs, and the fail-closed status of the ineligible observation. The five-run structure hash was stable, but declared solver log errors, Docker/non-rootless execution, and no-cache image drift keep BASE-001 open.
 
 ## Next gates
 

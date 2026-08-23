@@ -22,23 +22,26 @@ M0 작업을 시작했습니다. 이 기록은 라이선스, 출처, 아키텍�
 |---|---|---|
 | LIC-001 OpenTCAD 루트 라이선스 | 완료 | `LICENSE`, `NOTICE`, GitHub 라이선스 인식 |
 | LIC-002 SUPREM 배포 결정 | 차단 | 전문가 검토 또는 서면 허가 필요 |
-| LIC-003 제3자 및 이미지 인벤토리 | 진행 중 | 핵심 목록 고정, 이미지 digest와 SBOM은 미완료 |
+| LIC-003 제3자 및 이미지 인벤토리 | 진행 중 | 로컬 image digest 1개와 외부 SBOM을 관찰했으나 license conclusion과 재현 build는 미완료 |
 | LIC-004 릴리스 이미지 정책 | 시작 전 | 미승인 또는 고정되지 않은 이미지를 거부해야 함 |
-| BASE-001 Linux 참조 기준선 | 대기 | 사용 권한이 확인된 솔버 환경과 불변 이미지 필요 |
+| BASE-001 Linux 참조 기준선 | 진행 중, 미충족 | 하네스를 구현했으나 Docker Desktop 관찰은 runtime, rootless, log, image 재빌드 게이트 실패로 ineligible |
 | 현행 아키텍처 기록 | 초안 완료 | 목표 저장소와 참조 저장소 경계를 기록함 |
-| 이식성 spike | 대기 | 참조 기준선을 재현한 후 시작 |
+| 이식성 spike | 사전 관찰 | Windows Docker Desktop에서 진단 증거를 얻었으나 지원을 주장하지 않음 |
 | M0 종료 게이트 | 미충족 | 수치, 플랫폼, 지원 행렬 증거가 남아 있음 |
 
 ## M0 산출물
 
 - [라이선스 전략](license-strategy.md)
 - [기준선 및 clean-room 정책](baseline-and-clean-room.md)
+- [BASE-001 참조 관찰 하네스](base001-reference-observation.md)
 - [현행 아키텍처](current-architecture.md)
 - [이식성 spike 보고서](portability-spike-report.md)
 - [기계 판독 의존성 및 이미지 인벤토리](../../../m0/DEPENDENCY_AND_IMAGE_INVENTORY.json)
 - [기계 판독 기준선 고정 기록](../../../m0/BASELINE_FREEZE.json)
+- [기계 판독 ineligible Docker 관찰](../../../m0/BASE001_DOCKER_OBSERVATION.json)
+- [5회 1D 관찰 계획](../../../validation/plans/base001-process-1d-boron.json)
 
-`npm run check:m0`는 기록 구조, 로컬 증거 hash, 불변 commit 형식, 이미지 승인 규칙, 한·영 문서 쌍을 검사합니다.
+`npm run check:m0`는 기록 구조, 로컬 증거 hash, 불변 commit 형식, 이미지 승인 규칙, 한·영 문서 쌍, ineligible 관찰의 실패 폐쇄 상태를 검사합니다. 5회 structure hash는 안정적이었지만 선언된 solver log 오류, Docker 및 non-rootless 실행, cache 없는 image drift 때문에 BASE-001은 열린 상태입니다.
 
 ## 다음 게이트
 
