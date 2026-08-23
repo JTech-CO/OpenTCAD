@@ -1,7 +1,5 @@
 # TCAD Webapp Cross-Platform Porting - Milestone Roadmap
 
-> **계획 기준:** 1명 전담 엔지니어 + 수치/라이선스 검토 지원  
-> **예상 기간:** 순차 24–30주, 일부 병렬화 시 20–26주  
 > **기준선:** 2026-08-23 현재 upstream `master`  
 > **원칙:** 포팅, 수치 기준선, 보안 경계를 단계적으로 분리한다.
 
@@ -9,19 +7,17 @@
 
 ## 1. 전체 로드맵
 
-| Milestone | 기간 | 핵심 결과 | 릴리스 상태 |
-|---|---:|---|---|
-| M0 | 1–2주 | 라이선스·현행 구조·플랫폼·수치 기준선과 Go/No-Go 결정 | Planning Baseline |
-| M1 | 2–3주 | 골든 코퍼스, comparator, CI 기초, reproducible image lock | Validation Foundation |
-| M2 | 4–5주 | Runtime abstraction, Docker/Podman adapters, Sandbox Broker | Runtime Alpha |
-| M3 | 3–4주 | All-in-one Compose, local mode, launcher, doctor, managed job volumes | Local Alpha |
-| M4 | 2–3주 | Windows 11 x64 정식 qualification | Windows Beta |
-| M5 | 3–5주 | macOS Intel/Apple Silicon, multi-arch/native-vs-emulated 결정 | Cross-platform Beta |
-| M6 | 3–4주 | P0/P1 correctness·수치·데이터·UX 결함 burn-down | Feature Complete |
-| M7 | 3–4주 | `.tcadproj`, provenance, diagnostics, engine capability registry | RC Candidate |
-| M8 | 2–3주 | 보안·라이선스·SBOM·업데이트·백업·문서·릴리스 hardening | 1.0 GA |
-
-M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 병렬화할 수 있다. M7의 export schema 설계는 M1부터 시작할 수 있으나 구현은 런타임·manifest가 안정된 뒤 진행한다.
+| Milestone | 핵심 결과 | 릴리스 상태 |
+|---|---|---|
+| M0 | 라이선스·현행 구조·플랫폼·수치 기준선과 Go/No-Go 결정 | Planning Baseline |
+| M1 | 골든 코퍼스, comparator, CI 기초, reproducible image lock | Validation Foundation |
+| M2 | Runtime abstraction, Docker/Podman adapters, Sandbox Broker | Runtime Alpha |
+| M3 | All-in-one Compose, local mode, launcher, doctor, managed job volumes | Local Alpha |
+| M4 | Windows 11 x64 정식 qualification | Windows Beta |
+| M5 | macOS Intel/Apple Silicon, multi-arch/native-vs-emulated 결정 | Cross-platform Beta |
+| M6 | P0/P1 correctness·수치·데이터·UX 결함 burn-down | Feature Complete |
+| M7 | `.tcadproj`, provenance, diagnostics, engine capability registry | RC Candidate |
+| M8 | 보안·라이선스·SBOM·업데이트·백업·문서·릴리스 hardening | 1.0 GA |
 
 ---
 
@@ -55,8 +51,9 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M0 - Discovery, Licensing, Baseline Freeze
 
-**기간:** 1–2주  
 **목표:** 구현 전에 배포 가능 범위, 현행 동작, 수치 기준, 포팅 경계를 확정한다.
+
+**현재 상태:** 진행 중. 엔진 없는 정적 릴리스는 허용하며 솔버 번들은 라이선스와 기준선 검토 완료 전까지 차단한다.
 
 ## 진입 조건
 
@@ -76,8 +73,8 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ### M0.2 라이선스 gate
 
-- root license 부재 확인
-- SUPREM upstream license 원문과 patch license 확인
+- OpenTCAD 루트 MIT 라이선스와 고정 참조 저장소의 루트 라이선스 부재를 구분
+- SUPREM upstream license 원문과 patch license 상태 확인
 - DEVSIM Apache-2.0 LICENSE/NOTICE 확인
 - Gmsh GPL 의무와 별도 프로세스/이미지 배포 검토
 - Docker Desktop은 번들 대상이 아님을 확정
@@ -100,12 +97,12 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ## 산출물
 
-- `BASELINE_REPORT.md`
-- `LICENSE_STRATEGY.md`
-- `DEPENDENCY_AND_IMAGE_INVENTORY.json`
-- `CURRENT_ARCHITECTURE.md`
-- `PORTABILITY_SPIKE_REPORT.md`
-- initial golden metric JSON
+- `docs/en/m0/` 및 `docs/ko/m0/`의 상태·라이선스·기준선 문서
+- `m0/DEPENDENCY_AND_IMAGE_INVENTORY.json`
+- `m0/BASELINE_FREEZE.json`
+- 현행 아키텍처 기록
+- 이식성 spike 보고서
+- initial golden metric 후보
 - 승인 ADR-001~ADR-007
 
 ## Exit criteria
@@ -125,7 +122,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M1 - Reproducibility and Numerical Validation Foundation
 
-**기간:** 2–3주  
 **목표:** 포팅 전후 결과를 객관적으로 비교할 수 있는 자동 검증 체계를 만든다.
 
 ## 진입 조건
@@ -195,7 +191,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M2 - Runtime Abstraction and Sandbox Broker
 
-**기간:** 4–5주  
 **목표:** Podman 결합을 제거하고 Docker/Podman에서 같은 보안·수명주기 계약을 실행한다.
 
 ## 진입 조건
@@ -278,7 +273,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M3 - Portable Local Stack, Launcher, Doctor
 
-**기간:** 3–4주  
 **목표:** host에 Python/Node/PostgreSQL/Redis를 직접 설치하지 않고 한 번에 로컬 서버를 실행한다.
 
 ## 진입 조건
@@ -356,7 +350,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M4 - Windows 11 Qualification
 
-**기간:** 2–3주  
 **목표:** Windows 11 x64에서 설치·실행·업데이트·복구를 정식 지원한다.
 
 ## 진입 조건
@@ -424,7 +417,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M5 - macOS and Multi-Architecture Qualification
 
-**기간:** 3–5주  
 **목표:** macOS Intel/Apple Silicon을 지원하고 native arm64 또는 emulation 정책을 확정한다.
 
 ## 진입 조건
@@ -490,7 +482,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M6 - Correctness, Numerical Stability, Data Safety Burn-down
 
-**기간:** 3–4주  
 **목표:** 포팅 중 드러난 결함과 기존 silent correctness·state·data 문제를 기능 추가 전에 제거한다.
 
 ## 진입 조건
@@ -555,7 +546,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M7 - Project Portability, Provenance, Diagnostics, Extension Contracts
 
-**기간:** 3–4주  
 **목표:** 결과를 다른 OS에서 재현하고 향후 엔진을 안전하게 추가할 수 있는 계약을 제공한다.
 
 ## 진입 조건
@@ -621,7 +611,6 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 # M8 - Release Hardening and 1.0 GA
 
-**기간:** 2–3주  
 **목표:** 보안·라이선스·운영·문서·릴리스 체계를 완결한다.
 
 ## 진입 조건
@@ -699,40 +688,38 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## 3. 병렬화 계획
+## 3. 워크스트림 의존성
 
-| Workstream | 시작 가능 | 의존성 |
-|---|---|---|
-| License | M0 즉시 | 없음 |
-| Numerical corpus | M0 후반 | baseline run |
-| Runtime contract | M1 중반 | current characterization |
-| Windows launcher UX | M2 후반 | command/config shape |
-| macOS image spike | M1 후반 | image lock |
-| Project schema 설계 | M1 | provenance field 합의 |
-| Docs skeleton | M0 | support policy |
-| Self-hosted CI provisioning | M1 | 장비 확보 |
+| Workstream | 선행 게이트 |
+|---|---|
+| License | 솔버 산출물 배포 전에 승인된 전략 필요 |
+| Numerical corpus | 권한과 재현성이 확인된 baseline run |
+| Runtime contract | 현행 실행 특성 및 보안 경계 기록 |
+| Windows launcher UX | 안정된 command 및 config contract |
+| macOS image qualification | 불변 image lock 및 architecture 정책 |
+| Project schema | provenance field와 replay 계약 |
+| Docs | support policy와 capability matrix |
+| Self-hosted CI | 검증 장비와 secret 격리 |
 
-2명이 투입되면 A는 runtime/broker/packaging, B는 validation/platform/UX를 담당할 수 있다. 다만 SUPREM/DEVSIM 수치 기준선과 라이선스는 공동 gate다.
+SUPREM/DEVSIM 수치 기준선과 라이선스는 모든 runtime 및 packaging 작업의 공동 gate다.
 
 ---
 
-## 4. 인력·장비·환경
+## 4. 검증 역할·장비·환경
 
-### 4.1 최소 인력
+### 4.1 필수 검토 역할
 
-- Lead engineer 1: backend/runtime/security
-- Frontend/QA 0.5–1: UI/E2E/platform
-- Semiconductor/numerical reviewer 0.2: corpus/tolerance
-- License reviewer: M0/M8 집중
-
-1명만 수행할 경우 frontend/QA를 순차 처리해 24–30주를 예상한다.
+- Technical owner: backend, runtime, security
+- Frontend/QA reviewer: UI, E2E, platform
+- Semiconductor/numerical reviewer: corpus, tolerance
+- License reviewer: M0 및 M8 배포 gate
 
 ### 4.2 최소 테스트 장비
 
 - Linux x86-64, 8 cores, 16GB+ RAM
 - Windows 11 x64, WSL2/Docker Desktop 가능, 16GB+ RAM
 - macOS Apple Silicon, 16GB+ RAM
-- macOS Intel은 정식 지원을 유지한다면 별도 장비 또는 CI 서비스
+- macOS Intel을 정식 지원한다면 별도 장비 또는 CI 서비스
 - 빌드/qualification용 충분한 disk: 100GB 이상 권장
 
 ### 4.3 CI 운영
@@ -744,26 +731,25 @@ M4의 Windows 작업과 M5의 일부 이미지 빌드 연구는 M3 후반부터 
 
 ---
 
-## 5. 일정 변동 요인
+## 5. 핵심 범위 결정 요인
 
-다음이면 일정이 늘어난다.
+다음 항목이 해결되지 않으면 관련 릴리스 경로를 차단하거나 범위를 명시적으로 조정한다.
 
-- SUPREM 배포 허가가 별도 협의 필요
-- Apple Silicon native 포팅이 old C pointer model 재작성으로 확대
+- SUPREM 배포 권한이 목표 배포 모델을 허용하지 않음
+- Apple Silicon native 포팅에 old C pointer model 재작성 필요
 - 기존 baseline에서 새로운 silent correctness 결함 발견
-- Docker/Podman 모두에서 동일한 sandbox 정책 구현이 불가능
-- `.str` 포맷 parser의 미정의 영역이 추가 발견
-- self-hosted runner 안정화 지연
+- Docker/Podman에서 동일한 sandbox 불변식을 구현할 수 없음
+- `.str` parser에서 정의되지 않은 영역 추가 발견
+- self-hosted runner가 반복 가능한 검증 증거를 만들지 못함
 
-다음이면 단축 가능하다.
+1.0 범위 축소는 다음과 같이 지원 상태와 제한을 문서화하는 경우에만 허용한다.
 
-- 1.0에서 macOS Intel을 maintenance-only로 낮춤
-- SUPREM arm64를 1.1로 미루고 amd64 emulation을 승인
+- macOS Intel을 maintenance-only로 분류
+- SUPREM arm64를 후속 릴리스로 두고 amd64 emulation을 승인
 - Podman Machine을 preview로 두고 Docker Desktop을 정식 경로로 제한
 - 프로젝트 export에서 대형 `.str` 결과를 기본 제외
 
 ---
-
 ## 6. 1.0 이후 제안
 
 | Release | 후보 |

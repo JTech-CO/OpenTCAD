@@ -54,6 +54,7 @@ npm run coverage
 | [Development](docs/en/development.md) | [개발](docs/ko/development.md) |
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
+| [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
 

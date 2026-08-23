@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-23",
+  "milestone": "M0",
+  "status": "active",
+  "references": [
+    {
+      "id": "behavior-reference",
+      "repository": "https://github.com/ypooh2042/tcad-webapp",
+      "commit": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+      "use": "Read-only behavior, architecture, dependency, and license evidence",
+      "codeReuse": "prohibited"
+    },
+    {
+      "id": "opentcad-foundation",
+      "repository": "https://github.com/JTech-CO/OpenTCAD",
+      "commit": "4a7cae9b5192e52730f204b1236ff63a1abe3988",
+      "use": "First merged bilingual static foundation and GitHub Pages baseline",
+      "codeReuse": "target"
+    },
+    {
+      "id": "m0-start",
+      "repository": "https://github.com/JTech-CO/OpenTCAD",
+      "commit": "f0305c8d4f79b8c8aea7683d52fd17bb61342001",
+      "use": "Parent commit for M0 discovery work",
+      "codeReuse": "target"
+    }
+  ],
+  "currentTarget": {
+    "runtime": "Static React and Vite application",
+    "solverExecution": false,
+    "backend": false,
+    "database": false,
+    "publishedSurface": "Engine-free GitHub Pages preview",
+    "foundationVerification": {
+      "status": "verified",
+      "command": "npm run check",
+      "testsPassed": 9,
+      "note": "This verifies the static foundation only, not TCAD numerical correctness."
+    }
+  },
+  "solverExecutionBaseline": {
+    "status": "pending",
+    "reason": "OpenTCAD intentionally contains no solver source, binary, or image, and the distribution decision is not approved.",
+    "requiredEnvironment": "Linux x86-64 rootless Podman reference environment",
+    "requiredEvidence": [
+      "Fresh-install command transcript and host/runtime versions",
+      "Immutable image digests and generated SBOMs",
+      "Input, output, log, and metric hashes for at least three representative cases",
+      "Repeated-run variance for numerical metrics",
+      "Cancellation, timeout, output-limit, and worker-restart observations"
+    ]
+  },
+  "goldenCaseCandidates": [
+    {
+      "id": "process-1d",
+      "coverage": "One-dimensional process flow with doping and oxidation",
+      "status": "proposed"
+    },
+    {
+      "id": "nmos-process-device",
+      "coverage": "Two-dimensional NMOS process plus DEVSIM Id-Vg and Id-Vd",
+      "status": "proposed"
+    },
+    {
+      "id": "cmos-process-device",
+      "coverage": "Multi-step CMOS process, topology, and device handoff",
+      "status": "proposed"
+    }
+  ],
+  "m0Exit": {
+    "licenseStrategy": "blocked-with-interim-engine-free-policy",
+    "linuxReferenceTests": "pending",
+    "threeGoldenCases": "pending",
+    "windowsAndMacosBlockers": "pending",
+    "supportMatrix": "pending",
+    "overall": "not-met"
+  }
+}
