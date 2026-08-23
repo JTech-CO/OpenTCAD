@@ -51,6 +51,7 @@ The runtime contract must use immutable engine identities, managed job storage, 
 
 - No OpenTCAD local API, worker, job state, runtime adapter, or installer exists yet.
 - The reference uses mutable base and service image tags.
+- A non-distributable OpenTCAD observation plan now rewrites the external SUPREM recipe to pinned base manifests and Debian snapshots; no release recipe is approved.
 - WSL2 rootless Podman met the declared profile for one 1D case, but no authorized OpenTCAD baseline is approved.
 - Docker Desktop and WSL2 Podman preflights are measured; native Linux, Podman Machine, macOS, and full fault behavior remain open.
 - Solver distribution and patch rights are not approved.

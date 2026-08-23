@@ -22,9 +22,9 @@ This is an engineering distribution gate, not legal advice.
 |---|---|---|
 | LIC-001 OpenTCAD root license | Complete | `LICENSE`, `NOTICE`, and GitHub license recognition |
 | LIC-002 SUPREM distribution decision | Blocked | Qualified review or written permission is required |
-| LIC-003 third-party and image inventory | In progress | Docker and Podman image identities plus one external Docker SBOM were observed; Podman SBOM, license conclusions, and reproducible builds remain open |
+| LIC-003 third-party and image inventory | In progress | A controlled Podman image now rebuilds exactly and has an external local-only SBOM; license conclusions and release approval remain open |
 | LIC-004 release image policy | Not started | Must reject unapproved or unpinned images |
-| BASE-001 Linux reference baseline | In progress, not met | Rootless Podman met the declared profile and matched Docker structure bytes; log, image-rebuild, SBOM, rights, and review gates still fail |
+| BASE-001 Linux reference baseline | In progress, not met | Rootless Podman matched Docker structure bytes and a controlled image rebuild is exact; clean-log, rights, SBOM review, corpus, and approval gates remain open |
 | Current architecture record | Draft complete | Target and reference boundaries are recorded |
 | Portability spikes | Preflight observed | Windows Docker Desktop and WSL2 rootless Podman produced diagnostic evidence but no support claim |
 | M0 exit gate | Not met | Numerical, platform, and support-matrix evidence remains open |
@@ -40,16 +40,19 @@ This is an engineering distribution gate, not legal advice.
 - [Machine-readable baseline freeze](../../../m0/BASELINE_FREEZE.json)
 - [Machine-readable ineligible Docker observation](../../../m0/BASE001_DOCKER_OBSERVATION.json)
 - [Machine-readable ineligible rootless Podman observation](../../../m0/BASE001_ROOTLESS_PODMAN_OBSERVATION.json)
+- [Machine-readable controlled image and SBOM observation](../../../m0/BASE001_REPRODUCIBLE_IMAGE_OBSERVATION.json)
 - [Five-run 1D observation plan](../../../validation/plans/base001-process-1d-boron.json)
+- [Controlled reference image build plan](../../../validation/plans/base001-suprem-image-build.json)
+- [External build preparation tool](../../../tools/prepare-reference-image-build.mjs)
 
-`npm run check:m0` validates both observation records, collector hashes, immutable-commit formatting, image approval rules, English/Korean document pairs, and fail-closed status. Rootless Podman met the declared environment profile and reproduced the Docker structure exactly, but declared solver log errors, image drift, the missing Podman-image SBOM, rights, and numerical review keep BASE-001 open.
+`npm run check:m0` validates the two run observations, controlled image observation, build plan, collector hashes, image and SBOM identities, English/Korean document pairs, and fail-closed status. The timestamp-, base-, and snapshot-pinned Podman image rebuilt to the same ID, digest, size, and five layers, and a network-disabled local scan produced a CycloneDX SBOM. Declared solver log errors, rights, SBOM license review, corpus coverage, and numerical approval keep BASE-001 open.
 
 ## Next gates
 
 1. Obtain a qualified decision for SUPREM source, patch, binary, and image distribution.
-2. Correct the declared input errors, make the Podman image reproducible, and generate a local image SBOM.
-3. Run the proposed NMOS process/device and CMOS process/device cases.
-4. Freeze reviewed input, output, log, metric, image, and repeated-run evidence.
-5. Run native Linux, Windows, macOS, and Podman Machine portability spikes against that same baseline.
+2. Review the external SBOM license evidence and approve or reject a release image recipe.
+3. Correct the declared input errors using an authorized, independently reviewed fixture.
+4. Run the proposed NMOS process/device and CMOS process/device cases and fault paths.
+5. Freeze reviewed evidence, then run native Linux, Windows, macOS, and Podman Machine portability spikes against it.
 
 Engine-independent M1 contract work may proceed in `gated-active` mode. No numerical corpus may be frozen and no solver-backed product claim may begin until the applicable M0 gates are met.

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M0",
+  "planId": "base001-suprem-reproducible-image",
+  "classification": "non-baseline-local-build-observation",
+  "baselinePromotionAllowed": false,
+  "distributionAllowed": false,
+  "reference": {
+    "repository": "https://github.com/ypooh2042/tcad-webapp",
+    "commit": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+    "rawArchiveSha256": "5384852ab39ea10cb8a3e595fea4703cd72c3525e70494d6a2c126e6edb0cd68",
+    "commitTimestampEpoch": 1787471368,
+    "containerfile": {
+      "planPath": "validation/plans/base001-suprem-image-build.json",
+      "relativePath": "docker/suprem/Containerfile",
+      "sha256": "962925ce0a06bfde2101dabb8aa6f498b1265c3459d69dc87bb599307006f376"
+    }
+  },
+  "build": {
+    "runtime": "podman",
+    "format": "oci",
+    "pullPolicy": "never",
+    "noCache": true,
+    "cgroupManager": "cgroupfs",
+    "timestampEpoch": 1787471368,
+    "repeats": 2,
+    "environment": {
+      "sourceDateEpoch": "1787471368",
+      "lcAll": "C",
+      "tz": "UTC"
+    },
+    "baseImages": [
+      {
+        "stage": "builder",
+        "sourceLine": "FROM debian:bookworm AS builder",
+        "pinnedLine": "FROM docker.io/library/debian@sha256:88a7d30d49e1d13f0aac17b0e5fb9e291717e3a7c4a512fe56636db576383b8a AS builder",
+        "manifestDigest": "sha256:88a7d30d49e1d13f0aac17b0e5fb9e291717e3a7c4a512fe56636db576383b8a",
+        "indexDigest": "sha256:813017f3d62be4b5891a7acca6a01bdcd4b8513daa81b1ab99d3a50385b26931"
+      },
+      {
+        "stage": "runtime",
+        "sourceLine": "FROM debian:bookworm-slim",
+        "pinnedLine": "FROM docker.io/library/debian@sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143",
+        "manifestDigest": "sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143",
+        "indexDigest": "sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241"
+      }
+    ],
+    "aptSnapshots": [
+      {
+        "source": "http://deb.debian.org/debian",
+        "snapshot": "http://snapshot.debian.org/archive/debian/20260803T000000Z"
+      },
+      {
+        "source": "http://deb.debian.org/debian-security",
+        "snapshot": "http://snapshot.debian.org/archive/debian-security/20260803T000000Z"
+      }
+    ],
+    "checkValidUntil": false
+  },
+  "sbom": {
+    "scanner": {
+      "name": "syft",
+      "version": "1.51.0",
+      "reference": "ghcr.io/anchore/syft@sha256:41f8289664101d6ebab30a97ac8df6b6f86b92d8343285ca90f428e2bc353106",
+      "manifestDigest": "sha256:41f8289664101d6ebab30a97ac8df6b6f86b92d8343285ca90f428e2bc353106",
+      "indexDigest": "sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0",
+      "imageId": "e6ff5da240b940ab010282f502ae688019379cdee51578f76374ed9b29ef03e6",
+      "license": "Apache-2.0"
+    },
+    "source": "oci-archive",
+    "format": "cyclonedx-json",
+    "network": "none",
+    "rawArchiveCommitted": false,
+    "rawSbomCommitted": false
+  }
+}
