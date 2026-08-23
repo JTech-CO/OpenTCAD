@@ -6,7 +6,7 @@
 
 OpenTCAD now has a fail-closed, engine-independent observation harness for external reference runs. It verifies a frozen Git commit and exact input blob, probes the OCI runtime and image identity, executes without a shell, stores raw evidence outside the repository, hashes every input, log, and artifact, measures exact repeatability, and never changes a baseline or image lock.
 
-The first five-run observation is useful evidence but **does not complete BASE-001**. It ran on Docker Desktop rather than rootless Podman, the image did not reproduce byte-for-byte in a no-cache rebuild, and every solver invocation emitted declared command-input errors despite returning exit code 0.
+Two five-run observations now provide useful evidence but **do not complete BASE-001**. The Docker Desktop run missed the required runtime and rootless profile. A later WSL2 Debian run met the declared Linux amd64 rootless Podman profile and reproduced the same structure bytes and topology counts. Both local image builds drifted under no-cache rebuilds, and every solver invocation emitted declared command-input errors despite returning exit code 0.
 
 ## Implemented controls
 
@@ -38,6 +38,25 @@ The sanitized machine record is [`m0/BASE001_DOCKER_OBSERVATION.json`](../../../
 
 This is why OpenTCAD does not equate process exit with numerical success. The repeated structure is a useful behavioral observation, but it is not an approved golden result.
 
+## 2026-08-24 WSL2 rootless Podman observation
+
+The second sanitized machine record is [`m0/BASE001_ROOTLESS_PODMAN_OBSERVATION.json`](../../../m0/BASE001_ROOTLESS_PODMAN_OBSERVATION.json). Raw logs, structures, runtime probes, images, and build output remain outside OpenTCAD.
+
+| Evidence | Observation |
+|---|---|
+| Host | WSL2, Debian 13 trixie, kernel `6.18.33.2-microsoft-standard-WSL2` |
+| Runtime profile | Podman 5.4.2, Linux amd64, rootless, cgroup v2 with cgroupfs fallback |
+| Profile evaluation | All four declared checks passed: runtime, OS, architecture, and rootless |
+| First image | ID `bbfe2ae2...b1318`, digest `sha256:225eff7d...60b3b`, local only |
+| No-cache rebuild | ID `37fc29a1...07d3`, digest `sha256:ad9afbb0...1407`; config and four non-base layers differed |
+| Solver binary | SHA-256 `9c6d7a0b...b7805` in both Podman builds |
+| Required output | The same 5,784-byte structure SHA-256 `971dfc50...b45b` in all five runs and in the Docker observation |
+| Logs | The same two unknown-parameter findings and one command-input-error finding in every run |
+| Podman-image SBOM | Not generated; the Docker SBOM was not reused and no local image archive was transmitted |
+| Baseline result | `ineligible`; the runtime profile gate was observed, but BASE-001 remains pending |
+
+Podman initially needed the Debian `passt` package for its selected `pasta` rootless network command. Noninteractive `wsl.exe` sessions did not expose a systemd user bus, so image builds selected cgroupfs explicitly and observation runs used Podman's reported cgroupfs fallback. These are setup findings, not host-support claims.
+
 ## Windows checkout finding
 
 The first image build from the ordinary Windows checkout failed because `core.autocrlf=true` converted source and patch files to CRLF, so patch hunks no longer matched. A separate `git archive` created with `core.autocrlf=false` and `core.eol=lf` was extracted outside OpenTCAD. Four build-critical files were checked against their frozen Git blob IDs before the successful local build. No reference source, patch, binary, image, or raw solver artifact was added to this repository.
@@ -60,8 +79,7 @@ The command exits nonzero when a process fails, a required artifact is absent, a
 ## Remaining gates
 
 1. Obtain qualified review of SUPREM and reference-patch rights.
-2. Reproduce the same plan on Linux amd64 rootless Podman;
-3. make the image build byte-reproducible and review immutable manifests and SBOM license conclusions;
-4. replace or correct the failing plot commands using an authorized, independently reviewed fixture;
-5. add NMOS and CMOS process-device observations plus fault-path tests;
-6. promote evidence only through explicit maintainer and semiconductor numerical review.
+2. Make the image build byte-reproducible, generate a local Podman-image SBOM, and review license conclusions.
+3. Replace or correct the failing plot commands using an authorized, independently reviewed fixture.
+4. Add NMOS and CMOS process-device observations plus fault-path tests.
+5. Promote evidence only through explicit maintainer and semiconductor numerical review.

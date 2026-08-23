@@ -15,8 +15,8 @@ M1은 `gated-active` 상태입니다. OpenTCAD은 엔진 독립 검증 계약을
 | BASE-004 DEVSIM I-V 코퍼스 | 후보 manifest | 소자 case 4개를 선언했으며 curve와 metric은 비어 있음 |
 | BASE-005 comparator 및 report | 기반 구현 | Exact hash, topology, scalar, curve, repeatability, JSON, HTML 계약과 unit test 구현 |
 | BASE-006 PR CI | 기반 확장 | 저장소, M0, M1, 문장부호, lint, test, build gate를 CI에서 실행 |
-| BASE-001 외부 관찰 | 하네스 구현, 결과 ineligible | Structure 출력 5회는 정확히 같지만 log 실패, Docker 및 non-rootless 실행, image 재빌드 drift로 승격 차단 |
-| 재현 가능 image lock | 격리 | 가변 image 참조 6개를 반영했으며 로컬 digest와 SBOM 관찰 1건만으로 재현 build 및 license 검토 게이트를 충족하지 못함 |
+| BASE-001 외부 관찰 | 하네스 구현, 결과 ineligible | Rootless Podman이 Docker structure 출력 5회와 정확히 일치했지만 log 실패, image 재빌드 drift, 권리, SBOM, 검토 게이트로 승격 차단 |
+| 재현 가능 image lock | 격리 | 가변 image 참조 6개는 격리 상태이며 Docker 및 Podman identity가 drift했고 Docker image에만 검토되지 않은 외부 SBOM이 있음 |
 | M1 종료 | 미충족 | Linux 기준선, 5회 반복 분산, numerical PR smoke가 대기 상태 |
 
 ## 산출물

@@ -51,8 +51,8 @@ Runtime contract에는 불변 engine identity, 관리형 job storage, 기본 net
 
 - OpenTCAD local API, worker, job state, runtime adapter, installer가 아직 없습니다.
 - 참조본은 가변 base 및 service image tag를 사용합니다.
-- 참조본의 Linux rootless Podman 특성은 기록했지만 OpenTCAD 기준선으로 재현하지 않았습니다.
-- Docker Desktop, WSL2, Podman Machine, macOS 동작을 아직 측정하지 않았습니다.
+- WSL2 rootless Podman은 1D case 1개에서 선언 profile을 충족했지만 사용 권한이 확인된 OpenTCAD 기준선은 승인되지 않았습니다.
+- Docker Desktop과 WSL2 Podman 사전 관찰은 수행했으며 native Linux, Podman Machine, macOS, 전체 장애 동작은 열려 있습니다.
 - 솔버 배포와 패치 권리가 승인되지 않았습니다.
 - 불변 입력, engine, metric, tolerance를 고정하기 전에는 과학적 결과를 비교할 수 없습니다.
 

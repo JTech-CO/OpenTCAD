@@ -19,7 +19,7 @@
 
 ## 현재 상태
 
-프로젝트 기반 마일스톤은 완료되어 GitHub Pages에 배포되었습니다. M0는 진행 중이며 고정된 provenance, 라이선스, 아키텍처, 기준선 기록은 [M0 작업 현황](m0/README.md)에 있습니다. Windows Docker Desktop 5회 관찰에서 반복 가능한 structure 증거를 얻었지만 필수 runtime, rootless, clean log, 재현 image 게이트 실패로 ineligible 상태입니다. M1은 `gated-active` 상태입니다. [검증 기반](m1/README.md)에 후보 manifest와 unit test를 통과한 comparator를 구현했지만 fixture와 수치 기준선은 포함하지 않습니다. SUPREM 고지와 참조 패치가 목표 번들 배포에 대해 확인되지 않아 솔버 배포는 차단 상태입니다. 업스트림 애플리케이션은 읽기 전용 증거로만 사용하며 이 MIT 저장소에 복사하지 않습니다.
+프로젝트 기반 마일스톤은 완료되어 GitHub Pages에 배포되었습니다. M0는 진행 중이며 고정된 provenance, 라이선스, 아키텍처, 기준선 기록은 [M0 작업 현황](m0/README.md)에 있습니다. Windows Docker Desktop과 WSL2 rootless Podman에서 각각 정확히 같은 structure 출력 5개를 얻었고 Podman 실행은 선언된 환경 profile을 충족했습니다. 그러나 clean log, 재현 image, SBOM, 권리, 수치 검토 게이트는 계속 미충족입니다. M1은 `gated-active` 상태입니다. [검증 기반](m1/README.md)에 후보 manifest와 unit test를 통과한 comparator를 구현했지만 fixture와 수치 기준선은 포함하지 않습니다. SUPREM 고지와 참조 패치가 목표 번들 배포에 대해 확인되지 않아 솔버 배포는 차단 상태입니다. 업스트림 애플리케이션은 읽기 전용 증거로만 사용하며 이 MIT 저장소에 복사하지 않습니다.
 
 ## 정적 배포와 로컬 배포
 

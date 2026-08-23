@@ -51,8 +51,8 @@ The runtime contract must use immutable engine identities, managed job storage, 
 
 - No OpenTCAD local API, worker, job state, runtime adapter, or installer exists yet.
 - The reference uses mutable base and service image tags.
-- Linux rootless Podman is characterized in the reference but not reproduced as an OpenTCAD baseline.
-- Docker Desktop, WSL2, Podman Machine, and macOS behavior is not yet measured.
+- WSL2 rootless Podman met the declared profile for one 1D case, but no authorized OpenTCAD baseline is approved.
+- Docker Desktop and WSL2 Podman preflights are measured; native Linux, Podman Machine, macOS, and full fault behavior remain open.
 - Solver distribution and patch rights are not approved.
 - No scientific result can be compared until immutable inputs, engines, metrics, and tolerances are frozen.
 

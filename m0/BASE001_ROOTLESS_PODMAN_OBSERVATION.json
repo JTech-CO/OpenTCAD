@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-24",
+  "milestone": "M0",
+  "observationId": "base001-process-1d-boron-rootless-podman",
+  "status": "observed-ineligible",
+  "baselinePromotionAllowed": false,
+  "baselineEligibility": "ineligible",
+  "reference": {
+    "repository": "https://github.com/ypooh2042/tcad-webapp",
+    "commit": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+    "sourceOrBinaryCopiedIntoOpenTCAD": false
+  },
+  "environment": {
+    "required": {
+      "runtime": "podman",
+      "operatingSystem": "linux",
+      "architecture": "amd64",
+      "rootless": true
+    },
+    "observed": {
+      "host": "Windows 11 with WSL2",
+      "distribution": "Debian 13 trixie",
+      "runtime": "podman",
+      "runtimeVersion": "5.4.2",
+      "buildahVersion": "1.39.3",
+      "ociRuntime": "crun 1.21",
+      "operatingSystem": "linux",
+      "architecture": "amd64",
+      "kernel": "6.18.33.2-microsoft-standard-WSL2",
+      "rootless": true,
+      "cgroupVersion": "v2",
+      "cgroupManager": "cgroupfs",
+      "storageDriver": "overlay",
+      "networkBackend": "netavark",
+      "rootlessNetworkCommand": "pasta",
+      "nodeVersion": "20.19.2"
+    },
+    "meetsRequiredProfile": true,
+    "profileMismatches": [],
+    "setupFindings": [
+      {
+        "id": "noninteractive-wsl-user-bus",
+        "status": "mitigated-for-observation",
+        "finding": "The wsl.exe noninteractive session had no systemd user bus, so Podman fell back to cgroupfs.",
+        "action": "Image builds explicitly selected cgroupfs; observation runs used Podman's reported cgroupfs fallback."
+      },
+      {
+        "id": "missing-rootless-network-command",
+        "status": "resolved",
+        "finding": "The first rootless build could not find pasta.",
+        "action": "The Debian passt package was installed before the successful local builds."
+      }
+    ]
+  },
+  "build": {
+    "rawGitArchiveContext": {
+      "coreAutocrlf": false,
+      "archiveSha256": "5384852ab39ea10cb8a3e595fea4703cd72c3525e70494d6a2c126e6edb0cd68",
+      "checkedGitBlobsMatch": true
+    },
+    "baseImageIndexes": [
+      {
+        "reference": "docker.io/library/debian:bookworm",
+        "digest": "sha256:813017f3d62be4b5891a7acca6a01bdcd4b8513daa81b1ab99d3a50385b26931",
+        "linuxAmd64Manifest": "sha256:88a7d30d49e1d13f0aac17b0e5fb9e291717e3a7c4a512fe56636db576383b8a"
+      },
+      {
+        "reference": "docker.io/library/debian:bookworm-slim",
+        "digest": "sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
+        "linuxAmd64Manifest": "sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143"
+      }
+    ],
+    "firstImage": {
+      "reference": "opentcad-reference/suprem:13bce4a",
+      "id": "bbfe2ae2d43cec5f34435c0a513fb68d86a8873923b11ab7589815fcd94b1318",
+      "digest": "sha256:225eff7d26d853981f4b41afbc01930571a263bb0106e713c4c462cb42960b3b",
+      "rootFilesystemLayers": 5
+    },
+    "noCacheRebuild": {
+      "reference": "opentcad-reference/suprem:13bce4a-podman-rebuild",
+      "id": "37fc29a1c8b6a62cc61a28fc1c65f3a9dc406e7a849809be0adbd403cb2707d3",
+      "digest": "sha256:ad9afbb01a3bc298988ed97b66afe9d8869e8cd248d8ea02c490072fa1be1407",
+      "sameImageId": false,
+      "sameImageDigest": false,
+      "sameConfig": false,
+      "sameLayers": false,
+      "sameSolverBinary": true
+    },
+    "solverBinarySha256": "9c6d7a0b842c908b06f001d9a077c8a1975ab962956397e5ec7361c918eb7805",
+    "reproducibleImage": false,
+    "distribution": "local-reference-only-not-for-publication"
+  },
+  "sbom": {
+    "status": "not-generated-for-podman-image",
+    "dockerObservationSbomReused": false,
+    "reason": "No approved local scanner was available; the local image archive was not exported or transmitted to an external processor.",
+    "licenseReviewComplete": false,
+    "committed": false
+  },
+  "case": {
+    "id": "process-1d-boron",
+    "input": {
+      "relativePath": "SUPREM4GS/examples/exam1/boron.in",
+      "gitBlob": "c28fd878ccb9ac2cc687b0a882ec4a51d91a05d9",
+      "sha256": "fab7228f69773505c35941fe3842e1ed936fbd639b533f990148ee1f1dba9684",
+      "matchesFrozenCommit": true
+    },
+    "repeats": 5,
+    "exitCodes": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "semanticStatus": "failed-declared-log-policy",
+    "logFindingsPerRun": [
+      {
+        "id": "unknown-command-parameter",
+        "stream": "stderr",
+        "count": 2
+      },
+      {
+        "id": "command-input-error",
+        "stream": "stderr",
+        "count": 1
+      }
+    ],
+    "stdout": {
+      "sha256": "cfc8b42352f105931fc097342a1efb82b7d8c215e450aa646d62ce3bd7e21064",
+      "exactlyRepeatable": true
+    },
+    "stderr": {
+      "exactlyRepeatable": false,
+      "reason": "Podman warning timestamps differ between runs; declared solver findings are identical."
+    },
+    "requiredArtifact": {
+      "id": "structure",
+      "bytes": 5784,
+      "sha256": "971dfc50e3de397659663e244a118d3be61bf5a2730f069ed10d2cd6cf7bb45b",
+      "exactlyRepeatable": true,
+      "matchesFrozenReferenceFixtureGitBlob": true,
+      "referenceFixtureGitBlob": "ec08539c5a4e5070d04c197249c4b5956a1632df"
+    },
+    "recordCounts": {
+      "nodes": 43,
+      "elements": 42,
+      "regions": 2,
+      "boundaries": 0,
+      "exactlyRepeatable": true
+    },
+    "optionalPlotArtifactPresent": false,
+    "crossRuntimeComparison": {
+      "dockerObservation": "m0/BASE001_DOCKER_OBSERVATION.json",
+      "sameInputSha256": true,
+      "sameStdoutSha256": true,
+      "sameStructureSha256": true,
+      "sameRecordCounts": true,
+      "sameDeclaredLogFindings": true
+    }
+  },
+  "externalEvidence": {
+    "manifestRecordedAt": "2026-08-23T18:03:05.573Z",
+    "manifestSha256": "18cc51688fc57b81ff8177e0c5c1b43ff06f986da98695c53ca4f4918d0a2291",
+    "rawArtifactsCommitted": false,
+    "absolutePathRecorded": false,
+    "collectorFiles": [
+      {
+        "path": "tools/observe-reference-run.mjs",
+        "sha256": "657b3c735da965e45c009dbec52a5f541c62aa44153f28a5ddec33c8dc47abb3"
+      },
+      {
+        "path": "validation/baseline/observation.mjs",
+        "sha256": "619c63b4a67eeac991c32fe373cedbe467248c1f924d4d0c0b3c0264e27841c3"
+      },
+      {
+        "path": "validation/plans/base001-process-1d-boron.json",
+        "sha256": "caecc34586db431648e23f1fd74e9322cd7db2d34bdf7834e7bbe0f375372a97"
+      }
+    ]
+  },
+  "m0Result": {
+    "requiredProfileObserved": true,
+    "base001Status": "pending",
+    "m0Exit": "not-met",
+    "remainingGates": [
+      "qualified solver and reference-patch license review",
+      "reproducible immutable image build",
+      "Podman-image SBOM generation and license conclusion review",
+      "clean input deck with no unlisted log failure",
+      "NMOS and CMOS process-device evidence",
+      "cancellation, timeout, output-limit, and restart observations",
+      "semiconductor numerical review and maintainer approval"
+    ]
+  }
+}
