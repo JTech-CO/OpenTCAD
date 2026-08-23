@@ -7,6 +7,7 @@ const emDash = "\u2014";
 
 const koreanDocuments = [
   "README.ko.md",
+  "validation/README.ko.md",
   "01_PRODUCT_TECHNICAL_PLAN_KR.md",
   "02_CODEX_HARNESS_KR.md",
   "03_MILESTONE_ROADMAP_KR.md",

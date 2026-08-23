@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M1",
+  "recordedAt": "2026-08-23",
+  "startCommit": "7fbb5b97d1e12698f241a4fc1e44ce090d8a50cc",
+  "status": "gated-active",
+  "scope": "Engine-independent validation contracts only",
+  "m0Evidence": {
+    "baselineFreezePath": "m0/BASELINE_FREEZE.json",
+    "baselineFreezeSha256": "7506df5c3e6f578db5beb7a6132d8df2ff85677ad9bea73bdbcaf9e3c04cf6a8",
+    "dependencyInventoryPath": "m0/DEPENDENCY_AND_IMAGE_INVENTORY.json",
+    "dependencyInventorySha256": "f66b3e4cc6ef61c18100e5a8ace58f189ad58fe4867b06e67e4326f9bf60150f"
+  },
+  "entryConditions": {
+    "referenceImagesAndDigestsFrozen": false,
+    "referenceExampleMetricsFrozen": false,
+    "sourceDevelopmentLicenseScopeApproved": false,
+    "overall": "not-met"
+  },
+  "implemented": [
+    "candidate corpus manifest",
+    "exact hash comparator",
+    "topology comparator",
+    "scalar comparator",
+    "curve comparator",
+    "repeatability comparator",
+    "deterministic JSON and HTML report builder",
+    "image lock quarantine manifest",
+    "validation unit tests and CI contract checks"
+  ],
+  "baselinePolicy": {
+    "automaticUpdateAllowed": false,
+    "ciMayWriteGoldenArtifacts": false,
+    "pendingCasesMayContainExpectedValues": false,
+    "approvalRequired": [
+      "maintainer",
+      "semiconductor-numerical-reviewer"
+    ],
+    "requiredEvidence": [
+      "authorized source and input provenance",
+      "immutable engine and image identity",
+      "raw output and metric hashes",
+      "five-run variance",
+      "warning and convergence classification",
+      "independent review record"
+    ]
+  },
+  "exitCriteria": {
+    "allCasesGreenOnLinuxBaseline": "pending",
+    "fiveRunVarianceMeasured": "pending",
+    "negativeTopologyAndCurveTests": "framework-verified-only",
+    "noAutomaticBaselineUpdate": "verified",
+    "pullRequestNumericalSmoke": "pending",
+    "overall": "not-met"
+  }
+}

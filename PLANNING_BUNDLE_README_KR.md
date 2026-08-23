@@ -2,7 +2,7 @@
 
 **작성 기준일:** 2026-08-23  
 **대상 업스트림:** `ypooh2042/tcad-webapp` (`master`)  
-**문서 성격:** 구현 기획·하네스·마일스톤·초기 백로그 및 M0 실행 기준
+**문서 성격:** 구현 기획·하네스·마일스톤·초기 백로그 및 M0/M1 실행 기준
 
 이 번들은 SUPREM-IV.GS 공정 시뮬레이션과 DEVSIM 소자 해석을 결합한 기존 TCAD 웹앱을 Windows·macOS·Linux에서 로컬 서버 형태로 재현 가능하게 만들기 위한 실행 계획이다. 1차 목표는 SUPREM-IV.GS를 Windows/macOS 네이티브 바이너리로 직접 이식하는 것이 아니라, Linux OCI 컨테이너 실행 계층을 Docker Desktop·WSL2·Podman Machine으로 감싸 동일한 웹앱 경험을 제공하는 것이다.
 
@@ -10,6 +10,7 @@
 
 - 2026-08-23: 한국어 기획 문서 5개의 Unicode em dash(`U+2014`) 125개를 ASCII 하이픈으로 정규화했다.
 - 2026-08-23: 마일스톤에서 달력·인원 기반 개발 예측을 제거하고 기술 의존성, 검토 역할, 승인 게이트를 유지했다.
+- 2026-08-23: M1을 `gated-active`로 시작하고 수치 기준값 없이 corpus schema, comparator, image lock, CI contract를 구현했다.
 - 제품 결정, 수치, 코드 예시, 표의 의미는 바꾸지 않았으며 `PLANNING_BUNDLE_SHA256.txt`는 현재 파일을 기준으로 다시 생성한다.
 
 ## 문서 구성

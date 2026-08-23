@@ -48,4 +48,4 @@ This is an engineering distribution gate, not legal advice.
 4. Freeze input, output, log, metric, and image hashes plus repeated-run variance.
 5. Run Windows, macOS, and Podman Machine portability spikes against that same baseline.
 
-No M1 numerical corpus or solver-backed product claim begins until the applicable M0 gates are met.
+Engine-independent M1 contract work may proceed in `gated-active` mode. No numerical corpus may be frozen and no solver-backed product claim may begin until the applicable M0 gates are met.

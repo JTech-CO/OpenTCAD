@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M1",
+  "status": "blocked-m0",
+  "sourceInventory": {
+    "path": "m0/DEPENDENCY_AND_IMAGE_INVENTORY.json",
+    "sha256": "f66b3e4cc6ef61c18100e5a8ace58f189ad58fe4867b06e67e4326f9bf60150f"
+  },
+  "approvalRequirements": [
+    "immutable manifest digest",
+    "declared operating system and architecture",
+    "generated SBOM hash",
+    "component license review",
+    "reproducible build evidence"
+  ],
+  "images": [
+    {
+      "id": "suprem-builder",
+      "reference": "debian:bookworm",
+      "digest": null,
+      "platforms": [],
+      "sbomSha256": null,
+      "licenseReview": "pending",
+      "releaseApproved": false
+    },
+    {
+      "id": "suprem-runtime",
+      "reference": "debian:bookworm-slim",
+      "digest": null,
+      "platforms": [],
+      "sbomSha256": null,
+      "licenseReview": "pending",
+      "releaseApproved": false
+    },
+    {
+      "id": "remesh-runtime",
+      "reference": "debian:bookworm-slim",
+      "digest": null,
+      "platforms": [],
+      "sbomSha256": null,
+      "licenseReview": "pending",
+      "releaseApproved": false
+    },
+    {
+      "id": "devsim-runtime",
+      "reference": "python:3.12-slim-bookworm",
+      "digest": null,
+      "platforms": [],
+      "sbomSha256": null,
+      "licenseReview": "pending",
+      "releaseApproved": false
+    },
+    {
+      "id": "redis-service",
+      "reference": "docker.io/library/redis:7-alpine",
+      "digest": null,
+      "platforms": [],
+      "sbomSha256": null,
+      "licenseReview": "pending",
+      "releaseApproved": false
+    },
+    {
+      "id": "postgres-service",
+      "reference": "docker.io/library/postgres:16-alpine",
+      "digest": null,
+      "platforms": [],
+      "sbomSha256": null,
+      "licenseReview": "pending",
+      "releaseApproved": false
+    }
+  ]
+}

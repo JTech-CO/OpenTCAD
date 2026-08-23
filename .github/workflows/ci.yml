@@ -36,6 +36,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Check planning and milestone records
+        run: npm run check:planning && npm run check:m0 && npm run check:m1
+
       - name: Check Korean punctuation
         run: npm run check:ko-copy
 

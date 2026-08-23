@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M1",
+  "status": "candidate-only",
+  "baselineId": null,
+  "automaticBaselineUpdateAllowed": false,
+  "cases": [
+    {
+      "id": "process-1d-boron",
+      "caseKind": "process",
+      "engine": "suprem4gs",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-authorized-reference-run"
+      },
+      "requiredComparators": ["exact-hash", "topology", "scalar", "repeatability"],
+      "requiredMetrics": ["junction-depth", "sheet-dose", "peak-concentration"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "process-1d-oxidation",
+      "caseKind": "process",
+      "engine": "suprem4gs",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-authorized-reference-run"
+      },
+      "requiredComparators": ["exact-hash", "topology", "scalar", "repeatability"],
+      "requiredMetrics": ["oxide-thickness", "silicon-consumption"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "process-1d-implant",
+      "caseKind": "process",
+      "engine": "suprem4gs",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-authorized-reference-run"
+      },
+      "requiredComparators": ["exact-hash", "topology", "scalar", "repeatability"],
+      "requiredMetrics": ["projected-range", "straggle", "dose-integral"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "process-2d-nmos",
+      "caseKind": "process",
+      "engine": "suprem4gs",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-authorized-reference-run"
+      },
+      "requiredComparators": ["exact-hash", "topology", "scalar", "repeatability"],
+      "requiredMetrics": ["gate-length", "oxide-thickness", "junction-depth", "mesh-counts"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "process-2d-cmos-mask-interface",
+      "caseKind": "process",
+      "engine": "suprem4gs",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-authorized-reference-run"
+      },
+      "requiredComparators": ["exact-hash", "topology", "scalar", "repeatability"],
+      "requiredMetrics": ["region-counts", "interface-lengths", "minimum-element-area"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "str-parser-topology",
+      "caseKind": "parser",
+      "engine": "opentcad-str-parser",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-clean-room-fixture"
+      },
+      "requiredComparators": ["exact-hash", "topology"],
+      "requiredMetrics": ["nodes", "elements", "regions", "contacts", "materials"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "gmsh-remesh",
+      "caseKind": "remesh",
+      "engine": "gmsh",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-authorized-reference-run"
+      },
+      "requiredComparators": ["exact-hash", "topology", "scalar", "repeatability"],
+      "requiredMetrics": ["nodes", "elements", "minimum-quality", "material-area"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "devsim-diode",
+      "caseKind": "device",
+      "engine": "devsim",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-independent-fixture"
+      },
+      "requiredComparators": ["exact-hash", "scalar", "curve", "repeatability"],
+      "requiredMetrics": ["current-curve", "solved-point-count", "convergence-status"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "devsim-nmos-idvg",
+      "caseKind": "device",
+      "engine": "devsim",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-independent-fixture"
+      },
+      "requiredComparators": ["exact-hash", "scalar", "curve", "repeatability"],
+      "requiredMetrics": ["id-vg", "threshold-voltage", "subthreshold-slope", "solved-point-count"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "devsim-nmos-idvd",
+      "caseKind": "device",
+      "engine": "devsim",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-independent-fixture"
+      },
+      "requiredComparators": ["exact-hash", "scalar", "curve", "repeatability"],
+      "requiredMetrics": ["id-vd", "output-conductance", "solved-point-count"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    },
+    {
+      "id": "devsim-cmos-load-line",
+      "caseKind": "device",
+      "engine": "devsim",
+      "baselineStatus": "pending-m0",
+      "source": {
+        "status": "not-in-repository",
+        "path": null,
+        "sha256": null,
+        "origin": "pending-independent-fixture"
+      },
+      "requiredComparators": ["exact-hash", "scalar", "curve", "repeatability"],
+      "requiredMetrics": ["load-line", "switching-point", "solved-point-count"],
+      "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+      "expected": null
+    }
+  ]
+}
