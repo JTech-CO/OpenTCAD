@@ -1939,6 +1939,8 @@ backend/app/runner/runner.py, 관련 Containerfile, 관련 테스트,
 
 **목표:** 포팅 전후 결과를 객관적으로 비교할 수 있는 자동 검증 체계를 만든다.
 
+**현재 상태:** `gated-active`. 엔진 독립 schema·comparator·CI contract를 구현하며, M0 게이트 전에는 fixture와 expected value를 고정하지 않는다.
+
 ## 진입 조건
 
 - M0 기준 이미지·commit·예제 metric 고정
@@ -1974,7 +1976,7 @@ backend/app/runner/runner.py, 관련 Containerfile, 관련 테스트,
 
 ### M1.4 CI foundation
 
-- `.github/workflows/pr.yml`
+- `.github/workflows/ci.yml`
 - backend/frontend lint/unit
 - Linux integration
 - image build smoke
@@ -1983,12 +1985,12 @@ backend/app/runner/runner.py, 관련 Containerfile, 관련 테스트,
 
 ## 산출물
 
-- `validation/corpus/`
-- `validation/comparators/`
-- `validation/manifests/baseline-*`
-- numerical report template
-- CI workflows
-- image lock manifest
+- `validation/corpus/index.json` 후보 manifest
+- `validation/comparators/` 구현 및 unit test
+- `validation/manifests/m1-foundation.json`
+- `validation/schemas/report.schema.json` report contract
+- `.github/workflows/ci.yml` milestone gate
+- `validation/manifests/image-lock.json` 격리 manifest
 
 ## Exit criteria
 

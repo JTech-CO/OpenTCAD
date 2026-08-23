@@ -19,7 +19,7 @@ The detailed planning source is `03_MILESTONE_ROADMAP_KR.md`. This bilingual sum
 
 ## Current status
 
-The foundation milestone is complete and deployed on GitHub Pages. M0 is now active, with frozen provenance, licensing, architecture, and baseline records in the [M0 workboard](m0/README.md). Solver distribution remains blocked because the SUPREM notice and reference patches are not cleared for the intended bundle. The upstream application remains read-only evidence and is not copied into this MIT repository.
+The foundation milestone is complete and deployed on GitHub Pages. M0 remains active, with frozen provenance, licensing, architecture, and baseline records in the [M0 workboard](m0/README.md). M1 is `gated-active`: the [validation foundation](m1/README.md) implements candidate manifests and tested comparators but contains no fixtures or numerical baseline. Solver distribution remains blocked because the SUPREM notice and reference patches are not cleared for the intended bundle. The upstream application remains read-only evidence and is not copied into this MIT repository.
 
 ## Static and local delivery
 

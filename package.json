@@ -15,11 +15,13 @@
     "build": "npm run build --workspace @opentcad/web",
     "preview": "npm run preview --workspace @opentcad/web",
     "lint": "npm run lint --workspace @opentcad/web",
-    "test": "npm run test --workspace @opentcad/web",
+    "test:validation": "node --test validation/comparators/comparators.test.mjs",
+    "test": "npm run test:validation && npm run test --workspace @opentcad/web",
     "coverage": "npm run coverage --workspace @opentcad/web",
     "check:planning": "node tools/check-planning-bundle.mjs",
     "check:m0": "node tools/check-m0.mjs",
+    "check:m1": "node tools/check-m1.mjs",
     "check:ko-copy": "node tools/check-korean-punctuation.mjs",
-    "check": "npm run check:planning && npm run check:m0 && npm run check:ko-copy && npm run lint && npm run test && npm run build"
+    "check": "npm run check:planning && npm run check:m0 && npm run check:m1 && npm run check:ko-copy && npm run lint && npm run test && npm run build"
   }
 }

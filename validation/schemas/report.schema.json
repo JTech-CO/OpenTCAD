@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opentcad:schema:validation-report:1",
+  "title": "OpenTCAD validation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "caseId",
+    "baselineId",
+    "recordedAt",
+    "status",
+    "metadata",
+    "results"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "baselineId": { "type": "string", "minLength": 1 },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["passed", "failed"] },
+    "metadata": { "type": "object" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["comparator", "pass"],
+        "properties": {
+          "comparator": {
+            "enum": ["exact-hash", "topology", "scalar", "curve", "repeatability"]
+          },
+          "pass": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

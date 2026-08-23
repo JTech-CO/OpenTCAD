@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opentcad:schema:validation-corpus:1",
+  "title": "OpenTCAD validation corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "milestone",
+    "status",
+    "baselineId",
+    "automaticBaselineUpdateAllowed",
+    "cases"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "milestone": { "const": "M1" },
+    "status": { "enum": ["candidate-only", "frozen"] },
+    "baselineId": { "type": ["string", "null"] },
+    "automaticBaselineUpdateAllowed": { "const": false },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "caseKind",
+        "engine",
+        "baselineStatus",
+        "source",
+        "requiredComparators",
+        "requiredMetrics",
+        "warningPolicy",
+        "expected"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "caseKind": { "enum": ["process", "parser", "remesh", "device"] },
+        "engine": { "type": "string", "minLength": 1 },
+        "baselineStatus": { "enum": ["pending-m0", "frozen"] },
+        "source": { "$ref": "#/$defs/source" },
+        "requiredComparators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["exact-hash", "topology", "scalar", "curve", "repeatability"]
+          }
+        },
+        "requiredMetrics": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "warningPolicy": { "$ref": "#/$defs/warningPolicy" },
+        "expected": { "type": ["object", "null"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "path", "sha256", "origin"],
+      "properties": {
+        "status": { "enum": ["not-in-repository", "frozen"] },
+        "path": { "type": ["string", "null"] },
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "origin": { "type": "string", "minLength": 1 }
+      }
+    },
+    "warningPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "allowedCodes"],
+      "properties": {
+        "mode": { "const": "fail-unlisted" },
+        "allowedCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
