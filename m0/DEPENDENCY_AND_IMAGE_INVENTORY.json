@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-23",
+  "milestone": "M0",
+  "scope": "Distribution boundary, critical dependencies, and reference image definitions",
+  "distributionBoundary": {
+    "repositoryContainsSolverSourceOrBinary": false,
+    "approvedNow": [
+      "OpenTCAD-owned MIT source and documentation",
+      "The engine-free static GitHub Pages build"
+    ],
+    "blockedUntilReview": [
+      "SUPREM-IV.GS source, patches, binaries, images, and bundled installers",
+      "DEVSIM, Gmsh, and solver image redistribution",
+      "Any all-in-one local installer containing solver artifacts"
+    ]
+  },
+  "references": {
+    "behaviorRepository": "https://github.com/ypooh2042/tcad-webapp",
+    "behaviorCommit": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+    "supremSourceRepository": "https://github.com/rafael1193/suprem4gs",
+    "supremSourceCommit": "33e90433a9d1e5134deaa8773f59be37d3256b13"
+  },
+  "components": [
+    {
+      "id": "opentcad-application",
+      "role": "Target application and documentation",
+      "versionOrSelector": "M0 start at f0305c8d4f79b8c8aea7683d52fd17bb61342001",
+      "license": "MIT",
+      "licenseEvidence": "LICENSE",
+      "inclusion": "included-source",
+      "distributionStatus": "approved"
+    },
+    {
+      "id": "opentcad-frontend-lock",
+      "role": "Current static preview production and development dependencies",
+      "versionOrSelector": "package-lock.json lockfileVersion 3",
+      "license": "Multiple; direct dependency inventory is in THIRD_PARTY_LICENSES.md",
+      "licenseEvidence": "THIRD_PARTY_LICENSES.md",
+      "inclusion": "included-build-input",
+      "distributionStatus": "approved"
+    },
+    {
+      "id": "reference-application",
+      "role": "Read-only behavior and architecture reference",
+      "versionOrSelector": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+      "license": "Unresolved at repository root",
+      "licenseEvidence": "No root license found in the frozen reference commit",
+      "inclusion": "reference-only",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "suprem4gs",
+      "role": "Process simulator",
+      "versionOrSelector": "33e90433a9d1e5134deaa8773f59be37d3256b13 plus reference-app patches",
+      "license": "Stanford 1994 custom notice; non-SPDX",
+      "licenseEvidence": "SUPREM4GS/upstream/LICENSE in the frozen reference commit",
+      "inclusion": "reference-only",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "suprem4gs-reference-patches",
+      "role": "Behavior-changing and portability patches applied by the reference app",
+      "versionOrSelector": "docker/suprem/patches at reference commit 13bce4a",
+      "license": "Unresolved",
+      "licenseEvidence": "No independent patch license established in M0",
+      "inclusion": "reference-only",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "devsim",
+      "role": "Device simulator",
+      "versionOrSelector": "2.10.1",
+      "license": "Apache-2.0",
+      "licenseEvidence": "https://github.com/devsim/devsim/blob/main/LICENSE",
+      "inclusion": "reference-image-only",
+      "distributionStatus": "review-required"
+    },
+    {
+      "id": "gmsh",
+      "role": "Mesh generator executed as a separate process",
+      "versionOrSelector": "Unpinned Debian bookworm package",
+      "license": "GPL-2.0-or-later with the Gmsh exception",
+      "licenseEvidence": "https://gmsh.info/doc/texinfo/gmsh.html#License",
+      "inclusion": "reference-image-only",
+      "distributionStatus": "review-required"
+    },
+    {
+      "id": "openblas-runtime",
+      "role": "DEVSIM BLAS and LAPACK runtime",
+      "versionOrSelector": "Unpinned libopenblas0 Debian bookworm package",
+      "license": "Package and transitive license set must be captured from the built image",
+      "licenseEvidence": "docker/devsim/Containerfile in the frozen reference commit",
+      "inclusion": "reference-image-only",
+      "distributionStatus": "review-required"
+    },
+    {
+      "id": "redis-service",
+      "role": "Reference application session and queue service",
+      "versionOrSelector": "redis:7-alpine mutable tag",
+      "license": "Unresolved until an exact version and digest are pinned",
+      "licenseEvidence": "compose.dev.yml in the frozen reference commit",
+      "inclusion": "reference-service-only",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "postgres-service",
+      "role": "Reference application database",
+      "versionOrSelector": "postgres:16-alpine mutable tag",
+      "license": "PostgreSQL License for PostgreSQL; image contains additional packages",
+      "licenseEvidence": "compose.dev.yml in the frozen reference commit",
+      "inclusion": "reference-service-only",
+      "distributionStatus": "review-required"
+    }
+  ],
+  "images": [
+    {
+      "id": "suprem-builder",
+      "reference": "debian:bookworm",
+      "digest": null,
+      "sourceDefinition": "docker/suprem/Containerfile",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "suprem-runtime",
+      "reference": "debian:bookworm-slim",
+      "digest": null,
+      "sourceDefinition": "docker/suprem/Containerfile",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "remesh-runtime",
+      "reference": "debian:bookworm-slim",
+      "digest": null,
+      "sourceDefinition": "docker/remesh/Containerfile",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "devsim-runtime",
+      "reference": "python:3.12-slim-bookworm",
+      "digest": null,
+      "sourceDefinition": "docker/devsim/Containerfile",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "redis-service",
+      "reference": "docker.io/library/redis:7-alpine",
+      "digest": null,
+      "sourceDefinition": "compose.dev.yml",
+      "distributionStatus": "blocked"
+    },
+    {
+      "id": "postgres-service",
+      "reference": "docker.io/library/postgres:16-alpine",
+      "digest": null,
+      "sourceDefinition": "compose.dev.yml",
+      "distributionStatus": "blocked"
+    }
+  ],
+  "evidenceHashes": [
+    {
+      "path": "LICENSE",
+      "repository": "OpenTCAD",
+      "sha256": "99484c0dc8be4ffc5800c372a98f06f00e6af0b7f1a3260aa25a0c523a43b0a8"
+    },
+    {
+      "path": "THIRD_PARTY_LICENSES.md",
+      "repository": "OpenTCAD",
+      "sha256": "142852c8bf03a5e15a2537984dbdbc09c011c508e0aabe3a34ea27362e47901a"
+    },
+    {
+      "path": "package-lock.json",
+      "repository": "OpenTCAD",
+      "sha256": "484e888296fa903be9693827b19c8c2a819bffdfb5f3e7cb7962ae9f39515225"
+    },
+    {
+      "path": "SUPREM4GS/upstream/LICENSE",
+      "repository": "reference-application",
+      "sha256": "8a3c3fa9ef71914f3d086f1a6c566d6372c99008561ad9f896f74a9a22492e10"
+    },
+    {
+      "path": "SUPREM4GS/upstream/PROVENANCE.md",
+      "repository": "reference-application",
+      "sha256": "3ebef6baa3a8a86cbb8b05979d6b42b02b7471751aa7e298075ebd1ceb9e8314"
+    },
+    {
+      "path": "backend/pyproject.toml",
+      "repository": "reference-application",
+      "sha256": "245fbe0b5be9fc6adc2ec0808c7ac99b23ca77311623fa26a4f8873a3d0be1be"
+    },
+    {
+      "path": "compose.dev.yml",
+      "repository": "reference-application",
+      "sha256": "5a5dd066ecae92552cab32229a0fbe3c5b2724b890dc786e4913689a76495135"
+    },
+    {
+      "path": "docker/suprem/Containerfile",
+      "repository": "reference-application",
+      "sha256": "8cb12a8d291667ef8b9f6528fb01abd77188c9e4b5b1a8c1d2e8cc790ac224e5"
+    },
+    {
+      "path": "docker/remesh/Containerfile",
+      "repository": "reference-application",
+      "sha256": "5979d70a8f826ddebd903b9d49f0b6ed91f658f2a56095b69552fe0aceed75de"
+    },
+    {
+      "path": "docker/devsim/Containerfile",
+      "repository": "reference-application",
+      "sha256": "6e096229db3a34d1fdb1fe1e1d28e67f17d4d4fea3b73455b8f579206cae307f"
+    }
+  ],
+  "openItems": [
+    "Obtain qualified review of the SUPREM notice and reference-app patches",
+    "Choose optional local build, permission-based bundle, or a blocked solver release",
+    "Pin every release image by digest and generate an SBOM plus package license report",
+    "Verify DEVSIM wheel contents and required NOTICE delivery",
+    "Resolve the exact Redis version and license before adopting the reference service"
+  ]
+}
