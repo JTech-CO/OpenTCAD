@@ -29,7 +29,7 @@ Expected: an MIT-owned, bilingual project foundation that builds as a static app
 - No browser/API component may receive a runtime socket.
 - Reference-preview curves must not be represented as solver output or a numerical baseline.
 - The root MIT license must not be presented as covering SUPREM-IV.GS, Gmsh, or DEVSIM.
-- Existing planning documents and supplied UI references must be preserved.
+- Existing planning content and supplied UI references must remain traceable; later punctuation-only normalization must be recorded and rehashed.
 
 ## Planned boundaries
 
@@ -51,17 +51,18 @@ The foundation adds tests for:
 
 Verified on 2026-08-23 with Node.js 24:
 
+- `npm run check:ko-copy`: 13 Korean documents plus UI translations passed with no `U+2014` em dash;
 - `npm run lint`: passed with zero warnings;
-- `npm run test`: 2 files and 8 tests passed;
+- `npm run test`: 2 files and 9 tests passed;
 - `npm run coverage`: report generated (28.24% overall; canvas drawing paths are not exercised by jsdom);
 - `npm run build`: TypeScript and Vite production build passed with relative asset paths;
 - `npm audit --audit-level=high`: 0 vulnerabilities;
 - local static preview: `/` and `/og.png` both returned HTTP 200;
-- supplied planning bundle: all 8 recorded SHA-256 hashes matched.
+- normalized planning bundle: all 8 recorded SHA-256 hashes matched.
 
 ## Rollback
 
-The work is isolated on `feat/project-foundation`. Reverting its commit returns the repository to the initial README and does not touch a database, runtime object, solver artifact, or user project.
+The foundation landed through PR #1 at merge commit `4a7cae9`. Reverting that merge returns the repository to the initial README and does not touch a database, runtime object, solver artifact, or user project.
 
 ## Known limitations
 

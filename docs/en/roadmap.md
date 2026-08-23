@@ -19,7 +19,7 @@ The detailed planning source is `03_MILESTONE_ROADMAP_KR.md`. This bilingual sum
 
 ## Current status
 
-The foundation milestone is being implemented. M0 solver distribution remains gated because the SUPREM notice is not MIT. The upstream application is used as read-only behavior and architecture evidence; it is not copied into this MIT repository.
+The foundation milestone is complete and deployed on GitHub Pages. M0 solver distribution remains gated because the SUPREM notice is not MIT. The upstream application is used as read-only behavior and architecture evidence; it is not copied into this MIT repository.
 
 ## Static and local delivery
 

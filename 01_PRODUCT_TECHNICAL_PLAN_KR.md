@@ -1,4 +1,4 @@
-# TCAD Webapp Cross-Platform Porting — 제품·기술 기획서
+# TCAD Webapp Cross-Platform Porting - 제품·기술 기획서
 
 > **가칭:** TCAD Webapp Portable / TCAD Local  
 > **문서 상태:** Draft for Architecture Review  
@@ -138,13 +138,13 @@ SUPREM-IV.GS 인터프리터는 인식하지 못한 첫 토큰을 `/bin/bash`로
 
 ### 4.1 제품 목표
 
-- **G1 — 설치 가능성:** 컨테이너 런타임 설치 후 저장소 clone과 한 개의 launcher 명령으로 실행
-- **G2 — 플랫폼 동등성:** 지원 플랫폼에서 동일 프로젝트를 열고 공정→구조→소자 해석 흐름 수행
-- **G3 — 안전성:** 악의적 `.in`이 호스트·네트워크·다른 잡·다른 사용자 데이터에 접근하지 못함
-- **G4 — 재현성:** 실행 결과가 입력과 solver/runtime provenance에 연결됨
-- **G5 — 오류 투명성:** 인프라 오류, 입력 오류, solver crash, non-convergence, parse 오류를 구분해 표시
-- **G6 — 확장성:** 새 공정 엔진·메셔·소자 엔진·후처리기를 고정 계약으로 추가 가능
-- **G7 — 유지보수성:** Docker/Podman 차이가 도메인 로직에 누출되지 않음
+- **G1 - 설치 가능성:** 컨테이너 런타임 설치 후 저장소 clone과 한 개의 launcher 명령으로 실행
+- **G2 - 플랫폼 동등성:** 지원 플랫폼에서 동일 프로젝트를 열고 공정→구조→소자 해석 흐름 수행
+- **G3 - 안전성:** 악의적 `.in`이 호스트·네트워크·다른 잡·다른 사용자 데이터에 접근하지 못함
+- **G4 - 재현성:** 실행 결과가 입력과 solver/runtime provenance에 연결됨
+- **G5 - 오류 투명성:** 인프라 오류, 입력 오류, solver crash, non-convergence, parse 오류를 구분해 표시
+- **G6 - 확장성:** 새 공정 엔진·메셔·소자 엔진·후처리기를 고정 계약으로 추가 가능
+- **G7 - 유지보수성:** Docker/Podman 차이가 도메인 로직에 누출되지 않음
 
 ### 4.2 1.0 범위
 
@@ -212,7 +212,7 @@ Windows와 macOS에서는 Linux 컨테이너가 호스트 커널에서 직접 �
 | macOS 14+ | arm64 | Docker Desktop | Podman Machine | 정식 지원, SUPREM은 초기 emulation 가능 |
 | macOS 13+ | x86-64 | Docker Desktop | Podman Machine | 유지 지원 |
 | Ubuntu 24.04 / Debian 12 | x86-64 | rootless Podman | Docker Engine | 정식 지원 |
-| Linux | arm64 | Podman/Docker | — | 실험 지원, M5 결과에 따라 승격 |
+| Linux | arm64 | Podman/Docker | - | 실험 지원, M5 결과에 따라 승격 |
 
 ### 6.3 Apple Silicon 정책
 
@@ -226,45 +226,45 @@ Windows와 macOS에서는 Linux 컨테이너가 호스트 커널에서 직접 �
 
 ## 7. Architecture Decision Records
 
-### ADR-001 — 네이티브 solver 포팅 대신 OCI 컨테이너 포팅
+### ADR-001 - 네이티브 solver 포팅 대신 OCI 컨테이너 포팅
 
 - **상태:** Proposed / 우선 채택
 - **결정:** SUPREM·Gmsh·DEVSIM은 Linux 이미지로 유지한다.
 - **이유:** 오래된 빌드 도구·POSIX 가정·보안 격리·결과 재현성을 한 환경에 고정할 수 있다.
 - **대가:** Windows/macOS에서 컨테이너 런타임과 Linux VM이 필요하다.
 
-### ADR-002 — 런타임 중립 Sandbox Runtime 인터페이스
+### ADR-002 - 런타임 중립 Sandbox Runtime 인터페이스
 
 - **상태:** Proposed
 - **결정:** 워커는 `podman` 또는 `docker` 명령을 직접 만들지 않는다. 고정된 `SandboxSpec`을 런타임 계층에 전달한다.
 - **이유:** 엔진 차이를 격리하고, 정책 테스트와 mock runtime을 가능하게 한다.
 
-### ADR-003 — Docker/Podman socket은 Sandbox Broker만 보유
+### ADR-003 - Docker/Podman socket은 Sandbox Broker만 보유
 
 - **상태:** Proposed / 보안 필수
 - **결정:** API와 일반 워커가 raw engine socket에 접근하지 않는다. Broker는 승인된 이미지 digest·고정 entrypoint·고정 mount·상한만 허용한다.
 - **이유:** Docker socket은 사실상 호스트 전체 제어권이다. `.in`이 임의 셸이므로 권한 경계를 좁혀야 한다.
 
-### ADR-004 — 패키지형 로컬 모드는 잡별 managed volume 사용
+### ADR-004 - 패키지형 로컬 모드는 잡별 managed volume 사용
 
 - **상태:** Proposed
 - **결정:** host bind mount 대신 `tcad-job-<uuid>` 볼륨을 만들고 입력을 tar stream으로 넣고 산출물을 회수한 뒤 제거한다.
 - **이유:** OS 경로·파일 공유·권한·성능·symlink 차이를 제거하고 잡 간 격리를 명확히 한다.
 - **예외:** 개발 프로필에서만 명시적 bind mount 허용.
 
-### ADR-005 — 로컬 모드와 공유 서버 모드 분리
+### ADR-005 - 로컬 모드와 공유 서버 모드 분리
 
 - **상태:** Proposed
 - **결정:** `TCAD_MODE=local|shared|server`를 둔다.
 - **보안:** 인증 생략 또는 자동 owner는 `127.0.0.1`/`::1` 바인딩에서만 허용하고, 외부 바인딩이면 부팅을 거부한다.
 
-### ADR-006 — solver 버전 업그레이드와 포팅을 분리
+### ADR-006 - solver 버전 업그레이드와 포팅을 분리
 
 - **상태:** Proposed
 - **결정:** 포팅 기준선은 현행 DEVSIM 2.10.1과 현재 SUPREM 패치셋이다. DEVSIM 2.11.x 등 업그레이드는 별도 RFC·골든 검증 후 진행한다.
 - **이유:** 플랫폼 변화와 수치 엔진 변화가 동시에 일어나면 원인 분리가 불가능하다.
 
-### ADR-007 — 상류 소스와 제품 코드의 라이선스 경계를 명시
+### ADR-007 - 상류 소스와 제품 코드의 라이선스 경계를 명시
 
 - **상태:** Blocked pending legal review
 - **결정:** 앱 코드 라이선스, SUPREM 상류 라이선스, Gmsh GPL, DEVSIM Apache-2.0을 별도 NOTICE·배포 단위로 관리한다.
@@ -830,14 +830,14 @@ M1에서 실측 후 확정하며, 초기 기준은 다음과 같다.
 
 | Gate | Ubuntu hosted | Windows hosted | macOS hosted | Self-hosted required |
 |---|---:|---:|---:|---:|
-| Lint/unit | ✓ | ✓ | ✓ | — |
-| API/frontend integration | ✓ | ✓ | ✓ | — |
-| Container build amd64 | ✓ | — | — | optional |
-| Container build arm64 | emulated build | — | — | Apple Silicon verification |
+| Lint/unit | ✓ | ✓ | ✓ | - |
+| API/frontend integration | ✓ | ✓ | ✓ | - |
+| Container build amd64 | ✓ | - | - | optional |
+| Container build arm64 | emulated build | - | - | Apple Silicon verification |
 | Real Docker E2E | ✓ | limited | limited | Windows + macOS |
-| Real rootless Podman E2E | ✓ | — | — | Windows/macOS Podman Machine |
-| Numerical golden | ✓ | — | — | Windows x64, macOS arm64, Linux |
-| Upgrade/backup | ✓ | — | — | each supported platform before release |
+| Real rootless Podman E2E | ✓ | - | - | Windows/macOS Podman Machine |
+| Numerical golden | ✓ | - | - | Windows x64, macOS arm64, Linux |
+| Upgrade/backup | ✓ | - | - | each supported platform before release |
 
 GitHub-hosted runner의 VM 중첩·Docker Desktop 제약 때문에, **실제 Desktop qualification은 self-hosted 또는 수동 서명된 release checklist**가 필요하다.
 
@@ -910,21 +910,21 @@ GitHub-hosted runner의 VM 중첩·Docker Desktop 제약 때문에, **실제 Des
 
 ### 19.2 선택지
 
-#### Option A — Mixed-license source distribution
+#### Option A - Mixed-license source distribution
 
 - 앱 코드에 명확한 MIT 또는 Apache-2.0 적용
 - SUPREM 디렉터리와 이미지에 원 라이선스 그대로 표시
 - `THIRD_PARTY_LICENSES.md`, source offer, provenance 제공
 - 제품을 “MIT 프로젝트”가 아니라 “앱 코드 MIT + bundled components under their own licenses”로 설명
 
-#### Option B — Optional SUPREM component
+#### Option B - Optional SUPREM component
 
 - 앱·DEVSIM·UI는 permissive license로 배포
 - SUPREM source/image는 사용자가 별도 취득·빌드
 - launcher가 checksum과 호환 버전을 검증
 - 재배포 위험은 낮지만 첫 설치가 복잡해짐
 
-#### Option C — 권리자 명시 허가
+#### Option C - 권리자 명시 허가
 
 - Stanford 또는 관련 권리자에게 사전 빌드 이미지·교육/상업 배포 범위를 확인
 - 허가 문서를 provenance에 보관

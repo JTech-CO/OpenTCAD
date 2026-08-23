@@ -1,4 +1,4 @@
-# TCAD Webapp Cross-Platform Porting — Codex Engineering Harness
+# TCAD Webapp Cross-Platform Porting - Codex Engineering Harness
 
 > **용도:** Codex, Claude Code, 기타 코딩 에이전트가 이 저장소에서 변경을 수행할 때 적용하는 단일 작업 규약  
 > **원칙:** 보안·수치 정확성·데이터 보존을 편의보다 우선한다.  
@@ -190,7 +190,7 @@ project:
 
 ## 6. 표준 작업 루프
 
-### Step 1 — Baseline 고정
+### Step 1 - Baseline 고정
 
 - 현재 commit과 branch를 기록한다.
 - 현재 unit/integration/E2E 결과를 기록한다.
@@ -198,7 +198,7 @@ project:
 - runtime 작업이면 container/volume 목록과 runtime version을 기록한다.
 - 새 실패가 기존 failure인지 구분한다.
 
-### Step 2 — 최소 실패 테스트 작성
+### Step 2 - 최소 실패 테스트 작성
 
 - 버그는 수정 전에 실패하는 test 또는 deterministic diagnostic로 재현한다.
 - UI 입력 버그는 `fill()`만 사용하지 말고 실제 key sequence와 중간 상태를 테스트한다.
@@ -206,21 +206,21 @@ project:
 - sandbox는 mock argv snapshot뿐 아니라 실제 runtime에서 정책을 확인한다.
 - 수치 결함은 구조/곡선의 핵심 metric을 assertion한다.
 
-### Step 3 — 원인 범위 축소
+### Step 3 - 원인 범위 축소
 
 - 한 번에 하나의 가설만 검증한다.
 - 로그를 늘릴 때 secret/source 전체를 출력하지 않는다.
 - old C 문제는 sanitizer/debug build와 최소 deck을 사용한다.
 - Docker/Podman 차이는 domain logic에서 우회하지 말고 adapter capability에서 분리한다.
 
-### Step 4 — 최소 변경
+### Step 4 - 최소 변경
 
 - public contract를 유지한다.
 - 새 abstraction은 실제로 두 backend가 필요할 때 도입한다.
 - broad rename/formatting을 기능 변경과 분리한다.
 - compatibility shim에는 제거 조건과 milestone을 적는다.
 
-### Step 5 — 다층 검증
+### Step 5 - 다층 검증
 
 - 변경 파일 unit
 - 관련 integration
@@ -231,7 +231,7 @@ project:
 - cleanup/orphan 검사
 - migration/backup이 관련되면 restore
 
-### Step 6 — 보고
+### Step 6 - 보고
 
 PR 또는 작업 결과에 다음을 포함한다.
 
