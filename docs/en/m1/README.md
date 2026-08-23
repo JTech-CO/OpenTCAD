@@ -15,8 +15,8 @@ No file in this M1 foundation is a numerical baseline or solver result.
 | BASE-004 DEVSIM I-V corpus | Candidate manifest | Four device cases are declared; curves and metrics remain empty |
 | BASE-005 comparator and report | Foundation implemented | Exact hash, topology, scalar, curve, repeatability, JSON, and HTML contracts have unit tests |
 | BASE-006 pull-request CI | Foundation extended | Repository, M0, M1, punctuation, lint, test, and build gates run in CI |
-| BASE-001 external observation | Harness implemented, result ineligible | Rootless Podman matched five Docker structure outputs exactly, but log failures, image rebuild drift, rights, SBOM, and review gates block promotion |
-| Reproducible image lock | Quarantined | Six mutable references remain quarantined; Docker and Podman identities drifted, and only the Docker image has an external unreviewed SBOM |
+| BASE-001 external observation | Harness implemented, run results ineligible | Rootless Podman matched five Docker structure outputs and a controlled image rebuild is exact, but log, rights, corpus, SBOM-review, and approval gates block promotion |
+| Reproducible image lock | Controlled observation, release lock quarantined | A digest-, snapshot-, and timestamp-pinned Podman image rebuilt exactly and has an external unreviewed SBOM; no solver image is approved for release |
 | M1 exit | Not met | Linux baselines, five-run variance, and numerical PR smoke remain pending |
 
 ## Artifacts
@@ -39,7 +39,7 @@ No file in this M1 foundation is a numerical baseline or solver result.
 
 1. Finish or explicitly resolve the applicable M0 license and Linux baseline gates.
 2. Select independently authored or authorized fixture inputs and freeze their SHA-256 values.
-3. Pin exact engine and image identities, generate SBOMs, and record architecture metadata.
+3. Review the controlled image and SBOM evidence, then approve an exact release identity only if rights and license conclusions permit it.
 4. Run every candidate on the same Linux baseline five times.
 5. Review natural variance before setting any tolerance or expected value.
 6. Add a numerical PR smoke only after the reviewed baseline is immutable.

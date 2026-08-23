@@ -4,7 +4,7 @@
 
 ## 상태
 
-아직 host 지원 결과를 주장하지 않습니다. Windows Docker Desktop과 WSL2 Debian rootless Podman에서 진단 증거를 얻었습니다. Podman 실행은 선언된 Linux amd64 rootless profile을 충족하고 Docker structure와 정확히 일치했지만 solver log 실패와 재현되지 않는 로컬 image 때문에 두 관찰 모두 ineligible입니다. Host마다 다른 가변 image를 실행하면 플랫폼 결론이 계속 왜곡됩니다.
+아직 host 지원 결과를 주장하지 않습니다. Windows Docker Desktop과 WSL2 Debian rootless Podman에서 진단 증거를 얻었고 별도 통제 Podman build는 정확히 재현됐습니다. Solver 실행 관찰 2건은 선언된 log 실패로 계속 ineligible이고, 통제 image도 권리, SBOM 검토, corpus 증거, 승인이 끝날 때까지 non-baseline 및 배포 금지 상태입니다. 같은 검토 image identity를 사용하기 전에는 host 지원 결론을 낼 수 없습니다.
 
 ## 시험 행렬
 
@@ -19,7 +19,7 @@
 
 ## 관찰한 Windows 사전 실행
 
-[BASE-001 관찰 보고서](base001-reference-observation.md)는 고정 1D boron deck을 강화된 Docker에서 5회, WSL2 rootless Podman에서 5회 실행한 결과를 기록합니다. 두 runtime 모두 모든 실행에서 정확히 같은 structure hash와 record count를 생성했습니다. Podman 환경은 선언된 runtime, OS, architecture, rootless 검사를 통과했습니다. 그러나 모든 solver 실행은 exit code 0과 함께 선언된 command input 오류를 기록했고 두 runtime의 cache 없는 image 재빌드도 drift했습니다. 두 결과 모두 진단 전용이며 `ineligible` 상태입니다.
+[BASE-001 관찰 보고서](base001-reference-observation.md)는 고정 1D boron deck을 강화된 Docker에서 5회, WSL2 rootless Podman에서 5회 실행한 결과를 기록합니다. 두 runtime은 정확히 같은 structure hash와 record count를 생성했고 Podman은 선언 profile 검사를 통과했습니다. 기존 cache 없는 image 재빌드는 drift했고 모든 solver 실행은 exit code 0과 함께 선언된 command input 오류를 기록했습니다. 이후 통제 build는 base, package snapshot, timestamp를 고정해 같은 image를 2회 생성하고 외부 로컬 전용 SBOM도 만들었습니다. Image 증거는 개선됐지만 실행 결과를 승격하거나 host 지원을 확정하지 않습니다.
 
 ## 통과 조건
 

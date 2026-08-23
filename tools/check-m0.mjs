@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { validateReferenceImageBuildPlan } from "../validation/baseline/reference-image-build.mjs";
+
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const inventoryPath = join(projectRoot, "m0", "DEPENDENCY_AND_IMAGE_INVENTORY.json");
 const baselinePath = join(projectRoot, "m0", "BASELINE_FREEZE.json");
@@ -18,12 +20,26 @@ const observationPlanPath = join(
   "plans",
   "base001-process-1d-boron.json",
 );
+const imageBuildPlanPath = join(
+  projectRoot,
+  "validation",
+  "plans",
+  "base001-suprem-image-build.json",
+);
+const imageBuildObservationPath = join(
+  projectRoot,
+  "m0",
+  "BASE001_REPRODUCIBLE_IMAGE_OBSERVATION.json",
+);
 
 const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
 const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
 const observation = JSON.parse(await readFile(observationPath, "utf8"));
 const rootlessObservation = JSON.parse(await readFile(rootlessObservationPath, "utf8"));
 const observationPlan = JSON.parse(await readFile(observationPlanPath, "utf8"));
+const imageBuildPlanBytes = await readFile(imageBuildPlanPath);
+const imageBuildPlan = JSON.parse(imageBuildPlanBytes.toString("utf8"));
+const imageBuildObservation = JSON.parse(await readFile(imageBuildObservationPath, "utf8"));
 const errors = [];
 
 function requireValue(condition, message) {
@@ -42,7 +58,16 @@ requireValue(
   rootlessObservation.schemaVersion === 1,
   "Unsupported BASE-001 rootless Podman observation schema.",
 );
+requireValue(
+  imageBuildObservation.schemaVersion === 1,
+  "Unsupported BASE-001 reproducible image observation schema.",
+);
 requireValue(observationPlan.schemaVersion === 1, "Unsupported BASE-001 plan schema.");
+try {
+  validateReferenceImageBuildPlan(imageBuildPlan);
+} catch (error) {
+  errors.push(error instanceof Error ? error.message : String(error));
+}
 requireValue(
   inventory.distributionBoundary.repositoryContainsSolverSourceOrBinary === false,
   "The M0 distribution boundary must not claim bundled solver artifacts.",
@@ -327,6 +352,170 @@ requireValue(
     !/[A-Za-z]:\\/.test(JSON.stringify(rootlessObservation)),
   "The sanitized rootless record must not contain an absolute host path.",
 );
+requireValue(
+  imageBuildObservation.status === "observed-nonbaseline" &&
+    imageBuildObservation.baselinePromotionAllowed === false &&
+    imageBuildObservation.distributionAllowed === false,
+  "The controlled image build must remain non-baseline and non-distributable.",
+);
+requireValue(
+  imageBuildObservation.reference.commit === behaviorReference?.commit &&
+    imageBuildObservation.reference.rawArchiveSha256 === imageBuildPlan.reference.rawArchiveSha256 &&
+    imageBuildObservation.reference.sourceContainerfileSha256 ===
+      imageBuildPlan.reference.containerfile.sha256 &&
+    imageBuildObservation.reference.sourceTreeModified === false &&
+    imageBuildObservation.reference.sourceOrBinaryCopiedIntoOpenTCAD === false,
+  "The controlled build must retain its frozen external source boundary.",
+);
+const actualImageBuildPlanHash = createHash("sha256").update(imageBuildPlanBytes).digest("hex");
+requireValue(
+  imageBuildObservation.plan.path === "validation/plans/base001-suprem-image-build.json" &&
+    imageBuildObservation.plan.sha256 === actualImageBuildPlanHash &&
+    imageBuildObservation.plan.baselinePromotionAllowed === false &&
+    imageBuildObservation.plan.distributionAllowed === false,
+  "The controlled build plan identity or fail-closed flags drifted.",
+);
+requireValue(
+  imageBuildObservation.environment.runtime === "podman" &&
+    imageBuildObservation.environment.operatingSystem === "linux" &&
+    imageBuildObservation.environment.architecture === "amd64" &&
+    imageBuildObservation.environment.rootless === true,
+  "The controlled build must retain the Linux amd64 rootless Podman environment.",
+);
+requireValue(
+  imageBuildObservation.controls.pullPolicy === imageBuildPlan.build.pullPolicy &&
+    imageBuildObservation.controls.noCache === imageBuildPlan.build.noCache &&
+    imageBuildObservation.controls.format === imageBuildPlan.build.format &&
+    imageBuildObservation.controls.timestampEpoch === imageBuildPlan.build.timestampEpoch &&
+    imageBuildObservation.controls.sourceDateEpoch ===
+      imageBuildPlan.build.environment.sourceDateEpoch &&
+    imageBuildObservation.controls.locale === imageBuildPlan.build.environment.lcAll &&
+    imageBuildObservation.controls.timezone === imageBuildPlan.build.environment.tz &&
+    imageBuildObservation.controls.generatedContainerfile.committed === false,
+  "The deterministic image controls drifted from the reviewed plan.",
+);
+requireValue(
+  JSON.stringify(
+    imageBuildObservation.controls.baseImages.map(({ stage, manifestDigest, indexDigest }) => ({
+      stage,
+      manifestDigest,
+      indexDigest,
+    })),
+  ) ===
+    JSON.stringify(
+      imageBuildPlan.build.baseImages.map(({ stage, manifestDigest, indexDigest }) => ({
+        stage,
+        manifestDigest,
+        indexDigest,
+      })),
+    ) &&
+    JSON.stringify(imageBuildObservation.controls.aptSnapshots) ===
+      JSON.stringify(imageBuildPlan.build.aptSnapshots.map(({ snapshot }) => snapshot)),
+  "The base image or Debian snapshot pins drifted from the reviewed plan.",
+);
+const firstControlledImage = imageBuildObservation.builds.first;
+const secondControlledImage = imageBuildObservation.builds.second;
+requireValue(
+  imageBuildObservation.builds.repeats >= 2 &&
+    firstControlledImage.id === secondControlledImage.id &&
+    firstControlledImage.digest === secondControlledImage.digest &&
+    firstControlledImage.created === secondControlledImage.created &&
+    firstControlledImage.bytes === secondControlledImage.bytes &&
+    JSON.stringify(firstControlledImage.rootFilesystemLayers) ===
+      JSON.stringify(secondControlledImage.rootFilesystemLayers) &&
+    firstControlledImage.rootFilesystemLayers.length === 5 &&
+    firstControlledImage.rootFilesystemLayers.every((digest) => /^sha256:[0-9a-f]{64}$/u.test(digest)) &&
+    Object.values(imageBuildObservation.builds.comparison).every((value) => value === true),
+  "The two no-cache image builds must remain byte-identical.",
+);
+requireValue(
+  Date.parse(firstControlledImage.created) === imageBuildPlan.build.timestampEpoch * 1000 &&
+    /^sha256:[0-9a-f]{64}$/u.test(firstControlledImage.digest) &&
+    /^[0-9a-f]{64}$/u.test(firstControlledImage.id) &&
+    imageBuildObservation.builds.solverBinarySha256 ===
+      rootlessObservation.build.solverBinarySha256 &&
+    imageBuildObservation.builds.matchesPriorRootlessObservationSolverBinary === true,
+  "The controlled image timestamp, identity, or solver binary evidence drifted.",
+);
+requireValue(
+  imageBuildObservation.sbom.status === "generated-external-unreviewed" &&
+    imageBuildObservation.sbom.scanner.version === imageBuildPlan.sbom.scanner.version &&
+    imageBuildObservation.sbom.scanner.manifestDigest ===
+      imageBuildPlan.sbom.scanner.manifestDigest &&
+    imageBuildObservation.sbom.scanner.imageId === imageBuildPlan.sbom.scanner.imageId &&
+    imageBuildObservation.sbom.isolation.network === "none" &&
+    imageBuildObservation.sbom.isolation.rootless === true &&
+    imageBuildObservation.sbom.isolation.readOnlyRootFilesystem === true &&
+    imageBuildObservation.sbom.isolation.capabilitiesDropped === "ALL" &&
+    imageBuildObservation.sbom.isolation.noNewPrivileges === true &&
+    imageBuildObservation.sbom.isolation.checkForAppUpdate === false,
+  "The local-only SBOM scanner identity or isolation controls drifted.",
+);
+requireValue(
+  imageBuildObservation.sbom.sourceArchive.configDigest ===
+      "sha256:" + firstControlledImage.id &&
+    imageBuildObservation.sbom.sourceArchive.configMatchesReproducibleImageId === true &&
+    imageBuildObservation.sbom.sourceArchive.committed === false &&
+    imageBuildObservation.sbom.sourceArchive.transmitted === false &&
+    imageBuildObservation.sbom.document.format === "CycloneDX" &&
+    imageBuildObservation.sbom.document.subjectManifestDigest ===
+      imageBuildObservation.sbom.sourceArchive.manifestDigest &&
+    imageBuildObservation.sbom.document.subjectMatchesArchiveManifest === true &&
+    imageBuildObservation.sbom.document.packageComponents === 88 &&
+    imageBuildObservation.sbom.document.packagesWithPurl === 88 &&
+    imageBuildObservation.sbom.document.packagesWithLicenseEvidence === 88 &&
+    imageBuildObservation.sbom.document.committed === false &&
+    imageBuildObservation.sbom.licenseReviewComplete === false &&
+    imageBuildObservation.sbom.distributionConclusionApproved === false,
+  "The external SBOM facts must remain linked, complete, and unapproved.",
+);
+requireValue(
+  imageBuildObservation.externalEvidence.absolutePathRecorded === false &&
+    imageBuildObservation.externalEvidence.rawArtifactsCommitted === false &&
+    imageBuildObservation.externalEvidence.files.length === 6 &&
+    new Set(imageBuildObservation.externalEvidence.files.map(({ name }) => name)).size === 6 &&
+    imageBuildObservation.externalEvidence.files.every(
+      ({ name, bytes, sha256 }) =>
+        !/[\\/]/u.test(name) &&
+        Number.isInteger(bytes) &&
+        bytes > 0 &&
+        /^[0-9a-f]{64}$/u.test(sha256),
+    ),
+  "The external build evidence inventory is incomplete or unsafe.",
+);
+requireValue(
+  imageBuildObservation.externalEvidence.collectorFiles.length === 3 &&
+    new Set(imageBuildObservation.externalEvidence.collectorFiles.map(({ path }) => path)).size === 3,
+  "The controlled build must identify its tool, library, and reviewed plan.",
+);
+for (const collectorFile of imageBuildObservation.externalEvidence.collectorFiles) {
+  requireValue(
+    !/^(?:[A-Za-z]:[\\/]|[\\/])/u.test(collectorFile.path) &&
+      !collectorFile.path.split(/[\\/]+/u).includes(".."),
+    "Controlled build collector path must stay inside OpenTCAD: " + collectorFile.path,
+  );
+  const bytes = await readFile(join(projectRoot, collectorFile.path));
+  const actual = createHash("sha256").update(bytes).digest("hex");
+  requireValue(
+    actual === collectorFile.sha256,
+    "Controlled build collector identity drifted: " + collectorFile.path,
+  );
+}
+requireValue(
+  imageBuildObservation.m0Result.reproducibleImageControlObserved === true &&
+    imageBuildObservation.m0Result.localPodmanImageSbomGenerated === true &&
+    imageBuildObservation.m0Result.base001Status === "pending" &&
+    imageBuildObservation.m0Result.m0Exit === "not-met" &&
+    baseline.solverExecutionBaseline.status === "pending" &&
+    baseline.m0Exit.overall === "not-met",
+  "The controlled image observation must not close BASE-001 or M0.",
+);
+requireValue(
+  !JSON.stringify(imageBuildObservation).includes("/mnt/c/") &&
+    !/[A-Za-z]:\\/.test(JSON.stringify(imageBuildObservation)),
+  "The sanitized controlled image record must not contain an absolute host path.",
+);
+
 const localHashes = inventory.evidenceHashes.filter(({ repository }) => repository === "OpenTCAD");
 for (const evidence of localHashes) {
   const bytes = await readFile(join(projectRoot, evidence.path));
@@ -357,6 +546,6 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `M0 evidence check passed (${inventory.components.length} components, ${inventory.images.length} images, ${baseline.references.length} frozen references, 2 ineligible reference observations).`,
+    `M0 evidence check passed (${inventory.components.length} components, ${inventory.images.length} images, ${baseline.references.length} frozen references, 2 ineligible run observations, 1 non-baseline image build observation).`,
   );
 }

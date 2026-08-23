@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-24",
+  "milestone": "M0",
+  "observationId": "base001-suprem-reproducible-image",
+  "status": "observed-nonbaseline",
+  "baselinePromotionAllowed": false,
+  "distributionAllowed": false,
+  "reference": {
+    "repository": "https://github.com/ypooh2042/tcad-webapp",
+    "commit": "13bce4a9daba5796ceee633fb8cd0c870465f766",
+    "rawArchiveSha256": "5384852ab39ea10cb8a3e595fea4703cd72c3525e70494d6a2c126e6edb0cd68",
+    "sourceContainerfileSha256": "962925ce0a06bfde2101dabb8aa6f498b1265c3459d69dc87bb599307006f376",
+    "sourceTreeModified": false,
+    "sourceOrBinaryCopiedIntoOpenTCAD": false
+  },
+  "plan": {
+    "path": "validation/plans/base001-suprem-image-build.json",
+    "sha256": "b041176fa34c05511d7f7721a30ca64baf47b668d50490c5cef9982bdbc0e230",
+    "baselinePromotionAllowed": false,
+    "distributionAllowed": false
+  },
+  "environment": {
+    "host": "Windows 11 with WSL2",
+    "distribution": "Debian 13 trixie",
+    "runtime": "podman",
+    "runtimeVersion": "5.4.2",
+    "buildahVersion": "1.39.3",
+    "operatingSystem": "linux",
+    "architecture": "amd64",
+    "rootless": true,
+    "cgroupManager": "cgroupfs"
+  },
+  "controls": {
+    "pullPolicy": "never",
+    "noCache": true,
+    "format": "oci",
+    "timestampEpoch": 1787471368,
+    "timestampIsoUtc": "2026-08-23T07:49:28Z",
+    "sourceDateEpoch": "1787471368",
+    "locale": "C",
+    "timezone": "UTC",
+    "baseImages": [
+      {
+        "stage": "builder",
+        "manifestDigest": "sha256:88a7d30d49e1d13f0aac17b0e5fb9e291717e3a7c4a512fe56636db576383b8a",
+        "indexDigest": "sha256:813017f3d62be4b5891a7acca6a01bdcd4b8513daa81b1ab99d3a50385b26931"
+      },
+      {
+        "stage": "runtime",
+        "manifestDigest": "sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143",
+        "indexDigest": "sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241"
+      }
+    ],
+    "aptSnapshots": [
+      "http://snapshot.debian.org/archive/debian/20260803T000000Z",
+      "http://snapshot.debian.org/archive/debian-security/20260803T000000Z"
+    ],
+    "generatedContainerfile": {
+      "sha256": "c6cfb5392bc7d2e6a6bcccb62b8722c022a7338bcb8baef1fe06b05014d25052",
+      "committed": false
+    }
+  },
+  "builds": {
+    "repeats": 2,
+    "first": {
+      "reference": "opentcad-reference/suprem:13bce4a-repro-a",
+      "id": "b5007db97c9453a2e546f5b8ce10a912282973bc2662fee33e5cb46a560ed735",
+      "digest": "sha256:493202954273fc77944c3b779e62cdbf1a0466955f946ee4b8361ae4e53e1095",
+      "created": "2026-08-23T07:49:28Z",
+      "bytes": 79700303,
+      "rootFilesystemLayers": [
+        "sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe",
+        "sha256:37a074dd860439619cd690fd0a4700c2958d1a11d04036e1f154dd684dcb5655",
+        "sha256:259a83c86242e64ce7dabde7444ae287070c7c17d0f9b184a2f4bf6756d1388d",
+        "sha256:bfbc64d5338b95f5ee987589fa614536c654163e950c089d2562a1e54e5802c8",
+        "sha256:86dbc6699060a606831f6294f21a9960b3d03b26aa790d788184565e310cb1c9"
+      ]
+    },
+    "second": {
+      "reference": "opentcad-reference/suprem:13bce4a-repro-b",
+      "id": "b5007db97c9453a2e546f5b8ce10a912282973bc2662fee33e5cb46a560ed735",
+      "digest": "sha256:493202954273fc77944c3b779e62cdbf1a0466955f946ee4b8361ae4e53e1095",
+      "created": "2026-08-23T07:49:28Z",
+      "bytes": 79700303,
+      "rootFilesystemLayers": [
+        "sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe",
+        "sha256:37a074dd860439619cd690fd0a4700c2958d1a11d04036e1f154dd684dcb5655",
+        "sha256:259a83c86242e64ce7dabde7444ae287070c7c17d0f9b184a2f4bf6756d1388d",
+        "sha256:bfbc64d5338b95f5ee987589fa614536c654163e950c089d2562a1e54e5802c8",
+        "sha256:86dbc6699060a606831f6294f21a9960b3d03b26aa790d788184565e310cb1c9"
+      ]
+    },
+    "comparison": {
+      "sameImageId": true,
+      "sameManifestDigest": true,
+      "sameCreatedTimestamp": true,
+      "sameSize": true,
+      "sameRootFilesystemLayers": true,
+      "byteReproducibleImageObserved": true
+    },
+    "solverBinarySha256": "9c6d7a0b842c908b06f001d9a077c8a1975ab962956397e5ec7361c918eb7805",
+    "matchesPriorRootlessObservationSolverBinary": true
+  },
+  "sbom": {
+    "status": "generated-external-unreviewed",
+    "scanner": {
+      "name": "syft",
+      "version": "1.51.0",
+      "imageId": "e6ff5da240b940ab010282f502ae688019379cdee51578f76374ed9b29ef03e6",
+      "manifestDigest": "sha256:41f8289664101d6ebab30a97ac8df6b6f86b92d8343285ca90f428e2bc353106",
+      "indexDigest": "sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0",
+      "license": "Apache-2.0"
+    },
+    "isolation": {
+      "network": "none",
+      "rootless": true,
+      "readOnlyRootFilesystem": true,
+      "capabilitiesDropped": "ALL",
+      "noNewPrivileges": true,
+      "checkForAppUpdate": false,
+      "cacheDirectory": "/tmp/syft-cache",
+      "temporaryFilesystemBytes": 536870912
+    },
+    "sourceArchive": {
+      "format": "oci-archive",
+      "bytes": 30898176,
+      "sha256": "41036a7403ab4e7f58d961a333c62257f12fab309f8e156cad5e75871d9323db",
+      "manifestDigest": "sha256:d55a71743edf14869eddcc30cd6f73f4fa5950279393cbeb57ac0527ba80d897",
+      "configDigest": "sha256:b5007db97c9453a2e546f5b8ce10a912282973bc2662fee33e5cb46a560ed735",
+      "configMatchesReproducibleImageId": true,
+      "committed": false,
+      "transmitted": false
+    },
+    "document": {
+      "format": "CycloneDX",
+      "specVersion": "1.7",
+      "bytes": 1018149,
+      "sha256": "102481cb2c8690aff8d24bc6acdf15afb7c38dc8b6b2d870183c83845ec6dd7f",
+      "subjectManifestDigest": "sha256:d55a71743edf14869eddcc30cd6f73f4fa5950279393cbeb57ac0527ba80d897",
+      "subjectMatchesArchiveManifest": true,
+      "componentCount": 3077,
+      "fileComponents": 2988,
+      "packageComponents": 88,
+      "operatingSystemComponents": 1,
+      "packagesWithPurl": 88,
+      "packagesWithLicenseEvidence": 88,
+      "uniqueLicenseTokens": 104,
+      "committed": false
+    },
+    "initialAttemptFinding": {
+      "status": "discarded-empty-output",
+      "cause": "The first 64 MiB temporary filesystem was too small to expand the image layers.",
+      "outboundUpdateCheckBlockedByNetworkNone": true
+    },
+    "licenseReviewComplete": false,
+    "distributionConclusionApproved": false
+  },
+  "externalEvidence": {
+    "absolutePathRecorded": false,
+    "rawArtifactsCommitted": false,
+    "files": [
+      {
+        "name": "Containerfile.pinned",
+        "bytes": 7773,
+        "sha256": "c6cfb5392bc7d2e6a6bcccb62b8722c022a7338bcb8baef1fe06b05014d25052"
+      },
+      {
+        "name": "preparation.json",
+        "bytes": 1812,
+        "sha256": "5af43f939ff3908d0e1ff088b69c31a8bc2a633b03590b013c7a7964dbcf2a2f"
+      },
+      {
+        "name": "build-01.log",
+        "bytes": 69588,
+        "sha256": "b52965f5e6ab4abdbb5d985bab4294534c1f551fab512242053ae32fde973a5a"
+      },
+      {
+        "name": "build-02.log",
+        "bytes": 69656,
+        "sha256": "cbb31920b6b04a004436c1086b7a2c7caec8f65b562183e0af39cac583e6236e"
+      },
+      {
+        "name": "suprem-image.oci.tar",
+        "bytes": 30898176,
+        "sha256": "41036a7403ab4e7f58d961a333c62257f12fab309f8e156cad5e75871d9323db"
+      },
+      {
+        "name": "suprem-image.cdx.json",
+        "bytes": 1018149,
+        "sha256": "102481cb2c8690aff8d24bc6acdf15afb7c38dc8b6b2d870183c83845ec6dd7f"
+      }
+    ],
+    "collectorFiles": [
+      {
+        "path": "tools/prepare-reference-image-build.mjs",
+        "sha256": "d6f6635c84ca70a4d69161fbd0a745a6d9ec7e3553927c98ed6abba7e8b65558"
+      },
+      {
+        "path": "validation/baseline/reference-image-build.mjs",
+        "sha256": "7a044aa9ad3f206d06b813e7d21171c3f6e010f703844c4d5f507f39b3f15b1f"
+      },
+      {
+        "path": "validation/plans/base001-suprem-image-build.json",
+        "sha256": "b041176fa34c05511d7f7721a30ca64baf47b668d50490c5cef9982bdbc0e230"
+      }
+    ]
+  },
+  "m0Result": {
+    "reproducibleImageControlObserved": true,
+    "localPodmanImageSbomGenerated": true,
+    "base001Status": "pending",
+    "m0Exit": "not-met",
+    "remainingGates": [
+      "qualified solver and reference-patch license review",
+      "SBOM license conclusion review and release image approval",
+      "clean input deck with no unlisted log failure",
+      "NMOS and CMOS process-device evidence",
+      "cancellation, timeout, output-limit, and restart observations",
+      "native Linux and macOS portability evidence",
+      "semiconductor numerical review and maintainer approval"
+    ]
+  }
+}

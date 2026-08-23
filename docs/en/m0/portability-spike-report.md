@@ -4,7 +4,7 @@
 
 ## Status
 
-No host-support result is claimed yet. Windows Docker Desktop and WSL2 Debian rootless Podman now provide diagnostic evidence. The Podman run met the declared Linux amd64 rootless profile and matched the Docker structure exactly, but both observations remain ineligible because of solver log failures and non-reproducible local images. Running different, mutable images on each host would still produce misleading platform conclusions.
+No host-support result is claimed yet. Windows Docker Desktop and WSL2 Debian rootless Podman provide diagnostic evidence, and a separate controlled Podman build now reproduces exactly. The two solver-run observations remain ineligible because of declared log failures, while the controlled image remains non-baseline and non-distributable pending rights, SBOM review, corpus evidence, and approval. Host comparisons must use that same reviewed image identity before support conclusions are possible.
 
 ## Test matrix
 
@@ -19,7 +19,7 @@ No host-support result is claimed yet. Windows Docker Desktop and WSL2 Debian ro
 
 ## Observed Windows preflights
 
-The [BASE-001 observation report](base001-reference-observation.md) records five hardened Docker runs and five WSL2 rootless Podman runs of the frozen 1D boron deck. Both runtimes produced the exact same structure hash and record counts in every run. The Podman environment passed the declared runtime, OS, architecture, and rootless checks. Every solver run still emitted declared command-input errors despite exit code 0, and no-cache image rebuilds drifted under both runtimes. Both results remain diagnostic and `ineligible`.
+The [BASE-001 observation report](base001-reference-observation.md) records five hardened Docker runs and five WSL2 rootless Podman runs of the frozen 1D boron deck. Both runtimes produced the exact same structure hash and record counts, and Podman passed the declared profile checks. Those original no-cache rebuilds drifted and every solver run still emitted declared command-input errors despite exit code 0. A later controlled build pinned bases, package snapshots, and timestamps and produced the same image twice plus an external local-only SBOM. This improves the image evidence but does not promote either run or establish host support.
 
 ## Pass conditions
 
