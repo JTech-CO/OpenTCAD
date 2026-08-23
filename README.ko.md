@@ -8,7 +8,7 @@ OpenTCAD은 반도체 공정과 소자 시뮬레이션을 학습하기 위한 �
 
 ## 현재 제공 범위
 
-이 저장소는 현재 **프로젝트 기반 마일스톤** 단계이며 다음을 포함합니다.
+프로젝트 기반은 완료됐고 **M0는 진행 중**이며 엔진 독립 M1 작업은 `gated-active` 상태입니다. 현재 저장소는 다음을 포함합니다.
 
 - 반응형 영어/한국어 React 작업공간
 - 공정 프로파일, 소자 단면, I–V 곡선을 보여 주는 결정론적 참조 워크플로
@@ -44,7 +44,7 @@ npm run check
 npm run coverage
 ```
 
-이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
+이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 OCI runtime 또는 solver 증거를 주장하지 않고 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
 
 ## 문서
 
@@ -56,6 +56,7 @@ npm run coverage
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
 | [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
 | [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
+| [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |

@@ -16,7 +16,7 @@
 
 OpenTCAD 정적 기반은 빌드되고 결정론적 UI test 9개를 통과하며 알려진 npm audit 문제가 없고 GitHub Pages에 배포됩니다. 공정 profile과 I-V curve는 참조 미리보기 데이터로 표시됩니다. 이 증거는 UI 기반만 검증합니다.
 
-OpenTCAD에서 SUPREM 또는 DEVSIM 수치 결과를 검증한 적은 없습니다. Linux 참조 실행, 골든 case 3종, 반복 실행 분산, 불변 솔버 이미지 digest, 장애 경로 관찰은 대기 상태입니다.
+OpenTCAD에서 SUPREM 또는 DEVSIM 수치 결과를 검증한 적은 없습니다. Linux 참조 실행, 골든 case 3종, 반복 실행 분산, 불변 솔버 이미지 digest, 실제 runtime 장애 경로 관찰은 대기 상태입니다. 별도 엔진 독립 supervisor는 프로세스 통제 계약만 검증하며 solver 또는 OCI runtime 증거를 충족하지 않습니다.
 
 ## 필수 실행 증거
 

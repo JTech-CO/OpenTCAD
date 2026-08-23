@@ -97,5 +97,5 @@ Process 실패, 필수 산출물 누락, timeout, 선언한 log 실패가 있으
 1. SUPREM과 참조 patch 권리를 전문가가 검토합니다.
 2. SBOM license evidence를 검토하고 사용 권한이 있는 release image recipe를 승인하거나 거부합니다.
 3. 사용 권한이 있고 독립 검토된 fixture에서 실패하는 plot command를 교체하거나 수정합니다.
-4. NMOS와 CMOS 공정 및 소자 관찰과 장애 경로 test를 추가합니다.
+4. NMOS와 CMOS 공정 및 소자 관찰을 추가하고 검증된 장애 계약을 실제 Docker 및 Podman adapter에서 실행합니다.
 5. Maintainer와 반도체 수치 검토자가 명시적으로 검토한 증거만 승격합니다.

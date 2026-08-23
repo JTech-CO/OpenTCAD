@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateReferenceImageBuildPlan } from "../validation/baseline/reference-image-build.mjs";
+import { FAULT_CLASSIFICATIONS } from "../validation/faults/supervisor.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const inventoryPath = join(projectRoot, "m0", "DEPENDENCY_AND_IMAGE_INVENTORY.json");
@@ -31,6 +32,12 @@ const imageBuildObservationPath = join(
   "m0",
   "BASE001_REPRODUCIBLE_IMAGE_OBSERVATION.json",
 );
+const faultPathManifestPath = join(
+  projectRoot,
+  "validation",
+  "manifests",
+  "m0-fault-path-foundation.json",
+);
 
 const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
 const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
@@ -40,6 +47,7 @@ const observationPlan = JSON.parse(await readFile(observationPlanPath, "utf8"));
 const imageBuildPlanBytes = await readFile(imageBuildPlanPath);
 const imageBuildPlan = JSON.parse(imageBuildPlanBytes.toString("utf8"));
 const imageBuildObservation = JSON.parse(await readFile(imageBuildObservationPath, "utf8"));
+const faultPathManifest = JSON.parse(await readFile(faultPathManifestPath, "utf8"));
 const errors = [];
 
 function requireValue(condition, message) {
@@ -62,6 +70,7 @@ requireValue(
   imageBuildObservation.schemaVersion === 1,
   "Unsupported BASE-001 reproducible image observation schema.",
 );
+requireValue(faultPathManifest.schemaVersion === 1, "Unsupported M0 fault-path schema.");
 requireValue(observationPlan.schemaVersion === 1, "Unsupported BASE-001 plan schema.");
 try {
   validateReferenceImageBuildPlan(imageBuildPlan);
@@ -516,6 +525,88 @@ requireValue(
   "The sanitized controlled image record must not contain an absolute host path.",
 );
 
+requireValue(
+  faultPathManifest.milestone === "M0" &&
+    faultPathManifest.recordId === "M0-FAULT-PATH-CONTRACT-001" &&
+    faultPathManifest.status === "contract-tested" &&
+    faultPathManifest.evidenceClass === "engine-independent",
+  "The M0 fault-path record must remain an engine-independent tested contract.",
+);
+requireValue(
+  faultPathManifest.baselinePromotionAllowed === false &&
+    faultPathManifest.solverEvidenceObserved === false &&
+    faultPathManifest.containerRuntimeEvidenceObserved === false,
+  "The fault-path foundation must not claim solver, runtime, or baseline evidence.",
+);
+const expectedFaultClassifications = ["succeeded", "nonzero-exit", ...FAULT_CLASSIFICATIONS];
+requireValue(
+  JSON.stringify(faultPathManifest.classifications) ===
+    JSON.stringify(expectedFaultClassifications),
+  "The stable fault classification list drifted.",
+);
+uniqueIds(faultPathManifest.controls, "Fault-path controls");
+const faultControls = Object.fromEntries(
+  faultPathManifest.controls.map((control) => [control.id, control]),
+);
+for (const [id, classification] of [
+  ["timeout", "timed-out"],
+  ["cancellation", "cancelled"],
+  ["combined-output-cap", "output-limit-exceeded"],
+]) {
+  requireValue(
+    faultControls[id]?.classification === classification &&
+      faultControls[id]?.terminatesActiveProcess === true &&
+      faultControls[id]?.resetsWorker === true,
+    "Fault-path control " + id + " must terminate the process and reset its worker.",
+  );
+}
+requireValue(
+  faultControls["combined-output-cap"]?.captureNeverExceedsDeclaredLimit === true,
+  "The output-limit control must cap retained bytes.",
+);
+requireValue(
+  faultControls["worker-recovery"]?.nextJobRequiresNewGeneration === true &&
+    faultControls["worker-recovery"]?.healthyWorkerReuseObserved === true &&
+    faultControls["worker-recovery"]?.postFaultSuccessObserved === true,
+  "The worker recovery contract is incomplete.",
+);
+requireValue(
+  faultPathManifest.testContract.command === "npm run test:validation" &&
+    faultPathManifest.testContract.usesRealChildProcesses === true &&
+    faultPathManifest.testContract.usesSolver === false &&
+    faultPathManifest.testContract.usesContainerRuntime === false,
+  "The fault-path test boundary drifted.",
+);
+for (const key of ["implementation", "worker", "fixture", "tests"]) {
+  const path = faultPathManifest.testContract[key];
+  requireValue(
+    typeof path === "string" &&
+      !/^(?:[A-Za-z]:[\\/]|[\\/])/u.test(path) &&
+      !path.split(/[\\/]+/u).includes(".."),
+    "Fault-path " + key + " must stay inside OpenTCAD.",
+  );
+  try {
+    await readFile(join(projectRoot, path));
+  } catch {
+    errors.push("Missing fault-path " + key + ": " + path);
+  }
+}
+requireValue(
+  Array.isArray(faultPathManifest.remainingGates) &&
+    faultPathManifest.remainingGates.length >= 5 &&
+    faultPathManifest.remainingGates.every((gate) => typeof gate === "string" && gate.length > 0),
+  "The fault-path record must retain its real-runtime gates.",
+);
+requireValue(
+  baseline.solverExecutionBaseline.status === "pending" && baseline.m0Exit.overall === "not-met",
+  "The engine-independent fault suite must not close BASE-001 or M0.",
+);
+requireValue(
+  !JSON.stringify(faultPathManifest).includes("/mnt/c/") &&
+    !/[A-Za-z]:\\/.test(JSON.stringify(faultPathManifest)),
+  "The fault-path record must not contain an absolute host path.",
+);
+
 const localHashes = inventory.evidenceHashes.filter(({ repository }) => repository === "OpenTCAD");
 for (const evidence of localHashes) {
   const bytes = await readFile(join(projectRoot, evidence.path));
@@ -530,6 +621,7 @@ const bilingualPairs = [
   ["docs/en/m0/current-architecture.md", "docs/ko/m0/current-architecture.md"],
   ["docs/en/m0/portability-spike-report.md", "docs/ko/m0/portability-spike-report.md"],
   ["docs/en/m0/base001-reference-observation.md", "docs/ko/m0/base001-reference-observation.md"],
+  ["docs/en/m0/fault-path-foundation.md", "docs/ko/m0/fault-path-foundation.md"],
 ];
 
 for (const pair of bilingualPairs.flat()) {
@@ -546,6 +638,6 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `M0 evidence check passed (${inventory.components.length} components, ${inventory.images.length} images, ${baseline.references.length} frozen references, 2 ineligible run observations, 1 non-baseline image build observation).`,
+    `M0 evidence check passed (${inventory.components.length} components, ${inventory.images.length} images, ${baseline.references.length} frozen references, 2 ineligible run observations, 1 non-baseline image build observation, 1 engine-independent fault-path contract).`,
   );
 }
