@@ -21,6 +21,8 @@ from backend.app.runtime.models import (
     ValidatedArtifactArchive,
 )
 
+from .lifecycle import LifecycleCheckpoint
+
 
 def _invalid(detail: str) -> None:
     raise RuntimeBackendError(
@@ -131,6 +133,7 @@ class BrokerOutcome:
     error: BrokerError | None
     cleanup_error: BrokerError | None
     cleanup_complete: bool
+    cancellation_checkpoint: LifecycleCheckpoint | None
     events: tuple[BrokerEvent, ...]
 
     def __post_init__(self) -> None:
@@ -138,7 +141,11 @@ class BrokerOutcome:
         events = tuple(self.events)
         object.__setattr__(self, "artifacts", artifacts)
         object.__setattr__(self, "events", events)
-        if self.state not in {BrokerState.SUCCEEDED, BrokerState.FAILED}:
+        if self.state not in {
+            BrokerState.SUCCEEDED,
+            BrokerState.CANCELLED,
+            BrokerState.FAILED,
+        }:
             _invalid("broker_outcome.state:terminal-required")
         if any(not isinstance(item, ArtifactRecord) for item in artifacts):
             _invalid("broker_outcome.artifacts:records-required")
@@ -159,6 +166,11 @@ class BrokerOutcome:
             _invalid("broker_outcome.cleanup_error:broker-error-or-null-required")
         if not isinstance(self.cleanup_complete, bool):
             _invalid("broker_outcome.cleanup_complete:boolean-required")
+        if self.cancellation_checkpoint is not None and not isinstance(
+            self.cancellation_checkpoint,
+            LifecycleCheckpoint,
+        ):
+            _invalid("broker_outcome.cancellation_checkpoint:enum-or-null-required")
         if self.state is BrokerState.SUCCEEDED and (
             self.result is None
             or self.result.classification is not TerminalClassification.SUCCEEDED
@@ -168,6 +180,21 @@ class BrokerOutcome:
             or not self.cleanup_complete
         ):
             _invalid("broker_outcome:success-invariant")
+        if self.state is BrokerState.SUCCEEDED and self.cancellation_checkpoint is not None:
+            _invalid("broker_outcome:success-cancellation-conflict")
+        if self.state is BrokerState.CANCELLED and (
+            self.cancellation_checkpoint is None
+            or self.error is not None
+            or self.cleanup_error is not None
+            or not self.cleanup_complete
+            or artifacts
+            or self.artifact_archive is not None
+            or (
+                self.result is not None
+                and self.result.classification is not TerminalClassification.CANCELLED
+            )
+        ):
+            _invalid("broker_outcome:cancelled-invariant")
 
     def as_dict(self) -> dict[str, Any]:
         archive = self.artifact_archive
@@ -190,6 +217,11 @@ class BrokerOutcome:
                 self.cleanup_error.as_dict() if self.cleanup_error is not None else None
             ),
             "cleanup_complete": self.cleanup_complete,
+            "cancellation_checkpoint": (
+                self.cancellation_checkpoint.value
+                if self.cancellation_checkpoint is not None
+                else None
+            ),
             "events": [event.as_dict() for event in self.events],
         }
 

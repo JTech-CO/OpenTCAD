@@ -80,10 +80,13 @@ const expectedSourceFiles = [
   "backend/app/broker/__init__.py",
   "backend/app/broker/archive.py",
   "backend/app/broker/cancellation.py",
+  "backend/app/broker/cleanup.py",
   "backend/app/broker/diagnostics.py",
+  "backend/app/broker/lifecycle.py",
   "backend/app/broker/models.py",
   "backend/app/broker/orchestrator.py",
   "backend/app/broker/output_archive.py",
+  "backend/app/broker/state.py",
   "backend/pyproject.toml",
   "backend/tests/runtime/support.py",
   "backend/tests/runtime/test_identity.py",
@@ -92,8 +95,11 @@ const expectedSourceFiles = [
   "backend/tests/runtime/test_policy.py",
   "backend/tests/broker/test_archive.py",
   "backend/tests/broker/test_cancellation_redaction.py",
+  "backend/tests/broker/test_cleanup_concurrency.py",
+  "backend/tests/broker/test_lifecycle_control.py",
   "backend/tests/broker/test_orchestrator.py",
   "backend/tests/broker/test_output_archive.py",
+  "backend/tests/broker/test_state_store.py",
   "tools/check-m2.mjs",
   "tools/run-python-tests.mjs",
   "docs/en/m2/README.md",
@@ -101,11 +107,13 @@ const expectedSourceFiles = [
   "docs/en/m2/broker-threat-model.md",
   "docs/en/m2/broker-archive-foundation.md",
   "docs/en/m2/output-cancellation-redaction.md",
+  "docs/en/m2/lifecycle-cleanup-state.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
   "docs/ko/m2/output-cancellation-redaction.md",
+  "docs/ko/m2/lifecycle-cleanup-state.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -191,6 +199,12 @@ requireValue(manifest.securityBoundary.cancellationIdentityImplemented === true,
 requireValue(manifest.securityBoundary.structuredPublicEventsImplemented === true, "Structured public events must be recorded.");
 requireValue(manifest.securityBoundary.internalRawDiagnosticSeparated === true, "Internal diagnostic separation must be recorded.");
 requireValue(manifest.securityBoundary.rawDiagnosticExposedPublicly === false, "Raw diagnostics must remain private.");
+requireValue(manifest.securityBoundary.phaseCancellationInjectionImplemented === true, "Phase cancellation injection must be recorded.");
+requireValue(manifest.securityBoundary.processLocalCleanupCoordinatorImplemented === true, "Process-local cleanup coordination must be recorded.");
+requireValue(manifest.securityBoundary.durableStateInterfaceDefined === true, "Durable state interface must be recorded.");
+requireValue(manifest.securityBoundary.durableStateStoreImplemented === false, "A durable state store must not be claimed.");
+requireValue(manifest.securityBoundary.brokerStateStoreWiringImplemented === false, "Broker-to-store wiring must remain absent.");
+requireValue(manifest.securityBoundary.distributedCleanupLeaseImplemented === false, "Distributed cleanup leasing must remain absent.");
 
 for (const key of [
   "productRuntimeSocketAccess",
@@ -256,7 +270,7 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "mock-broker-security-tested"],
+  ["RUN-007", "mock-concurrency-state-contract-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
@@ -268,8 +282,8 @@ const expectedBrokerWorkItems = [
   ["BRK-001", "foundation-tested"],
   ["BRK-003", "mock-lifecycle-tested"],
   ["BRK-004", "canonical-input-output-archive-tested"],
-  ["BRK-006", "mock-reconciliation-tested"],
-  ["BRK-007", "mock-cancellation-identity-tested"],
+  ["BRK-006", "mock-concurrent-reconciliation-state-tested"],
+  ["BRK-007", "mock-phase-cancellation-tested"],
   ["BRK-008", "structured-redaction-tested"],
 ];
 requireValue(brokerWorkItems.size === expectedBrokerWorkItems.length, "M2 broker work item set drifted.");
@@ -296,12 +310,16 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 39, "Runtime and broker test count must be 39.");
+requireValue(manifest.testContract.testCount === 52, "Runtime and broker test count must be 52.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
 requireValue(manifest.testContract.brokerOrchestrationTests === 8, "Broker orchestration test count must be 8.");
 requireValue(manifest.testContract.brokerSecurityTests === 5, "Broker security test count must be 5.");
 requireValue(manifest.testContract.identityPolicyTests === 2, "Identity policy test count must be 2.");
+requireValue(manifest.testContract.lifecycleCancellationTests === 3, "Lifecycle cancellation test count must be 3.");
+requireValue(manifest.testContract.lifecycleCancellationCheckpoints === 11, "Lifecycle cancellation checkpoint count must be 11.");
+requireValue(manifest.testContract.cleanupConcurrencyTests === 3, "Cleanup concurrency test count must be 3.");
+requireValue(manifest.testContract.durableStateTests === 7, "Durable state interface test count must be 7.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
 requireValue(manifest.testContract.usesSolver === false, "Contract tests must not use a solver.");
 requireValue(manifest.testContract.loopCases === 20, "Cleanup loop must contain 20 cases.");
@@ -349,9 +367,12 @@ for (const path of [
 const brokerArchive = await readFile(join(root, "backend/app/broker/archive.py"), "utf8");
 const brokerOutputArchive = await readFile(join(root, "backend/app/broker/output_archive.py"), "utf8");
 const brokerCancellation = await readFile(join(root, "backend/app/broker/cancellation.py"), "utf8");
+const brokerCleanup = await readFile(join(root, "backend/app/broker/cleanup.py"), "utf8");
 const brokerDiagnostics = await readFile(join(root, "backend/app/broker/diagnostics.py"), "utf8");
+const brokerLifecycle = await readFile(join(root, "backend/app/broker/lifecycle.py"), "utf8");
 const brokerModels = await readFile(join(root, "backend/app/broker/models.py"), "utf8");
 const brokerOrchestrator = await readFile(join(root, "backend/app/broker/orchestrator.py"), "utf8");
+const brokerState = await readFile(join(root, "backend/app/broker/state.py"), "utf8");
 const implementation = [
   protocol,
   models,
@@ -361,9 +382,12 @@ const implementation = [
   brokerArchive,
   brokerOutputArchive,
   brokerCancellation,
+  brokerCleanup,
   brokerDiagnostics,
+  brokerLifecycle,
   brokerModels,
   brokerOrchestrator,
+  brokerState,
 ].join("\n");
 for (const [label, pattern] of [
   ["subprocess API", /\bsubprocess\b/u],
@@ -373,6 +397,7 @@ for (const [label, pattern] of [
   ["runtime socket path", /\/var\/run\//u],
   ["filesystem tar extraction", /\.extract(?:all)?\(/u],
   ["temporary filesystem staging", /\btempfile\b|NamedTemporaryFile/u],
+  ["database driver", /\bsqlite3\b|\bpsycopg\b|\basyncpg\b/u],
 ]) {
   requireValue(!pattern.test(implementation), `Runtime foundation contains forbidden ${label}.`);
 }
@@ -391,6 +416,26 @@ requireValue(brokerOrchestrator.includes("list_managed(identity.job_id)"), "Brok
 requireValue(brokerDiagnostics.includes("field(repr=False)"), "Internal diagnostics must hide raw fields from repr.");
 requireValue(brokerDiagnostics.includes("_raw_detail"), "Internal diagnostics must retain raw detail.");
 requireValue(!brokerModels.includes('"detail":'), "Public broker dictionaries must not expose raw detail.");
+requireValue(manifest.lifecycleCancellationContract.checkpoints.length === 11, "Cancellation checkpoint manifest must contain 11 entries.");
+for (const checkpoint of manifest.lifecycleCancellationContract.checkpoints) {
+  requireValue(brokerLifecycle.includes(`= "${checkpoint}"`), `Lifecycle source is missing ${checkpoint}.`);
+}
+requireValue(brokerOrchestrator.includes("CancellationSignal | None"), "Broker execute must accept a typed cancellation signal.");
+requireValue(brokerOrchestrator.includes("LifecycleCheckpoint.CLEANUP"), "Broker must retain the final cleanup cancellation fence.");
+requireValue(brokerCleanup.includes("class JobCleanupCoordinator"), "Cleanup coordinator must be defined.");
+requireValue(brokerCleanup.includes("async def lease"), "Cleanup coordinator must expose async job leases.");
+requireValue(manifest.cleanupConcurrencyContract.alreadyAbsentIsSuccess === true, "Already-absent cleanup must be idempotent success.");
+requireValue(manifest.cleanupConcurrencyContract.scope === "process-local", "Cleanup coordinator scope must remain process-local.");
+requireValue(brokerState.includes("class DurableJobStateStore(Protocol)"), "Durable state protocol must be defined.");
+for (const operation of manifest.durableStateContract.operations) {
+  requireValue(brokerState.includes(`async def ${operation}(`), `Durable state protocol is missing ${operation}.`);
+}
+requireValue(brokerState.includes("expected_revision"), "State append must require an expected revision.");
+for (const field of ["retry", "backend", "classification"]) {
+  requireValue(brokerState.includes(`    ${field}:`), `Durable event is missing ${field}.`);
+}
+requireValue(brokerState.includes("StateStoreErrorCode.REVISION_CONFLICT"), "State CAS conflict must be stable.");
+requireValue(!brokerState.includes("raw_detail"), "Durable event source must not expose raw detail.");
 
 for (const path of [
   "docs/en/m2/README.md",
@@ -398,11 +443,13 @@ for (const path of [
   "docs/en/m2/broker-threat-model.md",
   "docs/en/m2/broker-archive-foundation.md",
   "docs/en/m2/output-cancellation-redaction.md",
+  "docs/en/m2/lifecycle-cleanup-state.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
   "docs/ko/m2/output-cancellation-redaction.md",
+  "docs/ko/m2/lifecycle-cleanup-state.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

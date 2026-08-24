@@ -7,7 +7,9 @@ from .archive import (
     validate_canonical_input_archive,
 )
 from .cancellation import CancellationOutcome, CancellationRequest
+from .cleanup import JobCleanupCoordinator
 from .diagnostics import InternalDiagnostic
+from .lifecycle import CancellationSignal, LifecycleCheckpoint, PhaseCancellation
 from .models import (
     BrokerError,
     BrokerEvent,
@@ -23,9 +25,19 @@ from .output_archive import (
     output_archive_limits,
     validate_canonical_output_archive,
 )
+from .state import (
+    DurableJobEvent,
+    DurableJobStateStore,
+    InMemoryJobStateStore,
+    JobStateSnapshot,
+    RecoverableStatePage,
+    StateStoreError,
+    StateStoreErrorCode,
+)
 
 __all__ = [
     "ArchiveLimits",
+    "ArtifactPayload",
     "BrokerError",
     "BrokerEvent",
     "BrokerOutcome",
@@ -33,11 +45,21 @@ __all__ = [
     "BrokerState",
     "CancellationOutcome",
     "CancellationRequest",
-    "InternalDiagnostic",
+    "CancellationSignal",
+    "DurableJobEvent",
+    "DurableJobStateStore",
+    "InMemoryJobStateStore",
     "InputPayload",
-    "ArtifactPayload",
+    "InternalDiagnostic",
+    "JobCleanupCoordinator",
+    "JobStateSnapshot",
+    "LifecycleCheckpoint",
+    "PhaseCancellation",
+    "RecoverableStatePage",
     "ReconciliationReport",
     "SandboxBroker",
+    "StateStoreError",
+    "StateStoreErrorCode",
     "build_canonical_input_archive",
     "build_canonical_output_archive",
     "output_archive_limits",
