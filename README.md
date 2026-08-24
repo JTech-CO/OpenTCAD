@@ -8,13 +8,14 @@ OpenTCAD is an open-source, bilingual workspace for learning semiconductor proce
 
 ## What is available now
 
-The project foundation is complete, **M0 is active**, and engine-independent M1 work is `gated-active`. The repository currently includes:
+The project foundation is complete, **M0 is active**, and engine-independent M1 and M2 contract work is `gated-active`. The repository currently includes:
 
 - a responsive English/Korean React workspace;
 - a deterministic, clearly labelled reference workflow for process profiles, device cross-sections, and I–V curves;
 - a static GitHub Pages build that never executes submitted input;
 - local development and preview servers that work anywhere Node.js runs;
 - CI, accessibility-oriented interaction states, and the architecture boundary for the future sandboxed local engine;
+- a runtime-neutral `RuntimeBackend` contract, fail-closed policy validator, and strict in-memory mock that invoke no runtime or solver;
 - MIT licensing for original OpenTCAD code, with third-party simulators kept outside that license boundary.
 
 The static site is a product preview, not a browser-based solver. Real SUPREM-IV.GS and DEVSIM jobs will run only through the planned local API → worker → sandbox broker → OCI runtime path. The browser will never receive a Docker or Podman socket.
@@ -44,7 +45,7 @@ npm run check
 npm run coverage
 ```
 
-This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement. A separate non-promoting [OCI fault matrix](docs/en/m0/oci-fault-matrix.md) observed the same controls on Docker Desktop and WSL2 rootless Podman with 20-case mixed loops and zero labelled orphans. It uses a fixed non-solver image and does not qualify a product adapter, solver, release image, or host. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
+This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement. A separate non-promoting [OCI fault matrix](docs/en/m0/oci-fault-matrix.md) observed the same controls on Docker Desktop and WSL2 rootless Podman with 20-case mixed loops and zero labelled orphans. It uses a fixed non-solver image and does not qualify a product adapter, solver, release image, or host. The gated [M2 runtime contract foundation](docs/en/m2/README.md) now freezes typed lifecycle, capability, error, policy, and mock-cleanup semantics without a broker, product adapter, runtime detection, worker integration, or socket access. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
 
 ## Documentation
 
@@ -59,6 +60,7 @@ This repository stores no solver output or numerical baseline. The external [BAS
 | [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
 | [M0 OCI fault matrix](docs/en/m0/oci-fault-matrix.md) | [M0 OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
+| [M2 runtime contract foundation](docs/en/m2/README.md) | [M2 런타임 계약 기반](docs/ko/m2/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
 

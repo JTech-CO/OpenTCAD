@@ -8,13 +8,14 @@ OpenTCAD은 반도체 공정과 소자 시뮬레이션을 학습하기 위한 �
 
 ## 현재 제공 범위
 
-프로젝트 기반은 완료됐고 **M0는 진행 중**이며 엔진 독립 M1 작업은 `gated-active` 상태입니다. 현재 저장소는 다음을 포함합니다.
+프로젝트 기반은 완료됐고 **M0는 진행 중**이며 엔진 독립 M1 및 M2 계약 작업은 `gated-active` 상태입니다. 현재 저장소는 다음을 포함합니다.
 
 - 반응형 영어/한국어 React 작업공간
 - 공정 프로파일, 소자 단면, I–V 곡선을 보여 주는 결정론적 참조 워크플로
 - 제출된 입력을 절대 실행하지 않는 GitHub Pages 정적 빌드
 - Node.js가 동작하는 모든 OS에서 사용할 수 있는 로컬 개발·미리보기 서버
 - CI, 접근성 중심 상호작용 상태, 향후 샌드박스 로컬 엔진을 위한 아키텍처 경계
+- 런타임이나 솔버를 호출하지 않는 런타임 중립 `RuntimeBackend` 계약, 실패 폐쇄 정책 validator, 엄격한 memory 기반 mock
 - OpenTCAD 고유 코드의 MIT 라이선스와 제3자 시뮬레이터의 분리된 라이선스 경계
 
 정적 사이트는 제품 미리보기이며 브라우저 기반 솔버가 아닙니다. 실제 SUPREM-IV.GS와 DEVSIM 잡은 향후 로컬 API → 워커 → 샌드박스 브로커 → OCI 런타임 경로에서만 실행합니다. 브라우저에는 Docker/Podman 소켓을 절대 노출하지 않습니다.
@@ -44,7 +45,7 @@ npm run check
 npm run coverage
 ```
 
-이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
+이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. Gate 상태의 [M2 런타임 계약 기반](docs/ko/m2/README.md)은 타입이 지정된 lifecycle, capability, error, policy, mock 정리 의미를 고정했지만 broker, 제품 adapter, runtime detection, worker integration, socket 접근은 포함하지 않습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
 
 ## 문서
 
@@ -59,6 +60,7 @@ npm run coverage
 | [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
 | [M0 OCI fault matrix](docs/en/m0/oci-fault-matrix.md) | [M0 OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
+| [M2 runtime contract foundation](docs/en/m2/README.md) | [M2 런타임 계약 기반](docs/ko/m2/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
 

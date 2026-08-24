@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M2",
+  "recordedAt": "2026-08-24",
+  "status": "gated-active",
+  "scope": "engine-independent-contract-only",
+  "issueIntake": {
+    "workItems": [
+      "RUN-002",
+      "RUN-003",
+      "RUN-007"
+    ],
+    "priority": "P0",
+    "riskLevel": "L3",
+    "domains": [
+      "runtime",
+      "sandbox",
+      "security-boundary"
+    ],
+    "numericalDelta": "none",
+    "dataMigration": "none",
+    "rollback": "remove the engine-independent runtime foundation"
+  },
+  "entryConditions": {
+    "m1CorpusGreen": false,
+    "runtimeInterfaceAdr": {
+      "status": "proposed",
+      "path": "docs/en/m2/runtime-backend-adr.md",
+      "koreanPath": "docs/ko/m2/runtime-backend-adr.md"
+    },
+    "brokerThreatModel": {
+      "status": "draft",
+      "path": "docs/en/m2/broker-threat-model.md",
+      "koreanPath": "docs/ko/m2/broker-threat-model.md"
+    },
+    "approvedImmutableEngineProfile": false,
+    "overall": "not-met"
+  },
+  "workItems": [
+    {
+      "id": "RUN-001",
+      "status": "observed-nonpromoting",
+      "result": "Docker Desktop and WSL2 rootless Podman passed the fixed non-solver OCI fault matrix"
+    },
+    {
+      "id": "RUN-002",
+      "status": "foundation-tested",
+      "result": "runtime-neutral protocol, immutable models, stable errors, and strict mock"
+    },
+    {
+      "id": "RUN-003",
+      "status": "foundation-tested",
+      "result": "missing capability, image drift, profile drift, and excessive limits fail closed"
+    },
+    {
+      "id": "RUN-004",
+      "status": "blocked-entry-gate",
+      "result": "no product Podman adapter or socket access"
+    },
+    {
+      "id": "RUN-005",
+      "status": "blocked-entry-gate",
+      "result": "no product Docker adapter or socket access"
+    },
+    {
+      "id": "RUN-006",
+      "status": "not-started",
+      "result": "runtime detection remains an ADR follow-up"
+    },
+    {
+      "id": "RUN-007",
+      "status": "mock-only",
+      "result": "dependency-free contract suite uses no solver or container runtime"
+    }
+  ],
+  "securityBoundary": {
+    "productRuntimeSocketAccess": false,
+    "productAdapterImplemented": false,
+    "brokerServiceImplemented": false,
+    "runtimeDetectionImplemented": false,
+    "workerIntegrationImplemented": false,
+    "solverExecutionImplemented": false,
+    "rawCommandAccepted": false,
+    "hostPathAccepted": false,
+    "arbitraryMountAccepted": false
+  },
+  "contract": {
+    "protocolOperations": [
+      "probe",
+      "inspect_image",
+      "ensure_image",
+      "create_volume",
+      "stage_inputs",
+      "create_container",
+      "start",
+      "wait",
+      "kill",
+      "collect_artifacts",
+      "remove_container",
+      "remove_volume",
+      "list_managed"
+    ],
+    "capabilityVocabulary": [
+      "image_inspect",
+      "image_pull",
+      "image_digest",
+      "managed_volumes",
+      "validated_input_transfer",
+      "container_lifecycle",
+      "bounded_output",
+      "cpu_limit",
+      "memory_limit",
+      "pids_limit",
+      "timeout",
+      "network_none",
+      "cap_drop_all",
+      "no_new_privileges",
+      "read_only_root",
+      "writable_tmpfs_control",
+      "fixed_non_root_user",
+      "labels",
+      "orphan_query",
+      "validated_artifact_transfer"
+    ],
+    "requiredCapabilities": [
+      "image_inspect",
+      "image_digest",
+      "managed_volumes",
+      "validated_input_transfer",
+      "container_lifecycle",
+      "bounded_output",
+      "cpu_limit",
+      "memory_limit",
+      "pids_limit",
+      "timeout",
+      "network_none",
+      "cap_drop_all",
+      "no_new_privileges",
+      "read_only_root",
+      "writable_tmpfs_control",
+      "fixed_non_root_user",
+      "labels",
+      "orphan_query",
+      "validated_artifact_transfer"
+    ],
+    "stableErrorCodes": [
+      "runtime-unavailable",
+      "capability-missing",
+      "image-not-approved",
+      "image-identity-mismatch",
+      "invalid-spec",
+      "volume-not-found",
+      "container-not-found",
+      "invalid-state",
+      "stale-state",
+      "start-failed",
+      "wait-failed",
+      "kill-failed",
+      "cleanup-failed",
+      "artifact-rejected"
+    ]
+  },
+  "testContract": {
+    "command": "npm run test:runtime",
+    "implementation": "backend/app/runtime/mock_backend.py",
+    "policyTests": "backend/tests/runtime/test_policy.py",
+    "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
+    "pythonRange": ">=3.12,<3.15",
+    "testCount": 15,
+    "usesRuntime": false,
+    "usesSolver": false,
+    "usesNetwork": false,
+    "loopCases": 20,
+    "finalManagedObjects": 0
+  },
+  "sourceFiles": [
+    {
+      "path": "backend/app/runtime/errors.py",
+      "bytes": 2529,
+      "sha256": "eaf2ca46630edda422327dc7a666dcea0e589d9bf0045cd73a97e9c395975f49"
+    },
+    {
+      "path": "backend/app/runtime/models.py",
+      "bytes": 15352,
+      "sha256": "06e0b1d4c15f2999f7f4d57a881cafa623814ad65ee4b39702f6a3c8e26cee83"
+    },
+    {
+      "path": "backend/app/runtime/policy.py",
+      "bytes": 6156,
+      "sha256": "9de29c893a36fd248341ec97ef4cd5a6731bb1b111b04abfaeeb696b2daedaba"
+    },
+    {
+      "path": "backend/app/runtime/protocol.py",
+      "bytes": 1743,
+      "sha256": "03aa3f4d2678e2c357fcbe81ac5d88395efe7fdd858ecabebd5d2fce6e32e135"
+    },
+    {
+      "path": "backend/app/runtime/mock_backend.py",
+      "bytes": 14876,
+      "sha256": "f6c29a1ff638b637b36f46d5e3de789092567371e84a74b3523aca1ddb0f6b4b"
+    },
+    {
+      "path": "backend/pyproject.toml",
+      "bytes": 231,
+      "sha256": "afeb8d397902f2b85550d6bf02ff3697728db28357348f3892fe2c0f1ae15d8d"
+    },
+    {
+      "path": "backend/tests/runtime/support.py",
+      "bytes": 2412,
+      "sha256": "1ae9a4ff276c8b0b5348c0b173c90fd516fea11a22a62e48c1c8ac06621c7b2b"
+    },
+    {
+      "path": "backend/tests/runtime/test_policy.py",
+      "bytes": 6053,
+      "sha256": "d89932b329923cca322c547b5057e4ad6b022a34743b132116450a691b1ad661"
+    },
+    {
+      "path": "backend/tests/runtime/test_mock_backend.py",
+      "bytes": 8396,
+      "sha256": "4a09ed17134b88c275cf60596c3b10e76ec8e85c08ca2d4058c9e00ec0931fc7"
+    },
+    {
+      "path": "tools/check-m2.mjs",
+      "bytes": 11314,
+      "sha256": "6b20d4329405e4938e59c5bb032341b4057c6f05b4bca8c7fa6ced1cea75b6ce"
+    },
+    {
+      "path": "tools/run-python-tests.mjs",
+      "bytes": 2769,
+      "sha256": "7ac8ce143fe0fc9a750b7f4f61c5d61a584f8271fc2bbc568fdcce1d141bd886"
+    },
+    {
+      "path": "docs/en/m2/README.md",
+      "bytes": 3532,
+      "sha256": "2672a4e203799df65771b38ae5202bb82e6baf6c45319dac23b7e5d4055124fb"
+    },
+    {
+      "path": "docs/en/m2/runtime-backend-adr.md",
+      "bytes": 4144,
+      "sha256": "0271b5c05b09e662e8b84304c458be44b290b9b4eae10500638bfc154bc04b96"
+    },
+    {
+      "path": "docs/en/m2/broker-threat-model.md",
+      "bytes": 5363,
+      "sha256": "5dbc1b0346b66fe90575ba35dcd93e25e379c641f12a0d8aecdebd8a1ce83879"
+    },
+    {
+      "path": "docs/ko/m2/README.md",
+      "bytes": 3694,
+      "sha256": "2c7057e06e4e9d7f202a929037ac646906cb4ccd9979c4e22699997bf3f4df69"
+    },
+    {
+      "path": "docs/ko/m2/runtime-backend-adr.md",
+      "bytes": 4540,
+      "sha256": "03a16ed316cb4ed9ca7a96992936b7b62d195fecded8d07a21ee88be1cdf42c1"
+    },
+    {
+      "path": "docs/ko/m2/broker-threat-model.md",
+      "bytes": 5862,
+      "sha256": "8eafb6bda4f6abb86c34bf1557ff90bad2e52b25e7d89f1d6a38801cadd60efb"
+    },
+    {
+      "path": "docs/CODEMAPS/README.md",
+      "bytes": 583,
+      "sha256": "66c11e9df02f97c4ea319e3f686d0171c39204274505bc66234a5ec6a3d069b2"
+    },
+    {
+      "path": "docs/CODEMAPS/backend.md",
+      "bytes": 2796,
+      "sha256": "19ccc3cd7a7e9a96878467e10f2c38ef7414d17c42d09438fc0d3c5651f1327c"
+    }
+  ],
+  "exitCriteria": {
+    "runtimeContractReviewed": "pending",
+    "brokerThreatModelApproved": "pending",
+    "dockerAdapterPolicyVerified": "pending",
+    "podmanAdapterPolicyVerified": "pending",
+    "crashReconciliationVerified": "pending",
+    "mockContractFramework": "verified",
+    "overall": "not-met"
+  },
+  "productExecutionAllowed": false,
+  "distributionAllowed": false
+}

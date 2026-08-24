@@ -4,6 +4,8 @@ frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
 *.log
+__pycache__/
+*.py[cod]
 .DS_Store
 Thumbs.db
 .env

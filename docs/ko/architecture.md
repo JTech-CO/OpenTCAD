@@ -68,11 +68,11 @@ frontend/                 정적 호환 React 애플리케이션
 docs/en/ 및 docs/ko/      한·영 쌍으로 관리하는 제품·엔지니어링 문서
 .github/workflows/        CI 및 GitHub Pages 배포
 
-backend/app/runtime/      런타임 계약·정책·탐지·어댑터(예정)
+backend/app/runtime/      Gate 상태 계약, 정책, stable error, strict mock
 backend/app/broker/       allowlist·수명주기·정리·진단(예정)
 packaging/compose/        local/shared/server 프로필(예정)
 packaging/launcher/       PowerShell 및 POSIX launcher(예정)
-validation/               골든 코퍼스와 comparator(예정)
+validation/               M0/M1 기록, comparator, gate 상태 M2 manifest
 ```
 
-현재 기반 단계에서는 안전한 구현으로 오해할 수 있는 placeholder 런타임 코드를 추가하지 않습니다. 런타임 작업은 라이선스와 수치 기준선 게이트를 통과한 뒤 시작합니다.
+현재 `backend/app/runtime/` 범위는 검토용 계약 표면과 엄격한 memory 기반 test double뿐입니다. Process, runtime, socket, solver를 호출하지 않습니다. 제품 adapter, detection, broker orchestration, worker integration은 기록된 진입 및 보안 게이트를 충족할 때까지 차단합니다.

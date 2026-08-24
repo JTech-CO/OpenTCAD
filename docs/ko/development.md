@@ -6,9 +6,10 @@
 
 - Node.js 22 LTS 또는 24 LTS
 - npm 10 이상
+- M2 계약 테스트용 Python 3.12부터 3.14
 - Git
 
-현재 정적 기반 단계에는 컨테이너 런타임, Python 서비스, 데이터베이스 또는 솔버가 필요하지 않습니다.
+컨테이너 런타임, Python 서비스, 데이터베이스 또는 솔버는 필요하지 않습니다. Python은 의존성이 없는 M2 계약 테스트만 실행합니다.
 
 ## 설정과 명령
 
@@ -22,6 +23,7 @@ npm run dev
 ```bash
 npm run lint
 npm run test
+npm run check:m2
 npm run build
 ```
 
