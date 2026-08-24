@@ -25,7 +25,7 @@ The browser, API, worker, input archive, solver deck, container output, runtime 
 | Host path or mount escape | Broker creates managed volumes; requests contain no host paths, bind mounts, devices, or runtime socket | Enforced by model shape |
 | Runtime socket exposure | Only a separately reviewed broker process may receive the socket; browser, API, and worker never receive it | Architectural rule only; no broker exists |
 | Capability or policy downgrade | Every required capability is positively reported; missing or unknown capability rejects the request | Enforced by policy tests |
-| Archive traversal or special file | Reject absolute paths, parent traversal, links, devices, duplicate normalized names, count overflow, and size overflow before extraction | Flat manifest names are enforced; byte-stream validator is pending |
+| Archive traversal or special file | Reject absolute paths, parent traversal, links, devices, duplicate normalized names, count overflow, and size overflow before extraction | Canonical uncompressed USTAR is validated in memory; runtime transfer and output archive remain pending |
 | Resource or output denial of service | Fixed CPU, memory, PID, time, output, file-count, artifact, and tmpfs ceilings | Model and policy enforce declared ceilings; runtime enforcement pending |
 | Cross-job access | Server UUID labels, opaque handles, exact job ownership, managed-volume isolation, and exact artifact manifest | Mock lifecycle enforces ownership; runtime isolation pending |
 | Stale state or orphan reuse | Reject existing labelled objects, use exact generated identities, cleanup container before volume, and query zero orphans | Stable stale-state errors and mock cleanup exist; crash reconciliation pending |
@@ -53,7 +53,7 @@ The browser, API, worker, input archive, solver deck, container output, runtime 
 
 ## Approval gate
 
-Approval requires the M1 corpus to be green, the runtime ADR to be accepted, named security review, archive-validator tests, broker state-machine tests, runtime-specific policy traces, and crash-reconciliation evidence. Until then, RUN-004 and RUN-005 remain blocked and this draft authorizes no runtime access.
+Approval requires the M1 corpus to be green, the runtime ADR to be accepted, named security review, runtime-specific policy traces, durable crash-reconciliation evidence, and review of the now-present archive-validator and mock broker state-machine tests. Until then, RUN-004 and RUN-005 remain blocked and this draft authorizes no runtime access.
 
 ## Rollback
 

@@ -3,12 +3,16 @@
   "milestone": "M2",
   "recordedAt": "2026-08-24",
   "status": "gated-active",
-  "scope": "engine-independent-contract-only",
+  "scope": "engine-independent-broker-foundation-only",
   "issueIntake": {
     "workItems": [
       "RUN-002",
       "RUN-003",
-      "RUN-007"
+      "RUN-007",
+      "BRK-001",
+      "BRK-003",
+      "BRK-004",
+      "BRK-006"
     ],
     "priority": "P0",
     "riskLevel": "L3",
@@ -19,7 +23,7 @@
     ],
     "numericalDelta": "none",
     "dataMigration": "none",
-    "rollback": "remove the engine-independent runtime foundation"
+    "rollback": "remove the engine-independent runtime and mock broker foundation"
   },
   "entryConditions": {
     "m1CorpusGreen": false,
@@ -69,8 +73,8 @@
     },
     {
       "id": "RUN-007",
-      "status": "mock-only",
-      "result": "dependency-free contract suite uses no solver or container runtime"
+      "status": "mock-broker-tested",
+      "result": "dependency-free runtime, archive, and mock broker suite uses no solver or container runtime"
     }
   ],
   "securityBoundary": {
@@ -82,7 +86,11 @@
     "solverExecutionImplemented": false,
     "rawCommandAccepted": false,
     "hostPathAccepted": false,
-    "arbitraryMountAccepted": false
+    "arbitraryMountAccepted": false,
+    "brokerLibraryImplemented": true,
+    "canonicalInputArchiveImplemented": true,
+    "filesystemExtractionPerformed": false,
+    "compressedArchiveAccepted": false
   },
   "contract": {
     "protocolOperations": [
@@ -157,6 +165,7 @@
       "wait-failed",
       "kill-failed",
       "cleanup-failed",
+      "input-archive-rejected",
       "artifact-rejected"
     ]
   },
@@ -166,23 +175,34 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 15,
+    "testCount": 29,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
     "loopCases": 20,
-    "finalManagedObjects": 0
+    "finalManagedObjects": 0,
+    "archiveDefenseTests": 6,
+    "brokerTests": 8,
+    "brokerLoopCases": 20,
+    "negativeCleanupControl": "verified",
+    "archiveTests": "backend/tests/broker/test_archive.py",
+    "brokerLifecycleTests": "backend/tests/broker/test_orchestrator.py"
   },
   "sourceFiles": [
     {
+      "path": "backend/app/runtime/__init__.py",
+      "bytes": 1150,
+      "sha256": "15d7c6386a237c366da6d3419889c6020d03d5d5235a7228bf3a341ead2c142c"
+    },
+    {
       "path": "backend/app/runtime/errors.py",
-      "bytes": 2529,
-      "sha256": "eaf2ca46630edda422327dc7a666dcea0e589d9bf0045cd73a97e9c395975f49"
+      "bytes": 2583,
+      "sha256": "2eb76f295319b41a85890af1db7884151383d22656e2f2f8e78d1ace0c9424ec"
     },
     {
       "path": "backend/app/runtime/models.py",
-      "bytes": 15352,
-      "sha256": "06e0b1d4c15f2999f7f4d57a881cafa623814ad65ee4b39702f6a3c8e26cee83"
+      "bytes": 17358,
+      "sha256": "070daaff89d9add3e4feff7546b7d1044a55d2de7e6cfb92b5a6be82aedf5d32"
     },
     {
       "path": "backend/app/runtime/policy.py",
@@ -191,13 +211,33 @@
     },
     {
       "path": "backend/app/runtime/protocol.py",
-      "bytes": 1743,
-      "sha256": "03aa3f4d2678e2c357fcbe81ac5d88395efe7fdd858ecabebd5d2fce6e32e135"
+      "bytes": 1810,
+      "sha256": "1cf912eab998121f2b2cd78f40e713928d0b25b5e57bf97ccad4baf3fe930b59"
     },
     {
       "path": "backend/app/runtime/mock_backend.py",
-      "bytes": 14876,
-      "sha256": "f6c29a1ff638b637b36f46d5e3de789092567371e84a74b3523aca1ddb0f6b4b"
+      "bytes": 15610,
+      "sha256": "8b7705b2e356adf80b988645688ffcf06974b1f4b938f8956d994cab218fe109"
+    },
+    {
+      "path": "backend/app/broker/__init__.py",
+      "bytes": 681,
+      "sha256": "13cadf220d7aad0cae731d0b56bbb531b16752279979d3abc20129c1a6ed1f44"
+    },
+    {
+      "path": "backend/app/broker/archive.py",
+      "bytes": 8475,
+      "sha256": "705b86c5f5932761fa87bfc22252d4cf1e0508e3ac2ac4eebff1880b70431601"
+    },
+    {
+      "path": "backend/app/broker/models.py",
+      "bytes": 5989,
+      "sha256": "b410c5e9054582f9f7c377cb93c5c369484692fcad8cc4e8fa716abba92087b3"
+    },
+    {
+      "path": "backend/app/broker/orchestrator.py",
+      "bytes": 8927,
+      "sha256": "14fb03628a65a398a7769d10739334d2dcc37dfc4e0732b6f0ebcb01d8fc9355"
     },
     {
       "path": "backend/pyproject.toml",
@@ -206,8 +246,8 @@
     },
     {
       "path": "backend/tests/runtime/support.py",
-      "bytes": 2412,
-      "sha256": "1ae9a4ff276c8b0b5348c0b173c90fd516fea11a22a62e48c1c8ac06621c7b2b"
+      "bytes": 3010,
+      "sha256": "2c7a65d4590fb487e56eafb422c9fe8bf9a39e5839e60ea08905a17dc9a269c0"
     },
     {
       "path": "backend/tests/runtime/test_policy.py",
@@ -216,13 +256,23 @@
     },
     {
       "path": "backend/tests/runtime/test_mock_backend.py",
-      "bytes": 8396,
-      "sha256": "4a09ed17134b88c275cf60596c3b10e76ec8e85c08ca2d4058c9e00ec0931fc7"
+      "bytes": 8432,
+      "sha256": "fa630520e911ee64c8a1d74005759c4ad59f1d5bcf990de9e4c948ea85df95dd"
+    },
+    {
+      "path": "backend/tests/broker/test_archive.py",
+      "bytes": 6638,
+      "sha256": "b811c516fab5be441b06e63b9adc0a56dd2cce5a90d2560ea3ed7936d858d0ec"
+    },
+    {
+      "path": "backend/tests/broker/test_orchestrator.py",
+      "bytes": 7728,
+      "sha256": "07d0449d39a23a5d886a79fbe99c4ac28e43778d539249e0bb5ec94d3c9e1e8a"
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 11314,
-      "sha256": "6b20d4329405e4938e59c5bb032341b4057c6f05b4bca8c7fa6ced1cea75b6ce"
+      "bytes": 14121,
+      "sha256": "a42e83150250e672c132a7f82a8221c72d8c84d9787363ca81aad71d65d8cc4a"
     },
     {
       "path": "tools/run-python-tests.mjs",
@@ -231,33 +281,43 @@
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 3532,
-      "sha256": "2672a4e203799df65771b38ae5202bb82e6baf6c45319dac23b7e5d4055124fb"
+      "bytes": 4945,
+      "sha256": "6ed350a34d2f75985fdc7b57a9a1d195ba1e2b3d1cd222eddeb17d99aaf35c8a"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
-      "bytes": 4144,
-      "sha256": "0271b5c05b09e662e8b84304c458be44b290b9b4eae10500638bfc154bc04b96"
+      "bytes": 4231,
+      "sha256": "db0e516555ff2a292fda7d947b47bdfa611e66b4d3b0763b722ee0d3eb141aa9"
     },
     {
       "path": "docs/en/m2/broker-threat-model.md",
-      "bytes": 5363,
-      "sha256": "5dbc1b0346b66fe90575ba35dcd93e25e379c641f12a0d8aecdebd8a1ce83879"
+      "bytes": 5436,
+      "sha256": "846252f288dc7600395651ae1affa178dde85eddfc59244dd5d849a6ee2f12f1"
+    },
+    {
+      "path": "docs/en/m2/broker-archive-foundation.md",
+      "bytes": 3227,
+      "sha256": "58eb08565c36fb61fd4267d2bd28587a36785aca646c2671d27249de7ef97a80"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 3694,
-      "sha256": "2c7057e06e4e9d7f202a929037ac646906cb4ccd9979c4e22699997bf3f4df69"
+      "bytes": 5124,
+      "sha256": "a7059c6e10b708c018a620d4f08e9477c9ee61429e66708d2679df0a6a7d3d56"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
-      "bytes": 4540,
-      "sha256": "03a16ed316cb4ed9ca7a96992936b7b62d195fecded8d07a21ee88be1cdf42c1"
+      "bytes": 4619,
+      "sha256": "5070af39ac4b4904674668a87287715119f92fb7d8d64701c54351b390391116"
     },
     {
       "path": "docs/ko/m2/broker-threat-model.md",
-      "bytes": 5862,
-      "sha256": "8eafb6bda4f6abb86c34bf1557ff90bad2e52b25e7d89f1d6a38801cadd60efb"
+      "bytes": 5916,
+      "sha256": "04091e9fee85adb3336d25693c609a391b16db45901473c6719f2b890d35d155"
+    },
+    {
+      "path": "docs/ko/m2/broker-archive-foundation.md",
+      "bytes": 3567,
+      "sha256": "aa10a596b1da79dc127c43b678b210979ef16acbba2ff653e081a42673dc2a96"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -266,8 +326,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 2796,
-      "sha256": "19ccc3cd7a7e9a96878467e10f2c38ef7414d17c42d09438fc0d3c5651f1327c"
+      "bytes": 3582,
+      "sha256": "04041fc83afd70c8c55acab2cb5bcb2c55ef1b8cb360a37e58457beb98c4aafd"
     }
   ],
   "exitCriteria": {
@@ -277,8 +337,44 @@
     "podmanAdapterPolicyVerified": "pending",
     "crashReconciliationVerified": "pending",
     "mockContractFramework": "verified",
-    "overall": "not-met"
+    "overall": "not-met",
+    "canonicalInputArchiveDefense": "framework-verified",
+    "mockBrokerLifecycle": "verified",
+    "mockReconciliation": "framework-verified"
   },
   "productExecutionAllowed": false,
-  "distributionAllowed": false
+  "distributionAllowed": false,
+  "brokerWorkItems": [
+    {
+      "id": "BRK-001",
+      "status": "foundation-tested",
+      "result": "typed request, redacted outcome, and internal-only library"
+    },
+    {
+      "id": "BRK-003",
+      "status": "mock-lifecycle-tested",
+      "result": "managed volume and container lifecycle with exact cleanup order"
+    },
+    {
+      "id": "BRK-004",
+      "status": "canonical-archive-tested",
+      "result": "memory-only canonical USTAR validation and attack controls"
+    },
+    {
+      "id": "BRK-006",
+      "status": "mock-reconciliation-tested",
+      "result": "running stale object reconciliation and residual-object negative control"
+    }
+  ],
+  "archiveContract": {
+    "format": "ustar-uncompressed",
+    "canonicalByteRebuildRequired": true,
+    "filesystemExtraction": false,
+    "compressionAccepted": false,
+    "paxAccepted": false,
+    "linksAccepted": false,
+    "specialFilesAccepted": false,
+    "flatAsciiNamesOnly": true,
+    "caseFoldCollisionsAccepted": false
+  }
 }

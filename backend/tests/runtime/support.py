@@ -1,5 +1,13 @@
 """Deterministic fixtures containing no solver or runtime dependency."""
 
+from hashlib import sha256
+
+from backend.app.broker.archive import (
+    ArchiveLimits,
+    InputPayload,
+    build_canonical_input_archive,
+    validate_canonical_input_archive,
+)
 from backend.app.runtime.models import (
     ArtifactRecord,
     ImageIdentity,
@@ -19,7 +27,23 @@ IMAGE = ImageIdentity(
     platform_manifest_digest="sha256:" + "b" * 64,
     platform="linux/amd64",
 )
-INPUT = InputFile(name="input.in", sha256="c" * 64, bytes=128)
+INPUT_CONTENT = b"i" * 128
+INPUT = InputFile(
+    name="input.in",
+    sha256=sha256(INPUT_CONTENT).hexdigest(),
+    bytes=len(INPUT_CONTENT),
+)
+ARCHIVE_LIMITS = ArchiveLimits(
+    max_archive_bytes=1_048_576,
+    max_file_count=8,
+    max_total_bytes=1_048_576,
+)
+ARCHIVE_BYTES = build_canonical_input_archive(
+    (InputPayload(INPUT.name, INPUT_CONTENT),),
+    (INPUT,),
+    ARCHIVE_LIMITS,
+)
+ARCHIVE = validate_canonical_input_archive(ARCHIVE_BYTES, (INPUT,), ARCHIVE_LIMITS)
 ARTIFACT = ArtifactRecord(name="result.str", sha256="d" * 64, bytes=256)
 LIMITS = ResourceLimits(
     cpu_millis=500,

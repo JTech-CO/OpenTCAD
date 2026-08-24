@@ -53,7 +53,7 @@ Runtime 자동 탐지는 RUN-006으로 미룹니다. 향후 결정은 결정론�
 - Socket을 추가하기 전에 strict memory backend로 broker를 시험할 수 있습니다.
 - 제품 adapter는 lifecycle 및 error test를 공유하지만 argument 또는 API 매핑은 분리합니다.
 - 새 capability field에는 contract 및 policy 검토가 필요합니다.
-- Archive byte stream과 extraction validation은 별도 broker 책임으로 남습니다.
+- Canonical input archive byte 검증은 mock broker 기반에 구현했으며 runtime transfer와 output archive 검증은 별도 gate 상태 책임으로 남습니다.
 - 필수 검토와 M2 진입 증거가 생기기 전에는 이 제안을 승인 상태로 바꿀 수 없습니다.
 
 ## Rollback

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
+from hashlib import sha256
+from hmac import compare_digest
 import re
 from uuid import UUID
 
@@ -415,6 +417,66 @@ class ManagedObjects:
             _invalid("managed.containers:container-handle-required")
         object.__setattr__(self, "volumes", volumes)
         object.__setattr__(self, "containers", containers)
+
+
+_INPUT_ARCHIVE_MARKER = object()
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedInputArchive:
+    manifest: tuple[InputFile, ...]
+    archive_sha256: str
+    bytes: int
+    _payload: bytes = field(repr=False)
+
+    def __init__(
+        self,
+        manifest: tuple[InputFile, ...],
+        archive_sha256: str,
+        byte_count: int,
+        payload: bytes,
+        *,
+        _marker: object,
+    ) -> None:
+        if _marker is not _INPUT_ARCHIVE_MARKER:
+            _invalid("validated_archive:validator-construction-required")
+        records = tuple(manifest)
+        if not records or any(not isinstance(item, InputFile) for item in records):
+            _invalid("validated_archive.manifest:input-files-required")
+        _require_hash(archive_sha256, "validated_archive.archive_sha256")
+        if (
+            not isinstance(byte_count, int)
+            or isinstance(byte_count, bool)
+            or byte_count < 1
+        ):
+            _invalid("validated_archive.bytes:positive-integer-required")
+        if not isinstance(payload, bytes) or len(payload) != byte_count:
+            _invalid("validated_archive.payload:exact-bytes-required")
+        if not compare_digest(sha256(payload).hexdigest(), archive_sha256):
+            _invalid("validated_archive.payload:hash-mismatch")
+        object.__setattr__(self, "manifest", records)
+        object.__setattr__(self, "archive_sha256", archive_sha256)
+        object.__setattr__(self, "bytes", byte_count)
+        object.__setattr__(self, "_payload", payload)
+
+    @property
+    def payload(self) -> bytes:
+        return self._payload
+
+
+def _make_validated_input_archive(
+    manifest: tuple[InputFile, ...],
+    archive_sha256: str,
+    bytes: int,
+    payload: bytes,
+) -> ValidatedInputArchive:
+    return ValidatedInputArchive(
+        manifest,
+        archive_sha256,
+        bytes,
+        payload,
+        _marker=_INPUT_ARCHIVE_MARKER,
+    )
 
 
 _VALIDATION_MARKER = object()
