@@ -103,6 +103,28 @@ class TerminationReason(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class JobIdentity:
+    """One policy-derived identity shared by every job kind and lifecycle phase."""
+
+    job_id: str
+
+    def __post_init__(self) -> None:
+        _require_uuid(self.job_id, "identity.job_id")
+
+    @property
+    def label(self) -> tuple[str, str]:
+        return ("tcad.job_id", self.job_id)
+
+    @property
+    def object_name(self) -> str:
+        return f"opentcad-job-{self.job_id}"
+
+    @property
+    def volume_name(self) -> str:
+        return f"{self.object_name}-data"
+
+
+@dataclass(frozen=True, slots=True)
 class ImageIdentity:
     reference: str
     index_digest: str
@@ -209,8 +231,12 @@ class SandboxSpec:
         input_names = [item.name for item in inputs]
         if len(set(input_names)) != len(input_names):
             _invalid("input_manifest:duplicate-name")
+        if len({name.casefold() for name in input_names}) != len(input_names):
+            _invalid("input_manifest:case-collision")
         if len(set(outputs)) != len(outputs):
             _invalid("expected_outputs:duplicate-name")
+        if len({name.casefold() for name in outputs}) != len(outputs):
+            _invalid("expected_outputs:case-collision")
 
 
 CAPABILITY_FIELDS = (
@@ -341,6 +367,21 @@ class ArtifactRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class RawArtifactArchive:
+    """Untrusted runtime bytes. The payload is intentionally absent from repr."""
+
+    _payload: bytes = field(repr=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self._payload, bytes):
+            _invalid("raw_artifact_archive.payload:bytes-required")
+
+    @property
+    def payload(self) -> bytes:
+        return self._payload
+
+
+@dataclass(frozen=True, slots=True)
 class RunResult:
     classification: TerminalClassification
     exit_code: int | None
@@ -419,6 +460,66 @@ class ManagedObjects:
         object.__setattr__(self, "containers", containers)
 
 
+_ARTIFACT_ARCHIVE_MARKER = object()
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ValidatedArtifactArchive:
+    manifest: tuple[ArtifactRecord, ...]
+    archive_sha256: str
+    bytes: int
+    _payload: bytes = field(repr=False)
+
+    def __init__(
+        self,
+        manifest: tuple[ArtifactRecord, ...],
+        archive_sha256: str,
+        byte_count: int,
+        payload: bytes,
+        *,
+        _marker: object,
+    ) -> None:
+        if _marker is not _ARTIFACT_ARCHIVE_MARKER:
+            _invalid("validated_artifact_archive:validator-construction-required")
+        records = tuple(manifest)
+        if not records or any(not isinstance(item, ArtifactRecord) for item in records):
+            _invalid("validated_artifact_archive.manifest:artifact-records-required")
+        _require_hash(archive_sha256, "validated_artifact_archive.archive_sha256")
+        if (
+            not isinstance(byte_count, int)
+            or isinstance(byte_count, bool)
+            or byte_count < 1
+        ):
+            _invalid("validated_artifact_archive.bytes:positive-integer-required")
+        if not isinstance(payload, bytes) or len(payload) != byte_count:
+            _invalid("validated_artifact_archive.payload:exact-bytes-required")
+        if not compare_digest(sha256(payload).hexdigest(), archive_sha256):
+            _invalid("validated_artifact_archive.payload:hash-mismatch")
+        object.__setattr__(self, "manifest", records)
+        object.__setattr__(self, "archive_sha256", archive_sha256)
+        object.__setattr__(self, "bytes", byte_count)
+        object.__setattr__(self, "_payload", payload)
+
+    @property
+    def payload(self) -> bytes:
+        return self._payload
+
+
+def _make_validated_artifact_archive(
+    manifest: tuple[ArtifactRecord, ...],
+    archive_sha256: str,
+    byte_count: int,
+    payload: bytes,
+) -> ValidatedArtifactArchive:
+    return ValidatedArtifactArchive(
+        manifest,
+        archive_sha256,
+        byte_count,
+        payload,
+        _marker=_ARTIFACT_ARCHIVE_MARKER,
+    )
+
+
 _INPUT_ARCHIVE_MARKER = object()
 
 
@@ -467,13 +568,13 @@ class ValidatedInputArchive:
 def _make_validated_input_archive(
     manifest: tuple[InputFile, ...],
     archive_sha256: str,
-    bytes: int,
+    byte_count: int,
     payload: bytes,
 ) -> ValidatedInputArchive:
     return ValidatedInputArchive(
         manifest,
         archive_sha256,
-        bytes,
+        byte_count,
         payload,
         _marker=_INPUT_ARCHIVE_MARKER,
     )
@@ -488,6 +589,7 @@ class ValidatedSandboxSpec:
     policy_version: str
     entrypoint_id: str
     labels: tuple[tuple[str, str], ...]
+    identity: JobIdentity
 
     def __init__(
         self,
@@ -495,15 +597,24 @@ class ValidatedSandboxSpec:
         policy_version: str,
         entrypoint_id: str,
         labels: tuple[tuple[str, str], ...],
+        identity: JobIdentity,
         *,
         _marker: object,
     ) -> None:
         if _marker is not _VALIDATION_MARKER:
             _invalid("validated_spec:policy-construction-required")
+        if not isinstance(spec, SandboxSpec):
+            _invalid("validated_spec.spec:sandbox-spec-required")
+        if not isinstance(identity, JobIdentity) or identity.job_id != spec.job_id:
+            _invalid("validated_spec.identity:job-identity-required")
+        normalized_labels = tuple(labels)
+        if identity.label not in normalized_labels:
+            _invalid("validated_spec.labels:job-identity-required")
         object.__setattr__(self, "spec", spec)
         object.__setattr__(self, "policy_version", policy_version)
         object.__setattr__(self, "entrypoint_id", entrypoint_id)
-        object.__setattr__(self, "labels", tuple(labels))
+        object.__setattr__(self, "labels", normalized_labels)
+        object.__setattr__(self, "identity", identity)
 
 
 def _make_validated_spec(
@@ -511,11 +622,13 @@ def _make_validated_spec(
     policy_version: str,
     entrypoint_id: str,
     labels: tuple[tuple[str, str], ...],
+    identity: JobIdentity,
 ) -> ValidatedSandboxSpec:
     return ValidatedSandboxSpec(
         spec,
         policy_version,
         entrypoint_id,
         labels,
+        identity,
         _marker=_VALIDATION_MARKER,
     )

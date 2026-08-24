@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from .models import (
-    ArtifactRecord,
     ContainerHandle,
     ImageIdentity,
+    JobIdentity,
     ManagedObjects,
+    RawArtifactArchive,
     RunResult,
     RuntimeKind,
     RuntimeProbe,
@@ -32,7 +33,7 @@ class RuntimeBackend(Protocol):
 
     async def ensure_image(self, image: ImageIdentity) -> ImageIdentity: ...
 
-    async def create_volume(self, job_id: str) -> VolumeHandle: ...
+    async def create_volume(self, identity: JobIdentity) -> VolumeHandle: ...
 
     async def stage_inputs(
         self,
@@ -60,7 +61,7 @@ class RuntimeBackend(Protocol):
     async def collect_artifacts(
         self,
         container: ContainerHandle,
-    ) -> tuple[ArtifactRecord, ...]: ...
+    ) -> RawArtifactArchive: ...
 
     async def remove_container(self, container: ContainerHandle) -> None: ...
 

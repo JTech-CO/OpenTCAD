@@ -55,6 +55,7 @@ const expectedErrorCodes = [
   "image-not-approved",
   "image-identity-mismatch",
   "invalid-spec",
+  "identity-mismatch",
   "volume-not-found",
   "container-not-found",
   "invalid-state",
@@ -62,8 +63,10 @@ const expectedErrorCodes = [
   "start-failed",
   "wait-failed",
   "kill-failed",
+  "cancellation-rejected",
   "cleanup-failed",
   "input-archive-rejected",
+  "output-archive-rejected",
   "artifact-rejected",
 ];
 
@@ -76,24 +79,33 @@ const expectedSourceFiles = [
   "backend/app/runtime/mock_backend.py",
   "backend/app/broker/__init__.py",
   "backend/app/broker/archive.py",
+  "backend/app/broker/cancellation.py",
+  "backend/app/broker/diagnostics.py",
   "backend/app/broker/models.py",
   "backend/app/broker/orchestrator.py",
+  "backend/app/broker/output_archive.py",
   "backend/pyproject.toml",
   "backend/tests/runtime/support.py",
-  "backend/tests/runtime/test_policy.py",
+  "backend/tests/runtime/test_identity.py",
   "backend/tests/runtime/test_mock_backend.py",
+  "backend/tests/runtime/test_name_collisions.py",
+  "backend/tests/runtime/test_policy.py",
   "backend/tests/broker/test_archive.py",
+  "backend/tests/broker/test_cancellation_redaction.py",
   "backend/tests/broker/test_orchestrator.py",
+  "backend/tests/broker/test_output_archive.py",
   "tools/check-m2.mjs",
   "tools/run-python-tests.mjs",
   "docs/en/m2/README.md",
   "docs/en/m2/runtime-backend-adr.md",
   "docs/en/m2/broker-threat-model.md",
   "docs/en/m2/broker-archive-foundation.md",
+  "docs/en/m2/output-cancellation-redaction.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
+  "docs/ko/m2/output-cancellation-redaction.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -174,6 +186,11 @@ requireValue(manifest.securityBoundary.brokerLibraryImplemented === true, "Mock 
 requireValue(manifest.securityBoundary.canonicalInputArchiveImplemented === true, "Canonical input archive must be recorded.");
 requireValue(manifest.securityBoundary.filesystemExtractionPerformed === false, "Archive validation must remain in memory.");
 requireValue(manifest.securityBoundary.compressedArchiveAccepted === false, "Compressed archives must remain forbidden.");
+requireValue(manifest.securityBoundary.canonicalOutputArchiveImplemented === true, "Canonical output archive must be recorded.");
+requireValue(manifest.securityBoundary.cancellationIdentityImplemented === true, "Cancellation identity must be recorded.");
+requireValue(manifest.securityBoundary.structuredPublicEventsImplemented === true, "Structured public events must be recorded.");
+requireValue(manifest.securityBoundary.internalRawDiagnosticSeparated === true, "Internal diagnostic separation must be recorded.");
+requireValue(manifest.securityBoundary.rawDiagnosticExposedPublicly === false, "Raw diagnostics must remain private.");
 
 for (const key of [
   "productRuntimeSocketAccess",
@@ -239,7 +256,7 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "mock-broker-tested"],
+  ["RUN-007", "mock-broker-security-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
@@ -247,12 +264,16 @@ for (const [id, status] of expectedWorkItems) {
 }
 
 const brokerWorkItems = new Map(manifest.brokerWorkItems.map((item) => [item.id, item.status]));
-for (const [id, status] of [
+const expectedBrokerWorkItems = [
   ["BRK-001", "foundation-tested"],
   ["BRK-003", "mock-lifecycle-tested"],
-  ["BRK-004", "canonical-archive-tested"],
+  ["BRK-004", "canonical-input-output-archive-tested"],
   ["BRK-006", "mock-reconciliation-tested"],
-]) {
+  ["BRK-007", "mock-cancellation-identity-tested"],
+  ["BRK-008", "structured-redaction-tested"],
+];
+requireValue(brokerWorkItems.size === expectedBrokerWorkItems.length, "M2 broker work item set drifted.");
+for (const [id, status] of expectedBrokerWorkItems) {
   requireValue(brokerWorkItems.get(id) === status, `${id} must remain ${status}.`);
 }
 
@@ -260,11 +281,27 @@ requireValue(manifest.archiveContract.format === "ustar-uncompressed", "Archive 
 requireValue(manifest.archiveContract.filesystemExtraction === false, "Archive extraction must remain memory-only.");
 requireValue(manifest.archiveContract.compressionAccepted === false, "Archive compression must remain forbidden.");
 requireValue(manifest.archiveContract.specialFilesAccepted === false, "Archive special files must remain forbidden.");
+requireValue(sameArray(manifest.archiveContract.directions, ["input", "output"]), "Archive directions drifted.");
+requireValue(manifest.archiveContract.canonicalByteRebuildRequired === true, "Canonical rebuild must remain required.");
+requireValue(manifest.archiveContract.caseFoldCollisionsAccepted === false, "Case-fold collisions must remain forbidden.");
+requireValue(manifest.archiveContract.outputEmptyRegularFilesAccepted === true, "Empty regular output files must remain supported.");
+
+requireValue(manifest.identityContract.labelKey === "tcad.job_id", "Cancellation label key drifted.");
+requireValue(manifest.identityContract.kindIndependent === true, "Job identity must remain kind-independent.");
+requireValue(manifest.identityContract.crossJobHandlesAccepted === false, "Cross-job cancellation handles must remain forbidden.");
+requireValue(manifest.identityContract.zeroObjectRecheck === true, "Cancellation must retain zero-object recheck.");
+
+requireValue(manifest.redactionContract.publicRawDetail === false, "Public raw detail must remain forbidden.");
+requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown public backend values must remain forbidden.");
+requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 29, "Runtime and broker test count must be 29.");
-requireValue(manifest.testContract.archiveDefenseTests === 6, "Archive defense test count must be 6.");
-requireValue(manifest.testContract.brokerTests === 8, "Broker test count must be 8.");
+requireValue(manifest.testContract.testCount === 39, "Runtime and broker test count must be 39.");
+requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
+requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
+requireValue(manifest.testContract.brokerOrchestrationTests === 8, "Broker orchestration test count must be 8.");
+requireValue(manifest.testContract.brokerSecurityTests === 5, "Broker security test count must be 5.");
+requireValue(manifest.testContract.identityPolicyTests === 2, "Identity policy test count must be 2.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
 requireValue(manifest.testContract.usesSolver === false, "Contract tests must not use a solver.");
 requireValue(manifest.testContract.loopCases === 20, "Cleanup loop must contain 20 cases.");
@@ -310,6 +347,10 @@ for (const path of [
 }
 
 const brokerArchive = await readFile(join(root, "backend/app/broker/archive.py"), "utf8");
+const brokerOutputArchive = await readFile(join(root, "backend/app/broker/output_archive.py"), "utf8");
+const brokerCancellation = await readFile(join(root, "backend/app/broker/cancellation.py"), "utf8");
+const brokerDiagnostics = await readFile(join(root, "backend/app/broker/diagnostics.py"), "utf8");
+const brokerModels = await readFile(join(root, "backend/app/broker/models.py"), "utf8");
 const brokerOrchestrator = await readFile(join(root, "backend/app/broker/orchestrator.py"), "utf8");
 const implementation = [
   protocol,
@@ -318,6 +359,10 @@ const implementation = [
   errorsSource,
   await readFile(join(root, "backend/app/runtime/mock_backend.py"), "utf8"),
   brokerArchive,
+  brokerOutputArchive,
+  brokerCancellation,
+  brokerDiagnostics,
+  brokerModels,
   brokerOrchestrator,
 ].join("\n");
 for (const [label, pattern] of [
@@ -333,18 +378,31 @@ for (const [label, pattern] of [
 }
 
 requireValue(brokerArchive.includes('mode="r:"'), "Archive validator must reject compression.");
-requireValue(brokerArchive.includes("compare_digest(canonical, payload)"), "Archive validator must require canonical bytes.");
-requireValue(brokerOrchestrator.includes("list_managed(request.spec.job_id)"), "Broker must verify zero managed objects.");
+requireValue(brokerArchive.includes("compare_digest(canonical, payload)"), "Input archive validator must require canonical bytes.");
+requireValue(brokerOutputArchive.includes('mode="r:"'), "Output archive validator must reject compression.");
+requireValue(brokerOutputArchive.includes("compare_digest(canonical, payload)"), "Output archive validator must require canonical bytes.");
+requireValue(brokerOutputArchive.includes("hash-mismatch"), "Output archive validator must reject byte substitution.");
+requireValue(models.includes("class JobIdentity"), "Runtime model must define JobIdentity.");
+requireValue(models.includes('return ("tcad.job_id", self.job_id)'), "JobIdentity label drifted.");
+requireValue(protocol.includes("create_volume(self, identity: JobIdentity)"), "Volume creation must require JobIdentity.");
+requireValue(brokerOrchestrator.includes("TerminationReason.CANCELLATION"), "Broker cancellation reason drifted.");
+requireValue(brokerOrchestrator.includes("handle.job_id != identity.job_id"), "Broker must reject cross-job cancellation handles.");
+requireValue(brokerOrchestrator.includes("list_managed(identity.job_id)"), "Broker must verify zero managed objects.");
+requireValue(brokerDiagnostics.includes("field(repr=False)"), "Internal diagnostics must hide raw fields from repr.");
+requireValue(brokerDiagnostics.includes("_raw_detail"), "Internal diagnostics must retain raw detail.");
+requireValue(!brokerModels.includes('"detail":'), "Public broker dictionaries must not expose raw detail.");
 
 for (const path of [
   "docs/en/m2/README.md",
   "docs/en/m2/runtime-backend-adr.md",
   "docs/en/m2/broker-threat-model.md",
   "docs/en/m2/broker-archive-foundation.md",
+  "docs/en/m2/output-cancellation-redaction.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
+  "docs/ko/m2/output-cancellation-redaction.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

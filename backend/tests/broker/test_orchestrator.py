@@ -12,6 +12,7 @@ from backend.tests.runtime.support import (
     ARCHIVE_BYTES,
     ARCHIVE_LIMITS,
     ARTIFACT,
+    ARTIFACT_ARCHIVE,
     IMAGE,
     POLICY,
     make_result,
@@ -54,6 +55,7 @@ class BrokerOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 exit_code=0,
                 include_artifact=True,
             ),
+            ARTIFACT_ARCHIVE,
         )
         outcome = await broker.execute(BrokerRequest(make_spec(job_id), ARCHIVE_BYTES))
         self.assertEqual(outcome.state, BrokerState.SUCCEEDED)
@@ -112,6 +114,7 @@ class BrokerOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                         exit_code=0,
                         include_artifact=True,
                     ),
+                    ARTIFACT_ARCHIVE,
                 )
             elif mode == 1:
                 backend.plan_result(
@@ -139,7 +142,7 @@ class BrokerOrchestrationTests(unittest.IsolatedAsyncioTestCase):
         spec = make_spec(job_id)
         capabilities = (await backend.probe()).capabilities
         validated = POLICY.validate(spec, capabilities)
-        volume = await backend.create_volume(job_id)
+        volume = await backend.create_volume(validated.identity)
         await backend.stage_inputs(volume, validated, ARCHIVE)
         container = await backend.create_container(validated, volume)
         await backend.start(container)
@@ -160,6 +163,7 @@ class BrokerOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 exit_code=0,
                 include_artifact=True,
             ),
+            ARTIFACT_ARCHIVE,
         )
         outcome = await self.broker(backend).execute(
             BrokerRequest(make_spec(job_id), ARCHIVE_BYTES),

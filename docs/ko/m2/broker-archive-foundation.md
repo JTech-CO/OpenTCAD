@@ -29,7 +29,7 @@ API에서 broker로 전달하는 형식은 결정론적인 비압축 USTAR byte 
 1. Backend를 probe하고 unavailable 또는 degraded health를 거부합니다.
 2. Runtime object를 만들기 전에 `SandboxPolicy`와 canonical archive를 검증합니다.
 3. 승인 image를 확인하고 관리 volume 하나를 만든 뒤 검증 archive를 stage하며 container 하나를 생성, 시작, 대기합니다.
-4. 성공 terminal result에서만 정확한 output manifest를 수집합니다.
+4. 성공 terminal result에서만 신뢰되지 않은 output archive를 수집하고 정확한 canonical byte와 manifest 일치를 요구합니다.
 5. 필요하면 실행 중 container를 kill하고 container 다음 volume 순서로 제거한 뒤 job identity를 다시 조회합니다.
 6. Stable하고 redacted된 error, phase, retry, state, result, artifact, cleanup record만 반환합니다.
 
@@ -37,8 +37,8 @@ API에서 broker로 전달하는 형식은 결정론적인 비압축 USTAR byte 
 
 ## 검증된 통제
 
-의존성이 없는 suite는 악성 이름, link, device, 압축, metadata, trailing byte, 개수, 크기, hash, case collision을 검사합니다. Broker test는 성공, capability 하향, object 생성 전 invalid archive, wait 실패, 누락 artifact, 기존 running job reconciliation, 20회 혼합 반복, 의도적으로 정리를 누락하는 backend를 포함합니다. 누락 negative control은 managed object가 남으면 cleanup 성공으로 보고할 수 없음을 입증합니다.
+의존성이 없는 suite는 input/output 악성 이름, link, device, 압축, metadata, trailing byte, 개수, 크기, hash, substitution, case collision을 검사합니다. Broker test는 성공, capability 하향, object 생성 전 invalid archive, wait 실패, 누락 artifact, 기존 running job reconciliation, 20회 혼합 반복, 의도적으로 정리를 누락하는 backend를 포함합니다. 누락 negative control은 managed object가 남으면 cleanup 성공으로 보고할 수 없음을 입증합니다.
 
 ## 남은 경계
 
-Docker 또는 Podman 제품 adapter, broker service transport, runtime detection, worker integration, artifact output archive validator, durable job state, crash persistence는 아직 없습니다. 실제 runtime 작업은 M2 진입 조건과 승인된 immutable engine profile이 생길 때까지 차단합니다.
+함께 제공하는 [output, cancellation, redaction 기반](output-cancellation-redaction.md)은 artifact byte를 검증하고 cancellation identity와 공개 diagnostic을 고정합니다. Docker 또는 Podman 제품 adapter, broker service transport, runtime detection, worker integration, durable job state, crash persistence는 아직 없습니다. 실제 runtime 작업은 M2 진입 조건과 승인된 immutable engine profile이 생길 때까지 차단합니다.

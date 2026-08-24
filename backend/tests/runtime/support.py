@@ -8,6 +8,11 @@ from backend.app.broker.archive import (
     build_canonical_input_archive,
     validate_canonical_input_archive,
 )
+from backend.app.broker.output_archive import (
+    ArtifactPayload,
+    build_canonical_output_archive,
+    output_archive_limits,
+)
 from backend.app.runtime.models import (
     ArtifactRecord,
     ImageIdentity,
@@ -44,7 +49,12 @@ ARCHIVE_BYTES = build_canonical_input_archive(
     ARCHIVE_LIMITS,
 )
 ARCHIVE = validate_canonical_input_archive(ARCHIVE_BYTES, (INPUT,), ARCHIVE_LIMITS)
-ARTIFACT = ArtifactRecord(name="result.str", sha256="d" * 64, bytes=256)
+ARTIFACT_CONTENT = b"r" * 256
+ARTIFACT = ArtifactRecord(
+    name="result.str",
+    sha256=sha256(ARTIFACT_CONTENT).hexdigest(),
+    bytes=len(ARTIFACT_CONTENT),
+)
 LIMITS = ResourceLimits(
     cpu_millis=500,
     memory_bytes=67_108_864,
@@ -54,6 +64,15 @@ LIMITS = ResourceLimits(
     file_count=8,
     artifact_bytes=1_048_576,
     tmpfs_bytes=8_388_608,
+)
+ARTIFACT_ARCHIVE_LIMITS = output_archive_limits(
+    LIMITS.artifact_bytes,
+    LIMITS.file_count,
+)
+ARTIFACT_ARCHIVE = build_canonical_output_archive(
+    (ArtifactPayload(ARTIFACT.name, ARTIFACT_CONTENT),),
+    (ARTIFACT.name,),
+    ARTIFACT_ARCHIVE_LIMITS,
 )
 MAXIMUM_LIMITS = ResourceLimits(
     cpu_millis=2_000,
