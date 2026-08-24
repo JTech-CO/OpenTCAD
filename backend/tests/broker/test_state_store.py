@@ -40,6 +40,7 @@ def event(
         identity=JobIdentity(uuid_at(10_000 + job)),
         event_id=uuid_at(100_000 + event_number),
         operation_id=uuid_at(200_000 + operation),
+        operation_sequence=event_number,
         state=state,
         phase=phase,
         code=code,
@@ -96,6 +97,7 @@ class DurableStateContractTests(unittest.IsolatedAsyncioTestCase):
             identity=first_event.identity,
             event_id=first_event.event_id,
             operation_id=uuid_at(300_001),
+            operation_sequence=1,
             state=BrokerState.PREPARING,
             phase=RuntimePhase.IMAGE,
         )
@@ -215,6 +217,7 @@ class DurableStateContractTests(unittest.IsolatedAsyncioTestCase):
                 identity=public_event.identity,
                 event_id=uuid_at(100_101),
                 operation_id=uuid_at(200_101),
+                operation_sequence=1,
                 state=BrokerState.CANCELLED,
                 phase=RuntimePhase.CLEANUP,
                 cleanup_complete=False,

@@ -51,14 +51,14 @@ Signal identity는 request의 `JobIdentity`와 정확히 같아야 하며 판정
 - `append(event, expected_revision=...)`는 현재 revision을 원자적으로 비교하고 redacted event 하나를 추가합니다.
 - `scan_recoverable(after=..., limit=...)`는 시작 시 복구를 위한 제한된 정렬 scan을 제공합니다.
 
-`DurableJobEvent`에는 job UUID, event UUID, operation UUID, broker state, runtime phase, stable error code 및 retry disposition, 정규화된 backend, terminal classification, cleanup 완료 여부만 포함합니다. Raw detail, archive payload, command, secret, host path, runtime-native ID, database message는 포함하지 않습니다.
+`DurableJobEvent`에는 job UUID, event UUID, operation UUID와 양의 operation sequence, broker state, runtime phase, stable error code 및 retry disposition, 정규화된 backend, terminal classification, cleanup 완료 여부만 포함합니다. Raw detail, archive payload, command, secret, host path, runtime-native ID, database message는 포함하지 않습니다.
 
-Revision은 1부터 시작해 1씩 증가합니다. Event UUID는 idempotency key입니다. 같은 event를 다시 보내면 원래 snapshot을 반환하고 같은 UUID에 다른 내용을 사용하면 `event-conflict`로 실패합니다. 같은 expected revision에 대한 경쟁 write는 정확히 하나만 성공하고 나머지는 `revision-conflict`를 반환합니다. Transition 표는 명시적인 lifecycle 진행만 허용하고 `succeeded`, `cancelled`, `failed` 뒤의 변경을 거부합니다. Terminal event는 cleanup 완료 상태에서만 유효하므로 미완료 job은 recovery scan에 계속 나타납니다.
+Revision은 1부터 시작해 1씩 증가합니다. Event UUID는 idempotency key이며 각 `(job_id, operation_id, operation_sequence)` slot은 고유합니다. 같은 event를 다시 보내면 원래 snapshot을 반환하고 어느 identity든 다른 내용으로 재사용하면 `event-conflict`로 실패합니다. 같은 expected revision에 대한 경쟁 write는 정확히 하나만 성공하고 나머지는 `revision-conflict`를 반환합니다. Transition 표는 명시적인 lifecycle 진행만 허용하고 `succeeded`, `cancelled`, `failed` 뒤의 변경을 거부합니다. Terminal event는 cleanup 완료 상태에서만 유효하므로 미완료 job은 recovery scan에 계속 나타납니다.
 
-`InMemoryJobStateStore`는 dependency-free contract test double일 뿐입니다. Process가 끝나면 모든 data가 사라집니다. Broker와 state store는 아직 연결하지 않았고 SQLite, PostgreSQL, migration, backup, retention, restart recovery 구현도 주장하지 않습니다.
+`InMemoryJobStateStore`는 dependency-free contract test double일 뿐입니다. 별도 handle이 `InMemoryStateStoreBacking` fixture를 공유할 수 있지만 process가 끝나면 모든 data가 사라집니다. Outcome mapping, 공통 adapter conformance suite, 결정론적 mock restart recovery는 별도 문서에서 설명합니다. 실행 중 broker와 state store는 아직 연결하지 않았고 SQLite, PostgreSQL, migration, backup, retention, distributed lease, 외부 process durability 구현도 주장하지 않습니다.
 
 ## 검증과 남은 게이트
 
-Python 3.12부터 3.14까지의 suite는 test 52개를 포함합니다. 새 case는 cancellation checkpoint 11곳 전체, 잘못된 identity 및 boolean이 아닌 signal, coordinator 하나를 공유하는 동시 reconciliation 4개, 이미 사라진 runtime 응답, cancel/reconcile 수렴, 단조 증가 revision, 동일 event 재전송, 충돌 event UUID 재사용, concurrent CAS, transition 거부, terminal 불변성, recovery pagination, 저장 shape redaction을 검사합니다.
+Python 3.12부터 3.14까지의 suite는 test 67개를 포함합니다. 새 case는 cancellation checkpoint 11곳 전체, 잘못된 identity 및 boolean이 아닌 signal, coordinator 하나를 공유하는 동시 reconciliation 4개, 이미 사라진 runtime 응답, cancel/reconcile 수렴, 단조 증가 revision, 동일 event 재전송, 충돌 event UUID 재사용, concurrent CAS, transition 거부, terminal 불변성, recovery pagination, 저장 shape redaction을 검사합니다.
 
-제품 Docker 및 Podman adapter, runtime socket, broker service transport, durable storage, broker와 store 연결, distributed cleanup ownership, restart-safe cancellation, crash 주입, solver 실행은 기존 게이트에 따라 계속 차단 또는 대기 상태입니다.
+제품 Docker 및 Podman adapter, runtime socket, broker service transport, durable storage, live broker-to-store wiring, distributed cleanup ownership, 외부 process crash durability, restart-safe cancellation transport, solver 실행은 기존 게이트에 따라 계속 차단 또는 대기 상태입니다. 구현된 mock 계약은 [event mapping, adapter conformance, restart recovery](event-state-recovery.md)를 참고합니다.

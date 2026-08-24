@@ -16,15 +16,17 @@ The current backend is an engine-independent M2 runtime and mock broker foundati
 | `backend/app/broker/cancellation.py` | Typed fixed-identity cancellation request and redacted outcome |
 | `backend/app/broker/lifecycle.py` | Eleven deterministic cancellation checkpoints and the in-process signal contract |
 | `backend/app/broker/cleanup.py` | Injectable process-local job cleanup coordinator |
-| `backend/app/broker/state.py` | Durable state protocol, revision/transition rules, and non-durable memory test double |
+| `backend/app/broker/state.py` | Durable state protocol, revision/transition and operation-slot rules, and non-durable shared-backing test double |
+| `backend/app/broker/state_mapping.py` | Deterministic redacted outcome mapping and CAS batch recorder |
+| `backend/app/broker/recovery.py` | Bounded CAS claim, exact-job reconciliation, and mock crash/restart convergence |
 | `backend/app/broker/diagnostics.py` | Repr-hidden internal raw diagnostics separated from public errors |
 | `backend/app/broker/orchestrator.py` | Mock-only typed execution, phase cancellation, redacted outcome, idempotent cleanup, and reconciliation |
 | `backend/tests/runtime/` | Policy, identity, lifecycle, fault mapping, and cleanup contract tests |
-| `backend/tests/broker/` | Archive attacks, phase cancellation, redaction, cleanup concurrency, reconciliation, and durable-state interface tests |
+| `backend/tests/broker/` | Archive attacks, phase cancellation, redaction, cleanup concurrency, event mapping, common adapter conformance, reconciliation, and crash/restart contract tests |
 | `validation/manifests/m2-runtime-foundation.json` | Machine-readable gate state and frozen source evidence |
 | `tools/check-m2.mjs` | Drift, gate, scope, and hash verifier |
 
-The allowed execution dependency direction is `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec and JobIdentity -> RuntimeBackend`. Durable state remains a side boundary through `DurableJobStateStore`, not part of `RuntimeBackend`. A future runtime adapter belongs behind the runtime protocol. A future reviewed broker service is the only component allowed to own runtime access, after entry and security gates are approved.
+The allowed execution dependency direction is `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec and JobIdentity -> RuntimeBackend`. Durable state remains a side boundary through `DurableJobStateStore`, not part of `RuntimeBackend`; outcome mapping and recovery depend on that boundary without granting runtime access. A future runtime adapter belongs behind the runtime protocol. A future reviewed broker service is the only component allowed to own runtime access, after entry and security gates are approved.
 
 ## 한국어
 
@@ -42,12 +44,14 @@ The allowed execution dependency direction is `domain worker -> SandboxSpec -> S
 | `backend/app/broker/cancellation.py` | Typed 고정 identity cancellation request와 redacted outcome |
 | `backend/app/broker/lifecycle.py` | 결정론적 cancellation checkpoint 11곳과 in-process signal 계약 |
 | `backend/app/broker/cleanup.py` | 주입 가능한 process-local job cleanup coordinator |
-| `backend/app/broker/state.py` | Durable state protocol, revision 및 transition 규칙, non-durable memory test double |
+| `backend/app/broker/state.py` | Durable state protocol, revision, transition 및 operation slot 규칙, non-durable shared-backing test double |
+| `backend/app/broker/state_mapping.py` | 결정론적 redacted outcome mapping 및 CAS batch recorder |
+| `backend/app/broker/recovery.py` | Bounded CAS claim, 정확한 job reconciliation, mock crash/restart 수렴 |
 | `backend/app/broker/diagnostics.py` | 공개 error와 분리하고 repr에서 숨긴 내부 raw diagnostic |
 | `backend/app/broker/orchestrator.py` | Mock 전용 typed execution, phase cancellation, redacted outcome, idempotent cleanup, reconciliation |
 | `backend/tests/runtime/` | 정책, identity, lifecycle, 장애 mapping, 정리 계약 test |
-| `backend/tests/broker/` | Archive 공격, phase cancellation, redaction, cleanup concurrency, reconciliation, durable-state interface test |
+| `backend/tests/broker/` | Archive 공격, phase cancellation, redaction, cleanup concurrency, event mapping, 공통 adapter conformance, reconciliation, crash/restart 계약 test |
 | `validation/manifests/m2-runtime-foundation.json` | 기계 판독 게이트 상태와 고정 source 증거 |
 | `tools/check-m2.mjs` | drift, gate, 범위, hash 검증기 |
 
-허용된 execution 의존 방향은 `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec 및 JobIdentity -> RuntimeBackend`입니다. Durable state는 `RuntimeBackend` 일부가 아니라 `DurableJobStateStore`를 통한 별도 경계입니다. 향후 런타임 adapter는 runtime protocol 뒤에 있어야 합니다. 향후 검토된 broker service는 진입 및 보안 게이트 승인 후 런타임 접근을 소유할 수 있는 유일한 구성 요소입니다.
+허용된 execution 의존 방향은 `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec 및 JobIdentity -> RuntimeBackend`입니다. Durable state는 `RuntimeBackend` 일부가 아니라 `DurableJobStateStore`를 통한 별도 경계이며 outcome mapping과 recovery는 runtime 접근 권한을 부여하지 않고 이 경계에 의존합니다. 향후 런타임 adapter는 runtime protocol 뒤에 있어야 합니다. 향후 검토된 broker service는 진입 및 보안 게이트 승인 후 런타임 접근을 소유할 수 있는 유일한 구성 요소입니다.

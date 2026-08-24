@@ -28,8 +28,8 @@ The browser, API, worker, input archive, solver deck, container output, runtime 
 | Archive traversal or special file | Reject absolute paths, parent traversal, links, devices, duplicate normalized names, count overflow, size overflow, and byte substitution before extraction | Canonical uncompressed input and output USTAR streams are validated in memory; product runtime transfer remains pending |
 | Resource or output denial of service | Fixed CPU, memory, PID, time, output, file-count, artifact, and tmpfs ceilings | Model and policy enforce declared ceilings; runtime enforcement pending |
 | Cross-job access | Server UUID labels, opaque handles, exact job ownership, managed-volume isolation, and exact artifact manifest | Mock lifecycle enforces ownership; runtime isolation pending |
-| Stale state or orphan reuse | Reject existing labelled objects, use exact generated identities, serialize cleanup by job, cleanup container before volume, accept already-absent convergence, and query zero orphans | Process-local leases, concurrent mock reconciliation, and exact cancellation query exist; distributed ownership and durable restart recovery remain pending |
-| State confusion and unsafe retry | Persist redacted events with atomic revision CAS, event idempotency, legal transitions, terminal immutability, and bounded recovery scans | Interface and in-memory contract tests exist; durable adapter and broker wiring remain pending |
+| Stale state or orphan reuse | Reject existing labelled objects, use exact generated identities, serialize cleanup by job, cleanup container before volume, accept already-absent convergence, and query zero orphans | Process-local leases, concurrent mock reconciliation, exact cancellation query, and four deterministic restart boundaries exist; distributed ownership and durable external-process recovery remain pending |
+| State confusion and unsafe retry | Map contiguous broker events to deterministic event and operation slots; persist with atomic revision CAS, legal transitions, terminal immutability, and bounded recovery scans | Mapping, partial replay, common adapter conformance, and mock recovery tests exist; a durable adapter and live broker wiring remain pending |
 | Diagnostic disclosure | Redact secrets and host paths; expose normalized capability and error records only | Public events omit raw detail and unrecognized backend values; raw detail exists only in repr-hidden internal diagnostics |
 | Backend semantic drift | Map policy separately for Docker and Podman and prove equivalent controls with contract and fault tests | Capability vocabulary exists; adapters are blocked |
 
@@ -49,7 +49,7 @@ The browser, API, worker, input archive, solver deck, container output, runtime 
 - Forged image responses, missing capabilities, unexpected runtime versions, rootless drift, and Docker/Podman flag differences.
 - Cancellation during each lifecycle phase, broker restart, runtime restart, host restart, partial cleanup, stale labels, and concurrent cleanup.
 - Output flooding, artifact substitution, cross-job handle reuse, duplicate job submission, and diagnostic secret injection.
-- A 20-case mixed loop and crash-recovery matrix proving zero labelled containers and volumes.
+- The present 20-case mixed loop plus deterministic in-memory crash boundaries; a separate durable database and process-restart matrix must still prove zero labelled containers and volumes.
 
 ## Approval gate
 

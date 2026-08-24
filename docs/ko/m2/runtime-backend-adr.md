@@ -53,7 +53,7 @@ Runtime 자동 탐지는 RUN-006으로 미룹니다. 향후 결정은 결정론�
 - Socket을 추가하기 전에 strict memory backend로 broker를 시험할 수 있습니다.
 - 제품 adapter는 lifecycle 및 error test를 공유하지만 argument 또는 API 매핑은 분리합니다.
 - 새 capability field에는 contract 및 policy 검토가 필요합니다.
-- Canonical input/output archive 검증, 고정 job identity, phase 지정 cancellation, process-local cleanup 직렬화, 공개/내부 diagnostic 분리, durable-state interface를 mock broker 기반에 구현했으며 제품 runtime transfer, durable adapter, broker와 store 연결은 별도 gate 상태 책임으로 남습니다.
+- Canonical input/output archive 검증, 고정 job identity, phase 지정 cancellation, process-local cleanup 직렬화, 공개/내부 diagnostic 분리, 결정론적 outcome mapping, 공통 adapter conformance suite, durable-state interface, mock restart recovery를 broker 기반에 구현했으며 제품 runtime transfer, durable adapter, 외부 process durability, live broker-to-store wiring은 별도 gate 상태 책임으로 남습니다.
 - 필수 검토와 M2 진입 증거가 생기기 전에는 이 제안을 승인 상태로 바꿀 수 없습니다.
 
 ## Rollback
