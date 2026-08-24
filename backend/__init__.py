@@ -1,0 +1,1 @@
+"""OpenTCAD backend contract foundation."""

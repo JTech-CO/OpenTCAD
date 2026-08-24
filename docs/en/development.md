@@ -6,9 +6,10 @@
 
 - Node.js 22 LTS or 24 LTS
 - npm 10 or newer
+- Python 3.12 through 3.14 for the M2 contract tests
 - Git
 
-No container runtime, Python service, database, or solver is required for the current static foundation.
+No container runtime, Python service, database, or solver is required. Python runs only the dependency-free M2 contract tests.
 
 ## Setup and commands
 
@@ -22,6 +23,7 @@ The development server uses Vite. Production checks are:
 ```bash
 npm run lint
 npm run test
+npm run check:m2
 npm run build
 ```
 

@@ -68,11 +68,11 @@ frontend/                 Static-compatible React application
 docs/en/ and docs/ko/     Paired product and engineering documentation
 .github/workflows/        CI and GitHub Pages deployment
 
-backend/app/runtime/      Runtime protocol, policy, detection, adapters (planned)
+backend/app/runtime/      Gated protocol, policy, stable errors, strict mock
 backend/app/broker/       Allowlist, lifecycle, cleanup, diagnostics (planned)
 packaging/compose/        Local/shared/server profiles (planned)
 packaging/launcher/       PowerShell and POSIX launcher (planned)
-validation/               Golden corpus and comparators (planned)
+validation/               M0/M1 records, comparators, and gated M2 manifest
 ```
 
-The current foundation intentionally does not add placeholder runtime code that could be mistaken for a secure implementation. Runtime work begins only after license and numerical-baseline gates are satisfied.
+The current `backend/app/runtime/` slice is a proposed contract surface and strict in-memory test double only. It invokes no process, runtime, socket, or solver. Product adapters, detection, broker orchestration, and worker integration remain blocked until the recorded entry and security gates are satisfied.

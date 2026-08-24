@@ -19,12 +19,14 @@
     "observe:oci-faults": "node tools/observe-oci-fault-matrix.mjs",
     "prepare:base001-image": "node tools/prepare-reference-image-build.mjs",
     "test:validation": "node --test validation/baseline/observation.test.mjs validation/baseline/reference-image-build.test.mjs validation/comparators/comparators.test.mjs validation/faults/oci-fault-observation.test.mjs validation/faults/supervisor.test.mjs",
-    "test": "npm run test:validation && npm run test --workspace @opentcad/web",
+    "test": "npm run test:validation && npm run test:runtime && npm run test --workspace @opentcad/web",
     "coverage": "npm run coverage --workspace @opentcad/web",
     "check:planning": "node tools/check-planning-bundle.mjs",
     "check:m0": "node tools/check-m0.mjs",
     "check:m1": "node tools/check-m1.mjs",
     "check:ko-copy": "node tools/check-korean-punctuation.mjs",
-    "check": "npm run check:planning && npm run check:m0 && npm run check:m1 && npm run check:ko-copy && npm run lint && npm run test && npm run build"
+    "check": "npm run check:planning && npm run check:m0 && npm run check:m1 && npm run check:m2 && npm run check:ko-copy && npm run lint && npm run test && npm run build",
+    "test:runtime": "node tools/run-python-tests.mjs",
+    "check:m2": "node tools/check-m2.mjs"
   }
 }

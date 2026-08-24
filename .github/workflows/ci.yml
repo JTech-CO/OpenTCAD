@@ -33,11 +33,16 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Use Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
       - name: Install locked dependencies
         run: npm ci
 
       - name: Check planning and milestone records
-        run: npm run check:planning && npm run check:m0 && npm run check:m1
+        run: npm run check:planning && npm run check:m0 && npm run check:m1 && npm run check:m2
 
       - name: Check Korean punctuation
         run: npm run check:ko-copy
