@@ -15,6 +15,7 @@ class ErrorCode(StrEnum):
     IMAGE_NOT_APPROVED = "image-not-approved"
     IMAGE_IDENTITY_MISMATCH = "image-identity-mismatch"
     INVALID_SPEC = "invalid-spec"
+    IDENTITY_MISMATCH = "identity-mismatch"
     VOLUME_NOT_FOUND = "volume-not-found"
     CONTAINER_NOT_FOUND = "container-not-found"
     INVALID_STATE = "invalid-state"
@@ -22,8 +23,10 @@ class ErrorCode(StrEnum):
     START_FAILED = "start-failed"
     WAIT_FAILED = "wait-failed"
     KILL_FAILED = "kill-failed"
+    CANCELLATION_REJECTED = "cancellation-rejected"
     CLEANUP_FAILED = "cleanup-failed"
     INPUT_ARCHIVE_REJECTED = "input-archive-rejected"
+    OUTPUT_ARCHIVE_REJECTED = "output-archive-rejected"
     ARTIFACT_REJECTED = "artifact-rejected"
 
 

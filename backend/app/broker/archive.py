@@ -39,7 +39,7 @@ class ArchiveLimits:
 
     def __post_init__(self) -> None:
         values = (
-            ("max_archive_bytes", self.max_archive_bytes, 10_240, 1_099_511_627_776),
+            ("max_archive_bytes", self.max_archive_bytes, 10_240, 1_100_000_000_000),
             ("max_file_count", self.max_file_count, 1, 100_000),
             ("max_total_bytes", self.max_total_bytes, 1, 1_099_511_627_776),
         )

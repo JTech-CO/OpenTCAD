@@ -8,6 +8,7 @@ from backend.app.runtime.mock_backend import full_mock_capabilities
 from backend.app.runtime.models import (
     ImageIdentity,
     InputFile,
+    JobIdentity,
     ResourceLimits,
     SandboxSpec,
     ValidatedSandboxSpec,
@@ -104,6 +105,7 @@ class SandboxPolicyTests(unittest.TestCase):
                 "m2-contract-v1",
                 "test-entrypoint",
                 (),
+                JobIdentity(JOB_ID),
                 _marker=object(),
             )
         self.assertEqual(context.exception.code, ErrorCode.INVALID_SPEC)

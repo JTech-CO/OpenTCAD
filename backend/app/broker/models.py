@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from backend.app.runtime.errors import (
     ErrorCode,
@@ -11,7 +12,14 @@ from backend.app.runtime.errors import (
     RuntimeBackendError,
     RuntimePhase,
 )
-from backend.app.runtime.models import ArtifactRecord, RunResult, SandboxSpec, TerminalClassification
+from backend.app.runtime.models import (
+    ArtifactRecord,
+    RunResult,
+    RuntimeKind,
+    SandboxSpec,
+    TerminalClassification,
+    ValidatedArtifactArchive,
+)
 
 
 def _invalid(detail: str) -> None:
@@ -27,8 +35,10 @@ class BrokerState(StrEnum):
     PREPARING = "preparing"
     RUNNING = "running"
     COLLECTING = "collecting"
+    CANCELLING = "cancelling"
     CLEANING = "cleaning"
     SUCCEEDED = "succeeded"
+    CANCELLED = "cancelled"
     FAILED = "failed"
 
 
@@ -58,13 +68,23 @@ class BrokerError:
             _invalid("broker_error.phase:enum-required")
         if not isinstance(self.retry, RetryDisposition):
             _invalid("broker_error.retry:enum-required")
-        if self.backend is not None and not isinstance(self.backend, str):
-            _invalid("broker_error.backend:string-or-null-required")
+        if self.backend is not None and self.backend not in {item.value for item in RuntimeKind}:
+            _invalid("broker_error.backend:normalized-runtime-required")
 
     @classmethod
     def from_exception(cls, error: RuntimeBackendError) -> BrokerError:
         record = error.record
-        return cls(record.code, record.phase, record.retry, record.backend)
+        allowed = {item.value for item in RuntimeKind}
+        backend = record.backend if record.backend in allowed else None
+        return cls(record.code, record.phase, record.retry, backend)
+
+    def as_dict(self) -> dict[str, str | None]:
+        return {
+            "code": self.code.value,
+            "phase": self.phase.value,
+            "retry": self.retry.value,
+            "backend": self.backend,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +104,22 @@ class BrokerEvent:
         if self.code is not None and not isinstance(self.code, ErrorCode):
             _invalid("broker_event.code:enum-or-null-required")
 
+    def as_dict(self) -> dict[str, int | str | None]:
+        return {
+            "sequence": self.sequence,
+            "state": self.state.value,
+            "phase": self.phase.value,
+            "code": self.code.value if self.code is not None else None,
+        }
+
+
+def _artifact_dict(artifact: ArtifactRecord) -> dict[str, str | int]:
+    return {
+        "name": artifact.name,
+        "sha256": artifact.sha256,
+        "bytes": artifact.bytes,
+    }
+
 
 @dataclass(frozen=True, slots=True)
 class BrokerOutcome:
@@ -91,6 +127,7 @@ class BrokerOutcome:
     state: BrokerState
     result: RunResult | None
     artifacts: tuple[ArtifactRecord, ...]
+    artifact_archive: ValidatedArtifactArchive | None
     error: BrokerError | None
     cleanup_error: BrokerError | None
     cleanup_complete: bool
@@ -109,6 +146,13 @@ class BrokerOutcome:
             _invalid("broker_outcome.events:records-required")
         if self.result is not None and not isinstance(self.result, RunResult):
             _invalid("broker_outcome.result:run-result-or-null-required")
+        if self.artifact_archive is not None and not isinstance(
+            self.artifact_archive,
+            ValidatedArtifactArchive,
+        ):
+            _invalid("broker_outcome.artifact_archive:validated-or-null-required")
+        if self.artifact_archive is not None and artifacts != self.artifact_archive.manifest:
+            _invalid("broker_outcome.artifacts:archive-manifest-mismatch")
         if self.error is not None and not isinstance(self.error, BrokerError):
             _invalid("broker_outcome.error:broker-error-or-null-required")
         if self.cleanup_error is not None and not isinstance(self.cleanup_error, BrokerError):
@@ -118,11 +162,36 @@ class BrokerOutcome:
         if self.state is BrokerState.SUCCEEDED and (
             self.result is None
             or self.result.classification is not TerminalClassification.SUCCEEDED
+            or self.artifact_archive is None
             or self.error is not None
             or self.cleanup_error is not None
             or not self.cleanup_complete
         ):
             _invalid("broker_outcome:success-invariant")
+
+    def as_dict(self) -> dict[str, Any]:
+        archive = self.artifact_archive
+        result = self.result
+        return {
+            "job_id": self.job_id,
+            "state": self.state.value,
+            "classification": result.classification.value if result is not None else None,
+            "artifacts": [_artifact_dict(item) for item in self.artifacts],
+            "artifact_archive": (
+                {
+                    "sha256": archive.archive_sha256,
+                    "bytes": archive.bytes,
+                }
+                if archive is not None
+                else None
+            ),
+            "error": self.error.as_dict() if self.error is not None else None,
+            "cleanup_error": (
+                self.cleanup_error.as_dict() if self.cleanup_error is not None else None
+            ),
+            "cleanup_complete": self.cleanup_complete,
+            "events": [event.as_dict() for event in self.events],
+        }
 
 
 @dataclass(frozen=True, slots=True)

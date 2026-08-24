@@ -15,7 +15,7 @@ The project foundation is complete, **M0 is active**, and engine-independent M1 
 - a static GitHub Pages build that never executes submitted input;
 - local development and preview servers that work anywhere Node.js runs;
 - CI, accessibility-oriented interaction states, and the architecture boundary for the future sandboxed local engine;
-- a runtime-neutral `RuntimeBackend` contract, fail-closed policy validator, and strict in-memory mock that invoke no runtime or solver;
+- a runtime-neutral `RuntimeBackend` contract, fail-closed policy validator, canonical input/output archives, fixed cancellation identity, redacted public events, and a strict in-memory mock that invoke no runtime or solver;
 - MIT licensing for original OpenTCAD code, with third-party simulators kept outside that license boundary.
 
 The static site is a product preview, not a browser-based solver. Real SUPREM-IV.GS and DEVSIM jobs will run only through the planned local API → worker → sandbox broker → OCI runtime path. The browser will never receive a Docker or Podman socket.
@@ -45,7 +45,7 @@ npm run check
 npm run coverage
 ```
 
-This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement. A separate non-promoting [OCI fault matrix](docs/en/m0/oci-fault-matrix.md) observed the same controls on Docker Desktop and WSL2 rootless Podman with 20-case mixed loops and zero labelled orphans. It uses a fixed non-solver image and does not qualify a product adapter, solver, release image, or host. The gated [M2 runtime and mock broker foundation](docs/en/m2/README.md) now freezes typed lifecycle, capability, error, policy, canonical input-archive, reconciliation, and mock-cleanup semantics without a broker service, product adapter, runtime detection, worker integration, or socket access. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
+This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement. A separate non-promoting [OCI fault matrix](docs/en/m0/oci-fault-matrix.md) observed the same controls on Docker Desktop and WSL2 rootless Podman with 20-case mixed loops and zero labelled orphans. It uses a fixed non-solver image and does not qualify a product adapter, solver, release image, or host. The gated [M2 runtime and mock broker foundation](docs/en/m2/README.md) now freezes typed lifecycle, capability, error, policy, canonical input/output-archive, cancellation identity, redaction, reconciliation, and mock-cleanup semantics without a broker service, product adapter, runtime detection, worker integration, or socket access. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
 
 ## Documentation
 

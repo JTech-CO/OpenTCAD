@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .errors import ErrorCode, RuntimeBackendError, RuntimePhase
 from .models import (
     ImageIdentity,
+    JobIdentity,
     JobKind,
     ResourceLimits,
     RuntimeCapabilities,
@@ -73,6 +74,11 @@ class EngineProfile:
             _require_file_name(name, f"engine_profile.expected_outputs[{index}]")
         if len(set(inputs)) != len(inputs) or len(set(outputs)) != len(outputs):
             _reject(ErrorCode.INVALID_SPEC, "engine_profile:duplicate-file-name")
+        if (
+            len({name.casefold() for name in inputs}) != len(inputs)
+            or len({name.casefold() for name in outputs}) != len(outputs)
+        ):
+            _reject(ErrorCode.INVALID_SPEC, "engine_profile:file-name-case-collision")
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,8 +153,9 @@ class SandboxPolicy:
         if exceeded:
             _reject(ErrorCode.INVALID_SPEC, "limits:" + ",".join(exceeded))
 
+        identity = JobIdentity(spec.job_id)
         labels = (
-            ("tcad.job_id", spec.job_id),
+            identity.label,
             ("tcad.kind", spec.kind.value),
             ("tcad.version", self.version),
         )
@@ -157,4 +164,5 @@ class SandboxPolicy:
             self.version,
             profile.entrypoint_id,
             labels,
+            identity,
         )

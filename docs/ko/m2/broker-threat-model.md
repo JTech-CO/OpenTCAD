@@ -25,12 +25,12 @@
 | 호스트 경로 또는 마운트 탈출 | 브로커만 관리 볼륨을 만들고 요청에는 호스트 경로, bind mount, device, 런타임 소켓이 없음 | 모델 형태로 강제 |
 | 런타임 소켓 노출 | 별도 검토된 브로커 프로세스만 소켓을 받고 브라우저, API, 워커에는 전달하지 않음 | 아키텍처 규칙만 있으며 브로커는 없음 |
 | capability 또는 정책 하향 | 모든 필수 capability를 명시적으로 보고하고 누락되거나 알 수 없는 capability가 있으면 요청 거부 | 정책 테스트로 강제 |
-| 아카이브 경로 탈출 또는 특수 파일 | 압축 해제 전에 절대 경로, 상위 경로, 링크, device, 정규화 후 중복 이름, 파일 수 및 크기 초과를 거부 | Canonical 비압축 USTAR를 memory에서 검증하며 runtime transfer와 output archive는 대기 |
+| 아카이브 경로 탈출 또는 특수 파일 | 압축 해제 전에 절대 경로, 상위 경로, 링크, device, 정규화 후 중복 이름, 파일 수 및 크기 초과, byte substitution을 거부 | Canonical 비압축 input/output USTAR stream을 memory에서 검증하며 제품 runtime transfer는 대기 |
 | 리소스 또는 출력 서비스 거부 | CPU, 메모리, PID, 시간, 출력, 파일 수, 산출물, tmpfs 상한 고정 | 모델과 정책이 선언 상한을 강제하며 런타임 집행은 대기 |
 | 잡 간 접근 | 서버 UUID label, opaque handle, 정확한 잡 소유권, 관리 볼륨 격리, 정확한 산출물 manifest | mock lifecycle이 소유권을 강제하며 런타임 격리는 대기 |
-| 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 컨테이너 다음 볼륨 순서로 정리하고 orphan 0을 조회 | stable stale-state error와 mock 정리는 있으며 crash reconciliation은 대기 |
+| 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 컨테이너 다음 볼륨 순서로 정리하고 orphan 0을 조회 | Stable stale-state error, mock cleanup, reconciliation, 정확한 cancellation query가 있으며 durable restart recovery는 대기 |
 | 상태 혼동과 안전하지 않은 재시도 | stable phase, error code, retry class, backend identity, terminal classification, 불변 provenance를 저장 | stable record는 있으며 영속 상태 머신은 대기 |
-| 진단 정보 노출 | secret과 호스트 경로를 제거하고 정규화된 capability와 error record만 노출 | 계약은 호스트 경로를 제외하며 redaction pipeline은 대기 |
+| 진단 정보 노출 | secret과 호스트 경로를 제거하고 정규화된 capability와 error record만 노출 | 공개 event는 raw detail과 비정규 backend 값을 제외하며 raw detail은 repr에서 숨긴 내부 diagnostic에만 존재 |
 | backend 의미 차이 | Docker와 Podman 정책을 각각 매핑하고 계약 및 장애 테스트로 동등한 통제를 입증 | capability 어휘는 있으며 adapter는 차단 |
 
 ## 보안 불변식
@@ -53,7 +53,7 @@
 
 ## 승인 게이트
 
-승인하려면 M1 corpus green, runtime ADR 승인, 담당자가 명시된 보안 검토, runtime별 policy trace, durable crash reconciliation 증거, 현재 추가된 archive validator 및 mock broker state machine test 검토가 필요합니다. 그전까지 RUN-004와 RUN-005는 차단되며 이 초안은 런타임 접근을 허가하지 않습니다.
+승인하려면 M1 corpus green, runtime ADR 승인, 담당자가 명시된 보안 검토, runtime별 policy trace, durable crash reconciliation 증거, 현재 추가된 input/output archive, identity, cancellation, redaction, mock broker state machine test 검토가 필요합니다. 그전까지 RUN-004와 RUN-005는 차단되며 이 초안은 런타임 접근을 허가하지 않습니다.
 
 ## 롤백
 

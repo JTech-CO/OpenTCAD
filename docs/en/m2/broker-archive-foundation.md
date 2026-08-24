@@ -29,7 +29,7 @@ Validation uses memory only. `tarfile.extract()` and `extractall()` are never ca
 1. Probe the backend and reject unavailable or degraded health.
 2. Apply `SandboxPolicy` and validate the canonical archive before creating a runtime object.
 3. Ensure the approved image, create one managed volume, stage the validated archive, create and start one container, and wait.
-4. Collect the exact output manifest only for a successful terminal result.
+4. Collect an untrusted output archive only for a successful terminal result and require exact canonical bytes plus manifest agreement.
 5. Kill a still-running container when required, remove the container before the volume, and query the job identity again.
 6. Return only stable, redacted error, phase, retry, state, result, artifact, and cleanup records.
 
@@ -37,8 +37,8 @@ Validation uses memory only. `tarfile.extract()` and `extractall()` are never ca
 
 ## Verified controls
 
-The dependency-free suite includes malicious-name, link, device, compression, metadata, trailing-byte, count, size, hash, and case-collision controls. Broker tests cover success, capability downgrade, invalid archive before allocation, wait failure, missing artifact, stale running-job reconciliation, a 20-case mixed loop, and a deliberately leaky backend. The leaky negative control proves that residual managed objects cannot be reported as successful cleanup.
+The dependency-free suite includes input and output malicious-name, link, device, compression, metadata, trailing-byte, count, size, hash, substitution, and case-collision controls. Broker tests cover success, capability downgrade, invalid archive before allocation, wait failure, missing artifact, stale running-job reconciliation, a 20-case mixed loop, and a deliberately leaky backend. The leaky negative control proves that residual managed objects cannot be reported as successful cleanup.
 
 ## Remaining boundary
 
-There is still no Docker or Podman product adapter, broker service transport, runtime detection, worker integration, artifact-output archive validator, durable job state, or crash persistence. Real runtime work remains blocked by the M2 entry conditions and an approved immutable engine profile.
+The companion [output, cancellation, and redaction foundation](output-cancellation-redaction.md) now validates artifact bytes and fixes cancellation identity and public diagnostics. There is still no Docker or Podman product adapter, broker service transport, runtime detection, worker integration, durable job state, or crash persistence. Real runtime work remains blocked by the M2 entry conditions and an approved immutable engine profile.

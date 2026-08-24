@@ -5,13 +5,21 @@ import unittest
 from backend.app.runtime.errors import ErrorCode, RuntimeBackendError
 from backend.app.runtime.mock_backend import MockRuntimeBackend, full_mock_capabilities
 from backend.app.runtime.models import (
+    JobIdentity,
     RuntimeHealth,
     TerminalClassification,
     TerminationReason,
 )
 from backend.app.runtime.protocol import RuntimeBackend
 
-from .support import ARCHIVE, ARTIFACT, IMAGE, POLICY, make_result, make_spec
+from .support import (
+    ARCHIVE,
+    ARTIFACT_ARCHIVE,
+    IMAGE,
+    POLICY,
+    make_result,
+    make_spec,
+)
 
 
 class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
@@ -26,7 +34,7 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
         spec = make_spec(job_id)
         validated = POLICY.validate(spec, (await backend.probe()).capabilities)
         await backend.ensure_image(IMAGE)
-        volume = await backend.create_volume(job_id)
+        volume = await backend.create_volume(JobIdentity(job_id))
         await backend.stage_inputs(volume, validated, ARCHIVE)
         container = await backend.create_container(validated, volume)
         return validated, volume, container
@@ -45,11 +53,12 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
                 exit_code=0,
                 include_artifact=True,
             ),
+            ARTIFACT_ARCHIVE,
         )
         await backend.start(container)
         result = await backend.wait(container)
         self.assertEqual(result.classification, TerminalClassification.SUCCEEDED)
-        self.assertEqual(await backend.collect_artifacts(container), (ARTIFACT,))
+        self.assertEqual(await backend.collect_artifacts(container), ARTIFACT_ARCHIVE)
         await backend.remove_container(container)
         await backend.remove_volume(volume)
         managed = await backend.list_managed(job_id)
@@ -74,7 +83,7 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
         backend = self.backend()
         job_id = "00000000-0000-4000-8000-000000000011"
         raw = make_spec(job_id)
-        volume = await backend.create_volume(job_id)
+        volume = await backend.create_volume(JobIdentity(job_id))
         with self.assertRaises(RuntimeBackendError) as unvalidated:
             await backend.stage_inputs(volume, raw, ARCHIVE)  # type: ignore[arg-type]
         self.assertEqual(unvalidated.exception.code, ErrorCode.INVALID_SPEC)
@@ -96,7 +105,9 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(probe.health, RuntimeHealth.UNAVAILABLE)
         self.assertIsNone(probe.capabilities)
         with self.assertRaises(RuntimeBackendError) as context:
-            await backend.create_volume("00000000-0000-4000-8000-000000000012")
+            await backend.create_volume(
+                JobIdentity("00000000-0000-4000-8000-000000000012"),
+            )
         self.assertEqual(context.exception.code, ErrorCode.RUNTIME_UNAVAILABLE)
         self.assertEqual(context.exception.as_dict()["retry"], "infrastructure")
         self.assertEqual(str(context.exception), "runtime-unavailable:volume")
@@ -134,10 +145,11 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
                         exit_code=0,
                         include_artifact=True,
                     ),
+                    ARTIFACT_ARCHIVE,
                 )
                 await backend.start(container)
                 await backend.wait(container)
-                self.assertEqual(await backend.collect_artifacts(container), (ARTIFACT,))
+                self.assertEqual(await backend.collect_artifacts(container), ARTIFACT_ARCHIVE)
             elif mode == 1:
                 backend.plan_result(
                     job_id,

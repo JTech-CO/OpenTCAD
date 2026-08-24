@@ -15,7 +15,9 @@ from .models import (
     ArtifactRecord,
     ContainerHandle,
     ImageIdentity,
+    JobIdentity,
     ManagedObjects,
+    RawArtifactArchive,
     RunResult,
     RuntimeCapabilities,
     RuntimeHealth,
@@ -99,15 +101,38 @@ class MockRuntimeBackend:
         self._volumes: dict[str, _MockVolume] = {}
         self._containers: dict[str, _MockContainer] = {}
         self._planned_results: dict[str, RunResult] = {}
-        self._next_container = 1
+        self._planned_artifact_archives: dict[str, RawArtifactArchive] = {}
 
     @property
     def name(self) -> RuntimeKind:
         return RuntimeKind.MOCK
 
-    def plan_result(self, job_id: str, result: RunResult) -> None:
+    def plan_result(
+        self,
+        job_id: str,
+        result: RunResult,
+        artifact_archive: RawArtifactArchive | None = None,
+    ) -> None:
         _require_uuid(job_id, "mock.plan_result.job_id")
+        if not isinstance(result, RunResult):
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.VALIDATE,
+                backend=self.name.value,
+                detail="mock.plan_result:run-result-required",
+            )
+        if artifact_archive is not None and not isinstance(artifact_archive, RawArtifactArchive):
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.VALIDATE,
+                backend=self.name.value,
+                detail="mock.plan_result:raw-artifact-archive-required",
+            )
         self._planned_results[job_id] = result
+        if artifact_archive is None:
+            self._planned_artifact_archives.pop(job_id, None)
+        else:
+            self._planned_artifact_archives[job_id] = artifact_archive
 
     def _require_available(self, phase: RuntimePhase) -> None:
         if not self._available:
@@ -186,10 +211,16 @@ class MockRuntimeBackend:
     async def ensure_image(self, image: ImageIdentity) -> ImageIdentity:
         return await self.inspect_image(image)
 
-    async def create_volume(self, job_id: str) -> VolumeHandle:
+    async def create_volume(self, identity: JobIdentity) -> VolumeHandle:
         self._require_available(RuntimePhase.VOLUME)
-        _require_uuid(job_id, "volume.job_id")
-        opaque_id = f"mock-volume-{job_id}"
+        if not isinstance(identity, JobIdentity):
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.VOLUME,
+                backend=self.name.value,
+                detail="job-identity-required",
+            )
+        opaque_id = identity.volume_name
         if opaque_id in self._volumes:
             raise RuntimeBackendError(
                 ErrorCode.STALE_STATE,
@@ -197,7 +228,7 @@ class MockRuntimeBackend:
                 retry=RetryDisposition.INFRASTRUCTURE,
                 backend=self.name.value,
             )
-        handle = VolumeHandle(self.name, opaque_id, job_id)
+        handle = VolumeHandle(self.name, opaque_id, identity.job_id)
         self._volumes[opaque_id] = _MockVolume(handle)
         return handle
 
@@ -273,8 +304,14 @@ class MockRuntimeBackend:
                 retry=RetryDisposition.INFRASTRUCTURE,
                 backend=self.name.value,
             )
-        opaque_id = f"mock-container-{self._next_container:04d}"
-        self._next_container += 1
+        opaque_id = spec.identity.object_name
+        if opaque_id in self._containers:
+            raise RuntimeBackendError(
+                ErrorCode.STALE_STATE,
+                RuntimePhase.CREATE,
+                retry=RetryDisposition.INFRASTRUCTURE,
+                backend=self.name.value,
+            )
         handle = ContainerHandle(self.name, opaque_id, spec.spec.job_id)
         self._containers[opaque_id] = _MockContainer(handle, volume, spec)
         return handle
@@ -360,7 +397,7 @@ class MockRuntimeBackend:
     async def collect_artifacts(
         self,
         container: ContainerHandle,
-    ) -> tuple[ArtifactRecord, ...]:
+    ) -> RawArtifactArchive:
         self._require_available(RuntimePhase.ARTIFACT)
         managed = self._container(container, RuntimePhase.ARTIFACT)
         if managed.state != "exited" or managed.result is None:
@@ -382,7 +419,15 @@ class MockRuntimeBackend:
                 backend=self.name.value,
                 detail="artifact-limit-exceeded",
             )
-        return artifacts
+        archive = self._planned_artifact_archives.pop(container.job_id, None)
+        if archive is None:
+            raise RuntimeBackendError(
+                ErrorCode.ARTIFACT_REJECTED,
+                RuntimePhase.ARTIFACT,
+                backend=self.name.value,
+                detail="artifact-archive-missing",
+            )
+        return archive
 
     async def remove_container(self, container: ContainerHandle) -> None:
         self._require_available(RuntimePhase.CLEANUP)
@@ -390,6 +435,8 @@ class MockRuntimeBackend:
         if managed.state == "running":
             raise self._invalid_state(RuntimePhase.CLEANUP, "running-container")
         del self._containers[container.opaque_id]
+        self._planned_results.pop(container.job_id, None)
+        self._planned_artifact_archives.pop(container.job_id, None)
 
     async def remove_volume(self, volume: VolumeHandle) -> None:
         self._require_available(RuntimePhase.CLEANUP)

@@ -69,10 +69,10 @@ docs/en/ 및 docs/ko/      한·영 쌍으로 관리하는 제품·엔지니어�
 .github/workflows/        CI 및 GitHub Pages 배포
 
 backend/app/runtime/      Gate 상태 계약, 정책, stable error, strict mock
-backend/app/broker/       Gate 상태 canonical archive 및 mock orchestration library
+backend/app/broker/       Gate 상태 input/output archive, cancellation, redaction, mock orchestration
 packaging/compose/        local/shared/server 프로필(예정)
 packaging/launcher/       PowerShell 및 POSIX launcher(예정)
 validation/               M0/M1 기록, comparator, gate 상태 M2 manifest
 ```
 
-현재 `backend/app/runtime/` 범위는 검토용 계약 표면과 엄격한 memory 기반 test double뿐입니다. Process, runtime, socket, solver를 호출하지 않습니다. 제품 adapter, detection, broker service transport, worker integration은 기록된 진입 및 보안 게이트를 충족할 때까지 차단합니다.
+현재 `backend/app/runtime/` 및 `backend/app/broker/` 범위는 검토용 계약 표면, canonical byte validator, 엄격한 memory 기반 test double뿐입니다. Process, runtime, socket, solver를 호출하지 않습니다. 제품 adapter, detection, broker service transport, worker integration은 기록된 진입 및 보안 게이트를 충족할 때까지 차단합니다.
