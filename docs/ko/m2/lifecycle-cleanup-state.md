@@ -4,9 +4,9 @@
 
 - 상태: `gated-active`, mock 전용
 - 작업 항목: BRK-006 및 BRK-007 계약 확장
-- 제품 runtime 및 durable database 접근: 허용하지 않음
+- 제품 runtime 및 제품 state-store 활성화: 허용하지 않음
 
-이 범위는 내부 mock broker 주위에 결정론적 cancellation 및 복구 연결부를 정의합니다. HTTP 또는 IPC service, database, subprocess, solver, 제품 runtime adapter, host 압축 해제, runtime socket 접근은 추가하지 않습니다.
+이 계약은 내부 mock broker 주위에 결정론적 cancellation 및 복구 연결부를 정의합니다. HTTP 또는 IPC service, solver, 제품 runtime adapter, host 압축 해제, runtime socket 접근은 추가하지 않습니다. 함께 제공하는 비활성 SQLite 후보는 제품 권한을 부여하지 않고 표준 library database와 test 전용 child process를 사용합니다.
 
 ## Lifecycle cancellation checkpoint
 
@@ -45,7 +45,7 @@ Signal identity는 request의 `JobIdentity`와 정확히 같아야 하며 판정
 
 ## Durable state interface
 
-`DurableJobStateStore`는 향후 database adapter를 위한 비동기 operation 세 개를 정의합니다.
+`DurableJobStateStore`는 memory double과 SQLite 후보가 공유하는 비동기 operation 세 개를 정의합니다.
 
 - `load(identity)`는 최신 불변 snapshot을 조회합니다.
 - `append(event, expected_revision=...)`는 현재 revision을 원자적으로 비교하고 redacted event 하나를 추가합니다.
@@ -55,10 +55,10 @@ Signal identity는 request의 `JobIdentity`와 정확히 같아야 하며 판정
 
 Revision은 1부터 시작해 1씩 증가합니다. Event UUID는 idempotency key이며 각 `(job_id, operation_id, operation_sequence)` slot은 고유합니다. 같은 event를 다시 보내면 원래 snapshot을 반환하고 어느 identity든 다른 내용으로 재사용하면 `event-conflict`로 실패합니다. 같은 expected revision에 대한 경쟁 write는 정확히 하나만 성공하고 나머지는 `revision-conflict`를 반환합니다. Transition 표는 명시적인 lifecycle 진행만 허용하고 `succeeded`, `cancelled`, `failed` 뒤의 변경을 거부합니다. Terminal event는 cleanup 완료 상태에서만 유효하므로 미완료 job은 recovery scan에 계속 나타납니다.
 
-`InMemoryJobStateStore`는 dependency-free contract test double일 뿐입니다. 별도 handle이 `InMemoryStateStoreBacking` fixture를 공유할 수 있지만 process가 끝나면 모든 data가 사라집니다. Outcome mapping, 공통 adapter conformance suite, 결정론적 mock restart recovery는 별도 문서에서 설명합니다. 실행 중 broker와 state store는 아직 연결하지 않았고 SQLite, PostgreSQL, migration, backup, retention, distributed lease, 외부 process durability 구현도 주장하지 않습니다.
+`InMemoryJobStateStore`는 non-durable contract double로 남습니다. `SQLiteJobStateStore`는 같은 conformance suite를 실행하고 schema v1, migration 거부, append-only retention, lock redaction, 별도 process hard-exit test를 추가한 비활성 file-backed 후보입니다. 실행 중 broker는 어느 store에도 연결하지 않았습니다. PostgreSQL, 자동 compaction, backup 및 restore, distributed lease, power-loss 자격 검증, 제품 활성화는 구현하거나 주장하지 않습니다.
 
 ## 검증과 남은 게이트
 
-Python 3.12부터 3.14까지의 suite는 test 67개를 포함합니다. 새 case는 cancellation checkpoint 11곳 전체, 잘못된 identity 및 boolean이 아닌 signal, coordinator 하나를 공유하는 동시 reconciliation 4개, 이미 사라진 runtime 응답, cancel/reconcile 수렴, 단조 증가 revision, 동일 event 재전송, 충돌 event UUID 재사용, concurrent CAS, transition 거부, terminal 불변성, recovery pagination, 저장 shape redaction을 검사합니다.
+Python 3.12부터 3.14까지의 suite는 test 77개를 포함합니다. 새 case는 cancellation checkpoint 11곳 전체, 잘못된 identity 및 boolean이 아닌 signal, coordinator 하나를 공유하는 동시 reconciliation 4개, 이미 사라진 runtime 응답, cancel/reconcile 수렴, 단조 증가 revision, 동일 event 재전송, 충돌 event UUID 재사용, concurrent CAS, transition 거부, terminal 불변성, recovery pagination, 저장 shape redaction을 검사합니다.
 
-제품 Docker 및 Podman adapter, runtime socket, broker service transport, durable storage, live broker-to-store wiring, distributed cleanup ownership, 외부 process crash durability, restart-safe cancellation transport, solver 실행은 기존 게이트에 따라 계속 차단 또는 대기 상태입니다. 구현된 mock 계약은 [event mapping, adapter conformance, restart recovery](event-state-recovery.md)를 참고합니다.
+제품 Docker 및 Podman adapter, runtime socket, broker service transport, live broker-to-store wiring, distributed cleanup ownership, power-loss durability, restart-safe cancellation transport, solver 실행은 기존 게이트에 따라 계속 차단 또는 대기 상태입니다. 검증된 계약은 [event mapping, adapter conformance, restart recovery](event-state-recovery.md)와 [SQLite durable-state 후보](sqlite-durable-state.md)를 참고합니다.

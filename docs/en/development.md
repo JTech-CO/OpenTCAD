@@ -9,7 +9,7 @@
 - Python 3.12 through 3.14 for the M2 contract tests
 - Git
 
-No container runtime, Python service, database, or solver is required. Python runs only the dependency-free M2 contract tests.
+No container runtime, Python service, external database server, or solver is required. Python runs only the dependency-free M2 contract tests; SQLite candidate tests use the standard library and isolated temporary files.
 
 ## Setup and commands
 
