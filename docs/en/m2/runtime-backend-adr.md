@@ -53,7 +53,7 @@ Runtime auto-detection is deferred to RUN-006. The eventual decision must use de
 - The broker can be tested with a strict in-memory backend before any socket is introduced.
 - Product adapters will share lifecycle and error tests but retain separate argument or API mapping.
 - New capability fields require contract and policy review.
-- Canonical input and output archive byte validation, fixed job identity, typed cancellation, and public/internal diagnostic separation are implemented in the mock broker foundation; product runtime transfer and durable state remain separate gated responsibilities.
+- Canonical input/output archive validation, fixed job identity, phase-addressable cancellation, process-local cleanup serialization, public/internal diagnostic separation, and the durable-state interface are implemented in the mock broker foundation; product runtime transfer, a durable adapter, and broker-to-store wiring remain separate gated responsibilities.
 - This proposal cannot be marked accepted until the required review and M2 entry evidence exist.
 
 ## Rollback

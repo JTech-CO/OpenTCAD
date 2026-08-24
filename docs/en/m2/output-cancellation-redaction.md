@@ -34,8 +34,8 @@ Public broker errors contain only stable code, phase, retry disposition, and a n
 
 ## Verified controls
 
-The dependency-free suite now contains 39 tests. Added cases cover canonical output round trips, empty files, malicious member types, compression, metadata drift, byte substitution, manifest and limit drift, case-fold collision before allocation, kind-independent identity, successful cancellation, missing and cross-job cancellation, zero-object cleanup, and hostile secret or host-path diagnostic injection.
+The dependency-free suite now contains 52 tests. In addition to the output, identity, and redaction controls above, it exercises all eleven execution cancellation checkpoints, wrong-identity and malformed signals, concurrent cleanup serialization, already-absent convergence, durable-state revision CAS, event idempotency, transition safety, recovery scanning, and persisted-shape redaction. See the [lifecycle cancellation, cleanup, and state contract](lifecycle-cleanup-state.md).
 
 ## Remaining boundary
 
-There is still no product runtime adapter, broker service transport, runtime detection, worker integration, durable event store, restart-safe cancellation, concurrent cancellation arbitration, solver execution, or runtime socket access. Phase-by-phase cancellation injection and durable crash recovery remain gated follow-up work.
+There is still no product runtime adapter, broker service transport, runtime detection, worker integration, durable event store, broker-to-store wiring, restart-safe cancellation, cross-process cancellation arbitration, solver execution, or runtime socket access. Phase-addressable mock injection and process-local cleanup idempotence are implemented; durable crash recovery remains gated follow-up work.

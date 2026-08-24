@@ -28,8 +28,8 @@
 | 아카이브 경로 탈출 또는 특수 파일 | 압축 해제 전에 절대 경로, 상위 경로, 링크, device, 정규화 후 중복 이름, 파일 수 및 크기 초과, byte substitution을 거부 | Canonical 비압축 input/output USTAR stream을 memory에서 검증하며 제품 runtime transfer는 대기 |
 | 리소스 또는 출력 서비스 거부 | CPU, 메모리, PID, 시간, 출력, 파일 수, 산출물, tmpfs 상한 고정 | 모델과 정책이 선언 상한을 강제하며 런타임 집행은 대기 |
 | 잡 간 접근 | 서버 UUID label, opaque handle, 정확한 잡 소유권, 관리 볼륨 격리, 정확한 산출물 manifest | mock lifecycle이 소유권을 강제하며 런타임 격리는 대기 |
-| 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 컨테이너 다음 볼륨 순서로 정리하고 orphan 0을 조회 | Stable stale-state error, mock cleanup, reconciliation, 정확한 cancellation query가 있으며 durable restart recovery는 대기 |
-| 상태 혼동과 안전하지 않은 재시도 | stable phase, error code, retry class, backend identity, terminal classification, 불변 provenance를 저장 | stable record는 있으며 영속 상태 머신은 대기 |
+| 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 job별 cleanup을 직렬화하고 container 다음 volume 순서로 정리하며 이미 사라진 상태는 수렴으로 처리한 뒤 orphan 0을 조회 | Process-local lease, concurrent mock reconciliation, 정확한 cancellation query가 있으며 distributed ownership과 durable restart recovery는 대기 |
+| 상태 혼동과 안전하지 않은 재시도 | Redacted event, 원자적 revision CAS, event idempotency, 허용 transition, terminal 불변성, 제한된 recovery scan | Interface와 memory 기반 contract test는 있으며 durable adapter 및 broker 연결은 대기 |
 | 진단 정보 노출 | secret과 호스트 경로를 제거하고 정규화된 capability와 error record만 노출 | 공개 event는 raw detail과 비정규 backend 값을 제외하며 raw detail은 repr에서 숨긴 내부 diagnostic에만 존재 |
 | backend 의미 차이 | Docker와 Podman 정책을 각각 매핑하고 계약 및 장애 테스트로 동등한 통제를 입증 | capability 어휘는 있으며 adapter는 차단 |
 
