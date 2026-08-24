@@ -53,9 +53,9 @@ Runtime auto-detection is deferred to RUN-006. The eventual decision must use de
 - The broker can be tested with a strict in-memory backend before any socket is introduced.
 - Product adapters will share lifecycle and error tests but retain separate argument or API mapping.
 - New capability fields require contract and policy review.
-- Canonical input/output archive validation, fixed job identity, phase-addressable cancellation, process-local cleanup serialization, public/internal diagnostic separation, deterministic outcome mapping, the common adapter conformance suite, the durable-state interface, and mock restart recovery are implemented in the broker foundation; product runtime transfer, a durable adapter, external-process durability, and live broker-to-store wiring remain separate gated responsibilities.
+- Canonical input/output archive validation, fixed job identity, phase-addressable cancellation, process-local cleanup serialization, public/internal diagnostic separation, deterministic outcome mapping, the common adapter conformance suite, the durable-state interface, an inactive SQLite candidate, and separate-process hard-exit recovery are implemented in the broker foundation; product runtime transfer, live broker-to-store wiring, distributed fencing, backup, and power-loss qualification remain separate gated responsibilities.
 - This proposal cannot be marked accepted until the required review and M2 entry evidence exist.
 
 ## Rollback
 
-Deleting `backend/app/runtime/` and the M2 manifest returns the repository to the engine-free product state. No database, user project, runtime object, image, or baseline is created by this foundation.
+Deleting `backend/app/runtime/` and the M2 manifest returns the repository to the engine-free product state. Tests create and remove isolated temporary SQLite files; no product database, user project, runtime object, image, or baseline is created by this foundation.

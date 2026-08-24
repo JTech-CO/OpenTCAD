@@ -6,10 +6,10 @@
 
 - Status: engine-independent contract implementation, gated
 - Runtime and solver access: none
-- Durable database adapter: not implemented
+- SQLite durable-state candidate: tested and inactive
 - Live broker-to-store wiring: not implemented
 
-This slice defines how a completed redacted broker operation becomes durable events, how every future state adapter must be tested, and how recoverable state converges after a process restart. It uses only strict in-memory doubles. It does not add a service transport, database driver, runtime socket, product Docker or Podman adapter, worker integration, or solver execution.
+This contract defines how a completed redacted broker operation becomes durable events, how every state adapter is tested, and how recoverable state converges after restart. The original mapping and recovery seams remain engine-independent; the companion SQLite candidate adds only a standard-library local database and a test-only child process. It adds no service transport, runtime socket, product Docker or Podman adapter, worker integration, or solver execution.
 
 ## Broker event to durable state mapping
 
@@ -44,7 +44,7 @@ This mapper consumes complete outcomes. It does not yet make the running broker 
 5. exactly one compare-and-swap winner from one revision; and
 6. bounded, sorted recovery pagination that excludes terminal jobs.
 
-The current concrete run uses `InMemoryStateStoreBacking` so separate adapter handles can share one process-local fixture. This proves the suite and handle-reopen semantics only. The backing is lost with the process and does not prove crash durability, transaction isolation, migration safety, backup, retention, or database availability behavior.
+The suite now runs unchanged against two concrete adapters. `InMemoryStateStoreBacking` still proves process-local handle semantics only. `SQLiteJobStateStore` proves file-backed commit visibility, transactional CAS, schema fail-closed behavior, database-lock redaction, and recovery pagination through fresh handles. The [SQLite durable-state candidate contract](sqlite-durable-state.md) records the distinct migration, retention, and durability limits.
 
 ## Crash and restart recovery contract
 
@@ -67,12 +67,12 @@ The deterministic crash surrogate covers four boundaries:
 | After reconcile | `cleaning` claim committed | Zero after a complete reconciliation | Replay claim, verify, close |
 | After terminal append | Terminal revision committed | Zero | Recovery scan excludes the job |
 
-The tests reopen a fresh state-store handle over the same fixture after every injected interruption. The same recovery UUID safely replays an already committed claim. An incomplete cleanup remains recoverable and a later recovery UUID can retry it.
+The deterministic tests reopen a fresh state-store handle over the same fixture after every injected interruption. The same recovery UUID safely replays an already committed claim. An incomplete cleanup remains recoverable and a later recovery UUID can retry it. In addition, a child process commits the SQLite `after-claim` revision and terminates with `os._exit(91)`; the parent process reopens the file, observes revision 4, replays the same claim, and converges to terminal revision 5.
 
 Compare-and-swap permits exactly one claimant when concurrent coordinators read the same revision. This is not a distributed lease: a later scan can observe a newer `cleaning` revision, and multi-process ownership, lease expiry, fencing tokens, and database-backed arbitration remain unimplemented.
 
 ## Evidence and remaining gate
 
-The dependency-free Python suite now contains 67 tests. Fifteen tests cover the common adapter suite, outcome mapping and partial replay, four crash boundaries, cancellation recovery, competing claims, and cleanup retry convergence. No test opens a runtime socket, database, network connection, or solver.
+The dependency-free Python suite now contains 77 tests. Twenty-five tests cover the common suite on memory and SQLite adapters, outcome mapping and partial replay, four deterministic crash boundaries, cancellation recovery, competing claims, cleanup retry convergence, schema and lock behavior, and the separate-process hard exit. Tests open isolated SQLite files only; no test opens a runtime socket, network connection, product runtime, or solver.
 
-The next state milestone requires selecting and reviewing an actual durable adapter, proving transaction and restart behavior in a separate process, defining migration and retention policy, and then wiring phase-time broker events to that adapter. Product Docker and Podman adapters remain blocked by the existing M2 entry and security gates.
+The next state milestone is phase-time broker event wiring behind an inactive composition boundary, including partial-operation failure and startup-order contracts. Backup and restore, power-loss qualification, distributed fencing, product activation, and product Docker and Podman adapters remain gated.

@@ -9,7 +9,7 @@
 - M2 계약 테스트용 Python 3.12부터 3.14
 - Git
 
-컨테이너 런타임, Python 서비스, 데이터베이스 또는 솔버는 필요하지 않습니다. Python은 의존성이 없는 M2 계약 테스트만 실행합니다.
+컨테이너 런타임, Python service, 외부 database server 또는 solver는 필요하지 않습니다. Python은 의존성이 없는 M2 계약 test만 실행하며 SQLite 후보 test는 표준 library와 격리된 임시 file을 사용합니다.
 
 ## 설정과 명령
 

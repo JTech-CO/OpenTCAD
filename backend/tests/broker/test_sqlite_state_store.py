@@ -1,0 +1,241 @@
+"""SQLite conformance, migration, redaction, and hard-exit recovery tests."""
+
+from __future__ import annotations
+
+import asyncio
+from contextlib import closing
+from pathlib import Path
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import unittest
+
+from backend.app.broker import (
+    BrokerState,
+    CrashRecoveryCoordinator,
+    RecoveryRequest,
+    RecoveryStatus,
+    ReconciliationReport,
+    SQLITE_STATE_PRODUCT_ENABLED,
+    SQLITE_STATE_RETENTION_POLICY,
+    SQLITE_STATE_SCHEMA_VERSION,
+    SQLiteJobStateStore,
+    StateStoreError,
+    StateStoreErrorCode,
+)
+from backend.app.runtime.errors import ErrorCode, RuntimePhase
+from backend.app.runtime.models import RuntimeKind
+from backend.tests.broker.sqlite_recovery_child import HARD_EXIT_CODE
+from backend.tests.broker.state_store_conformance import (
+    DurableStateStoreConformanceMixin,
+    conformance_event,
+    uuid_at,
+)
+
+
+class SQLiteStateStoreConformanceTests(
+    DurableStateStoreConformanceMixin,
+    unittest.IsolatedAsyncioTestCase,
+):
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self._database = Path(self._temporary.name) / "state.sqlite3"
+
+    def tearDown(self) -> None:
+        self._temporary.cleanup()
+
+    def new_store(self) -> SQLiteJobStateStore:
+        return SQLiteJobStateStore(self._database)
+
+    def reopen_store(self) -> SQLiteJobStateStore:
+        return SQLiteJobStateStore(self._database)
+
+
+class CompleteReconciler:
+    def __init__(self, expected_job_id: str) -> None:
+        self.expected_job_id = expected_job_id
+        self.calls = 0
+
+    async def reconcile(self, job_id: str | None = None) -> ReconciliationReport:
+        if job_id != self.expected_job_id:
+            raise AssertionError("recovery must reconcile the exact durable job")
+        self.calls += 1
+        return ReconciliationReport(
+            containers_found=1,
+            containers_removed=1,
+            volumes_found=1,
+            volumes_removed=1,
+            remaining_containers=0,
+            remaining_volumes=0,
+            errors=(),
+        )
+
+
+class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self._database = Path(self._temporary.name) / "state.sqlite3"
+
+    def tearDown(self) -> None:
+        self._temporary.cleanup()
+
+    async def test_schema_v1_is_wal_append_only_redacted_and_inactive(self) -> None:
+        for invalid in (":memory:", "file:state.sqlite3?mode=memory", 7):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(TypeError):
+                    SQLiteJobStateStore(invalid)
+
+        store = SQLiteJobStateStore(self._database)
+        await store.append(
+            conformance_event(
+                job=201,
+                event_number=201,
+                operation=201,
+                operation_sequence=1,
+                state=BrokerState.VALIDATING,
+                phase=RuntimePhase.VALIDATE,
+            ),
+            expected_revision=0,
+        )
+        with closing(sqlite3.connect(self._database)) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+            columns = tuple(
+                row[1]
+                for row in connection.execute("PRAGMA table_info(job_events)")
+            )
+            rows = connection.execute("SELECT COUNT(*) FROM job_events").fetchone()[0]
+        self.assertEqual(version, SQLITE_STATE_SCHEMA_VERSION)
+        self.assertEqual(str(mode).casefold(), "wal")
+        self.assertEqual(rows, 1)
+        self.assertNotIn("detail", columns)
+        self.assertNotIn("payload", columns)
+        self.assertNotIn("host_path", columns)
+        self.assertEqual(
+            SQLITE_STATE_RETENTION_POLICY,
+            "append-only-no-automatic-deletion",
+        )
+        self.assertFalse(SQLITE_STATE_PRODUCT_ENABLED)
+        self.assertNotIn(str(self._database), repr(store))
+
+    async def test_locked_writer_maps_to_redacted_store_unavailable(self) -> None:
+        store = SQLiteJobStateStore(self._database, busy_timeout_ms=25)
+        first = conformance_event(
+            job=202,
+            event_number=202,
+            operation=202,
+            operation_sequence=1,
+            state=BrokerState.VALIDATING,
+            phase=RuntimePhase.VALIDATE,
+        )
+        await store.append(first, expected_revision=0)
+        lock = sqlite3.connect(self._database, timeout=0, isolation_level=None)
+        try:
+            lock.execute("BEGIN IMMEDIATE")
+            with self.assertRaises(StateStoreError) as captured:
+                await store.append(
+                    conformance_event(
+                        job=202,
+                        event_number=203,
+                        operation=203,
+                        operation_sequence=1,
+                        state=BrokerState.PREPARING,
+                        phase=RuntimePhase.IMAGE,
+                    ),
+                    expected_revision=1,
+                )
+        finally:
+            lock.rollback()
+            lock.close()
+        self.assertEqual(
+            captured.exception.code,
+            StateStoreErrorCode.STORE_UNAVAILABLE,
+        )
+        self.assertEqual(captured.exception.as_dict(), {"code": "store-unavailable"})
+        self.assertNotIn(str(self._database), str(captured.exception))
+
+    async def test_unknown_or_mismatched_schema_fails_closed(self) -> None:
+        with closing(sqlite3.connect(self._database)) as connection:
+            connection.execute("PRAGMA user_version = 2")
+            connection.commit()
+        mismatched = Path(self._temporary.name) / "mismatched.sqlite3"
+        with closing(sqlite3.connect(mismatched)) as connection:
+            connection.execute("CREATE TABLE job_events (job_id TEXT)")
+            connection.execute("PRAGMA user_version = 1")
+            connection.commit()
+
+        for database in (self._database, mismatched):
+            with self.subTest(database=database.name):
+                with self.assertRaises(StateStoreError) as captured:
+                    await SQLiteJobStateStore(database).scan_recoverable(limit=1)
+                self.assertEqual(
+                    captured.exception.code,
+                    StateStoreErrorCode.STORE_UNAVAILABLE,
+                )
+                self.assertEqual(str(captured.exception), "store-unavailable")
+
+    async def test_hard_exit_claim_survives_process_and_recovery_converges(self) -> None:
+        store = SQLiteJobStateStore(self._database)
+        job = 203
+        path = (
+            (BrokerState.VALIDATING, RuntimePhase.VALIDATE),
+            (BrokerState.PREPARING, RuntimePhase.IMAGE),
+            (BrokerState.RUNNING, RuntimePhase.WAIT),
+        )
+        snapshot = None
+        for sequence, (state, phase) in enumerate(path, start=1):
+            snapshot = await store.append(
+                conformance_event(
+                    job=job,
+                    event_number=300 + sequence,
+                    operation=job,
+                    operation_sequence=sequence,
+                    state=state,
+                    phase=phase,
+                ),
+                expected_revision=sequence - 1,
+            )
+        recovery_id = uuid_at(900_203)
+        repository = Path(__file__).resolve().parents[3]
+        completed = await asyncio.to_thread(
+            subprocess.run,
+            [
+                sys.executable,
+                "-m",
+                "backend.tests.broker.sqlite_recovery_child",
+                str(self._database),
+                recovery_id,
+                snapshot.identity.job_id,
+            ],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            HARD_EXIT_CODE,
+            msg=f"stdout={completed.stdout!r} stderr={completed.stderr!r}",
+        )
+
+        reopened = SQLiteJobStateStore(self._database)
+        claimed = await reopened.load(snapshot.identity)
+        self.assertEqual((claimed.state, claimed.revision), (BrokerState.CLEANING, 4))
+        reconciler = CompleteReconciler(snapshot.identity.job_id)
+        report = await CrashRecoveryCoordinator(
+            reopened,
+            reconciler,
+            RuntimeKind.MOCK,
+        ).recover(RecoveryRequest(recovery_id, limit=1))
+        final = await reopened.load(snapshot.identity)
+        self.assertEqual(reconciler.calls, 1)
+        self.assertEqual(report.items[0].status, RecoveryStatus.RECOVERED_FAILED)
+        self.assertEqual(report.items[0].code, ErrorCode.STALE_STATE)
+        self.assertEqual((final.state, final.revision), (BrokerState.FAILED, 5))
+        self.assertFalse(final.recoverable)
+
+
+if __name__ == "__main__":
+    unittest.main()

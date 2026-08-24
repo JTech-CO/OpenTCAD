@@ -41,4 +41,4 @@ API에서 broker로 전달하는 형식은 결정론적인 비압축 USTAR byte 
 
 ## 남은 경계
 
-함께 제공하는 [output, cancellation, redaction 기반](output-cancellation-redaction.md)은 artifact byte를 검증하고 cancellation identity와 공개 diagnostic을 고정합니다. Docker 또는 Podman 제품 adapter, broker service transport, runtime detection, worker integration, durable job state, crash persistence는 아직 없습니다. 실제 runtime 작업은 M2 진입 조건과 승인된 immutable engine profile이 생길 때까지 차단합니다.
+함께 제공하는 [output, cancellation, redaction 기반](output-cancellation-redaction.md)은 artifact byte를 검증하고 cancellation identity와 공개 diagnostic을 고정합니다. 이후 [SQLite durable-state 후보](sqlite-durable-state.md)는 제품을 활성화하지 않고 file-backed state와 process hard-exit recovery를 증명합니다. Docker 또는 Podman 제품 adapter, broker service transport, runtime detection, worker integration, live state wiring은 아직 없습니다. 실제 runtime 작업은 M2 진입 조건과 승인된 immutable engine profile이 생길 때까지 차단합니다.

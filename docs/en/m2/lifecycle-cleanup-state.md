@@ -4,9 +4,9 @@
 
 - Status: `gated-active`, mock only
 - Work items: BRK-006 and BRK-007 contract extension
-- Product runtime and durable database access: not granted
+- Product runtime and product state-store activation: not granted
 
-This slice defines deterministic cancellation and recovery seams around the internal mock broker. It adds no HTTP or IPC service, database, subprocess, solver, product runtime adapter, host extraction, or runtime socket access.
+This contract defines deterministic cancellation and recovery seams around the internal mock broker. It adds no HTTP or IPC service, solver, product runtime adapter, host extraction, or runtime socket access. The companion inactive SQLite candidate uses a standard-library database and a test-only child process without granting product authority.
 
 ## Lifecycle cancellation checkpoints
 
@@ -45,7 +45,7 @@ Concurrent reconcile calls therefore return complete reports even when only the 
 
 ## Durable state interface
 
-`DurableJobStateStore` defines three async operations for a future database adapter:
+`DurableJobStateStore` defines three async operations shared by the memory double and the SQLite candidate:
 
 - `load(identity)` reads the latest immutable snapshot;
 - `append(event, expected_revision=...)` atomically compares the current revision and appends one redacted event;
@@ -55,10 +55,10 @@ Concurrent reconcile calls therefore return complete reports even when only the 
 
 Revisions start at one and increase by one. The event UUID is an idempotency key, and each `(job_id, operation_id, operation_sequence)` slot is unique. Replaying an identical event returns its original snapshot; reusing either identity with different content fails with `event-conflict`. Competing writes at the same expected revision allow exactly one winner and return `revision-conflict` to the other writer. The transition table permits explicit lifecycle progress and rejects mutation after `succeeded`, `cancelled`, or `failed`. A terminal event is valid only when cleanup is complete, so incomplete jobs stay visible to the recovery scan.
 
-`InMemoryJobStateStore` exists only as a dependency-free contract test double. Separate handles may share an `InMemoryStateStoreBacking` fixture, but it loses all data when the process exits. Outcome mapping, a common adapter conformance suite, and deterministic mock restart recovery are documented separately. The running broker is not wired to the store, and no SQLite, PostgreSQL, migration, backup, retention, distributed lease, or external-process durability implementation is claimed.
+`InMemoryJobStateStore` remains a non-durable contract double. `SQLiteJobStateStore` is an inactive file-backed candidate that runs the same conformance suite and adds schema v1, migration refusal, append-only retention, lock redaction, and separate-process hard-exit tests. The running broker is not wired to either store. PostgreSQL, automatic compaction, backup and restore, distributed leases, power-loss qualification, and product activation are not implemented or claimed.
 
 ## Verification and remaining gates
 
-The Python 3.12 to 3.14 suite contains 67 tests. The new cases exercise all eleven cancellation checkpoints, wrong-identity and non-boolean signals, four concurrent reconciliations sharing one coordinator, already-absent runtime responses, cancel/reconcile convergence, monotonic revisions, identical replay, conflicting event reuse, concurrent CAS, transition rejection, terminal immutability, recovery pagination, and persisted-shape redaction.
+The Python 3.12 to 3.14 suite contains 77 tests. The new cases exercise all eleven cancellation checkpoints, wrong-identity and non-boolean signals, four concurrent reconciliations sharing one coordinator, already-absent runtime responses, cancel/reconcile convergence, monotonic revisions, identical replay, conflicting event reuse, concurrent CAS, transition rejection, terminal immutability, recovery pagination, and persisted-shape redaction.
 
-Product Docker and Podman adapters, runtime sockets, broker service transport, durable storage, live broker-to-store wiring, distributed cleanup ownership, external-process crash durability, restart-safe cancellation transport, and solver execution remain blocked or pending under the existing gates. See [event mapping, adapter conformance, and restart recovery](event-state-recovery.md) for the implemented mock contract.
+Product Docker and Podman adapters, runtime sockets, broker service transport, live broker-to-store wiring, distributed cleanup ownership, power-loss durability, restart-safe cancellation transport, and solver execution remain blocked or pending under the existing gates. See [event mapping, adapter conformance, and restart recovery](event-state-recovery.md) and the [SQLite durable-state candidate](sqlite-durable-state.md) for the tested contracts.

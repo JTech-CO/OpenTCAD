@@ -87,6 +87,7 @@ const expectedSourceFiles = [
   "backend/app/broker/orchestrator.py",
   "backend/app/broker/output_archive.py",
   "backend/app/broker/state.py",
+  "backend/app/broker/sqlite_state.py",
   "backend/app/broker/state_mapping.py",
   "backend/app/broker/recovery.py",
   "backend/pyproject.toml",
@@ -103,6 +104,8 @@ const expectedSourceFiles = [
   "backend/tests/broker/test_output_archive.py",
   "backend/tests/broker/state_store_conformance.py",
   "backend/tests/broker/test_recovery.py",
+  "backend/tests/broker/sqlite_recovery_child.py",
+  "backend/tests/broker/test_sqlite_state_store.py",
   "backend/tests/broker/test_state_mapping.py",
   "backend/tests/broker/test_state_store_conformance.py",
   "backend/tests/broker/test_state_store.py",
@@ -115,6 +118,7 @@ const expectedSourceFiles = [
   "docs/en/m2/output-cancellation-redaction.md",
   "docs/en/m2/lifecycle-cleanup-state.md",
   "docs/en/m2/event-state-recovery.md",
+  "docs/en/m2/sqlite-durable-state.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -122,6 +126,7 @@ const expectedSourceFiles = [
   "docs/ko/m2/output-cancellation-redaction.md",
   "docs/ko/m2/lifecycle-cleanup-state.md",
   "docs/ko/m2/event-state-recovery.md",
+  "docs/ko/m2/sqlite-durable-state.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -212,8 +217,11 @@ requireValue(manifest.securityBoundary.processLocalCleanupCoordinatorImplemented
 requireValue(manifest.securityBoundary.durableStateInterfaceDefined === true, "Durable state interface must be recorded.");
 requireValue(manifest.securityBoundary.brokerEventStateMappingDefined === true, "Broker event-state mapping must be recorded.");
 requireValue(manifest.securityBoundary.durableAdapterConformanceSuiteImplemented === true, "Adapter conformance suite must be recorded.");
-requireValue(manifest.securityBoundary.crashRestartRecoveryContractImplemented === true, "Mock crash/restart recovery must be recorded.");
-requireValue(manifest.securityBoundary.durableStateStoreImplemented === false, "A durable state store must not be claimed.");
+requireValue(manifest.securityBoundary.crashRestartRecoveryContractImplemented === true, "Crash/restart recovery must be recorded.");
+requireValue(manifest.securityBoundary.candidateDurableStateStoreImplemented === true, "The SQLite candidate must be recorded.");
+requireValue(manifest.securityBoundary.candidateDurableStateStoreProductEnabled === false, "The SQLite candidate must remain product-disabled.");
+requireValue(manifest.securityBoundary.externalProcessRestartContractTested === true, "Separate-process restart evidence must be recorded.");
+requireValue(manifest.securityBoundary.durableStateStoreImplemented === false, "A product durable state store must not be claimed.");
 requireValue(manifest.securityBoundary.brokerStateStoreWiringImplemented === false, "Broker-to-store wiring must remain absent.");
 requireValue(manifest.securityBoundary.distributedCleanupLeaseImplemented === false, "Distributed cleanup leasing must remain absent.");
 
@@ -281,7 +289,7 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "mock-recovery-contract-tested"],
+  ["RUN-007", "candidate-sqlite-restart-contract-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
@@ -293,7 +301,7 @@ const expectedBrokerWorkItems = [
   ["BRK-001", "foundation-tested"],
   ["BRK-003", "mock-lifecycle-tested"],
   ["BRK-004", "canonical-input-output-archive-tested"],
-  ["BRK-006", "mock-crash-restart-contract-tested"],
+  ["BRK-006", "candidate-sqlite-hard-exit-recovery-tested"],
   ["BRK-007", "mock-phase-cancellation-tested"],
   ["BRK-008", "structured-mapping-redaction-tested"],
 ];
@@ -321,7 +329,7 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 67, "Runtime and broker test count must be 67.");
+requireValue(manifest.testContract.testCount === 77, "Runtime and broker test count must be 77.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
 requireValue(manifest.testContract.brokerOrchestrationTests === 8, "Broker orchestration test count must be 8.");
@@ -335,6 +343,10 @@ requireValue(manifest.testContract.durableAdapterConformanceTests === 6, "Adapte
 requireValue(manifest.testContract.stateMappingTests === 5, "State mapping test count must be 5.");
 requireValue(manifest.testContract.crashRecoveryTests === 4, "Crash recovery test count must be 4.");
 requireValue(manifest.testContract.crashInjectionCheckpoints === 4, "Crash injection checkpoint count must be 4.");
+requireValue(manifest.testContract.stateStoreUsesDatabase === true, "The candidate suite must use SQLite.");
+requireValue(manifest.testContract.sqliteAdapterConformanceTests === 6, "SQLite conformance test count must be 6.");
+requireValue(manifest.testContract.sqliteSpecificContractTests === 4, "SQLite-specific contract test count must be 4.");
+requireValue(manifest.testContract.externalProcessHardExitTests === 1, "Hard-exit process test count must be 1.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
 requireValue(manifest.testContract.usesSolver === false, "Contract tests must not use a solver.");
 requireValue(manifest.testContract.loopCases === 20, "Cleanup loop must contain 20 cases.");
@@ -388,6 +400,7 @@ const brokerLifecycle = await readFile(join(root, "backend/app/broker/lifecycle.
 const brokerModels = await readFile(join(root, "backend/app/broker/models.py"), "utf8");
 const brokerOrchestrator = await readFile(join(root, "backend/app/broker/orchestrator.py"), "utf8");
 const brokerState = await readFile(join(root, "backend/app/broker/state.py"), "utf8");
+const brokerSQLiteState = await readFile(join(root, "backend/app/broker/sqlite_state.py"), "utf8");
 const brokerStateMapping = await readFile(join(root, "backend/app/broker/state_mapping.py"), "utf8");
 const brokerRecovery = await readFile(join(root, "backend/app/broker/recovery.py"), "utf8");
 const implementation = [
@@ -420,6 +433,22 @@ for (const [label, pattern] of [
 ]) {
   requireValue(!pattern.test(implementation), `Runtime foundation contains forbidden ${label}.`);
 }
+
+requireValue(brokerSQLiteState.includes("import sqlite3"), "SQLite candidate must use the standard-library driver.");
+for (const [label, pattern] of [
+  ["product runtime socket", /docker\.sock|podman\.sock|\/var\/run\//u],
+  ["external database driver", /\bpsycopg\b|\basyncpg\b/u],
+  ["subprocess execution", /\bsubprocess\b|os\.system/u],
+]) {
+  requireValue(!pattern.test(brokerSQLiteState), "SQLite candidate contains forbidden " + label + ".");
+}
+requireValue(brokerSQLiteState.includes("PRAGMA journal_mode = WAL"), "SQLite candidate must enable WAL.");
+requireValue(brokerSQLiteState.includes("PRAGMA synchronous = FULL"), "SQLite candidate must require FULL synchronization.");
+requireValue(brokerSQLiteState.includes('connection.execute("BEGIN IMMEDIATE")'), "SQLite append must use BEGIN IMMEDIATE.");
+requireValue(brokerSQLiteState.includes("PRAGMA user_version"), "SQLite candidate must version its schema.");
+requireValue(brokerSQLiteState.includes("cls._validate_schema(connection)"), "Every SQLite connection must validate the exact schema.");
+requireValue(brokerSQLiteState.includes("SQLITE_STATE_RETENTION_POLICY"), "SQLite retention policy must be explicit.");
+requireValue(brokerSQLiteState.includes("SQLITE_STATE_PRODUCT_ENABLED = False"), "SQLite candidate must remain inactive.");
 
 requireValue(brokerArchive.includes('mode="r:"'), "Archive validator must reject compression.");
 requireValue(brokerArchive.includes("compare_digest(canonical, payload)"), "Input archive validator must require canonical bytes.");
@@ -465,8 +494,34 @@ for (const checkpoint of manifest.crashRestartRecoveryContract.checkpoints) {
 }
 requireValue(manifest.eventStateMappingContract.liveBrokerWiringImplemented === false, "Live broker wiring must remain absent.");
 requireValue(manifest.adapterConformanceContract.inMemoryBackingDurable === false, "Memory conformance backing must not be durable.");
-requireValue(manifest.crashRestartRecoveryContract.externalProcessRestartTested === false, "External-process durability must remain unclaimed.");
+requireValue(manifest.durableStateContract.candidateDurableAdapterImplemented === true, "SQLite durable adapter candidate must be recorded.");
+requireValue(manifest.durableStateContract.durableAdapterImplemented === false, "Product durable adapter must remain disabled.");
+requireValue(manifest.adapterConformanceContract.sqliteCandidateTested === true, "SQLite must run the common conformance suite.");
+requireValue(manifest.adapterConformanceContract.productAdapterTested === false, "No product state adapter may be claimed.");
+requireValue(manifest.crashRestartRecoveryContract.externalProcessRestartTested === true, "Separate-process durability must be tested.");
+requireValue(manifest.crashRestartRecoveryContract.processHardExitTested === true, "Hard-exit durability must be tested.");
+requireValue(manifest.crashRestartRecoveryContract.hardExitCheckpoint === "after-claim", "Hard-exit checkpoint drifted.");
+requireValue(manifest.crashRestartRecoveryContract.durableDatabaseTested === true, "SQLite commit durability must be tested.");
+requireValue(manifest.crashRestartRecoveryContract.powerLossTested === false, "Power-loss durability must remain unclaimed.");
 requireValue(manifest.crashRestartRecoveryContract.recoversAsSucceeded === false, "Recovery must never synthesize success.");
+requireValue(manifest.sqliteDurableStateContract.adapter === "python-stdlib-sqlite3", "SQLite adapter identity drifted.");
+requireValue(manifest.sqliteDurableStateContract.schemaVersion === 1, "SQLite schema version drifted.");
+requireValue(manifest.sqliteDurableStateContract.localFileOnly === true, "SQLite candidate must remain local-file-only.");
+requireValue(manifest.sqliteDurableStateContract.memoryDatabaseAccepted === false, "SQLite memory databases must remain forbidden.");
+requireValue(manifest.sqliteDurableStateContract.uriDatabaseAccepted === false, "SQLite URI databases must remain forbidden.");
+requireValue(manifest.sqliteDurableStateContract.journalMode === "wal", "SQLite WAL contract drifted.");
+requireValue(manifest.sqliteDurableStateContract.synchronous === "full", "SQLite synchronization contract drifted.");
+requireValue(manifest.sqliteDurableStateContract.appendTransaction === "begin-immediate", "SQLite append transaction drifted.");
+requireValue(manifest.sqliteDurableStateContract.appendOnly === true, "SQLite state must remain append-only.");
+requireValue(manifest.sqliteDurableStateContract.automaticRetention === false, "Automatic state retention must remain disabled.");
+requireValue(manifest.sqliteDurableStateContract.forwardOnlyMigration === true, "SQLite migration must remain forward-only.");
+requireValue(manifest.sqliteDurableStateContract.unknownForwardVersionAccepted === false, "Unknown SQLite versions must fail closed.");
+requireValue(manifest.sqliteDurableStateContract.exactSchemaRequired === true, "SQLite schema mismatches must fail closed.");
+requireValue(manifest.sqliteDurableStateContract.productEnabled === false, "SQLite candidate must remain product-disabled.");
+requireValue(manifest.sqliteDurableStateContract.liveBrokerWiring === false, "Live SQLite wiring must remain absent.");
+requireValue(manifest.sqliteDurableStateContract.powerLossTested === false, "SQLite power-loss proof must remain unclaimed.");
+requireValue(manifest.sqliteDurableStateContract.backupRestoreTested === false, "SQLite backup and restore must remain unclaimed.");
+requireValue(manifest.sqliteDurableStateContract.multiHostTested === false, "SQLite multi-host support must remain unclaimed.");
 
 for (const path of [
   "docs/en/m2/README.md",
@@ -476,6 +531,7 @@ for (const path of [
   "docs/en/m2/output-cancellation-redaction.md",
   "docs/en/m2/lifecycle-cleanup-state.md",
   "docs/en/m2/event-state-recovery.md",
+  "docs/en/m2/sqlite-durable-state.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -483,6 +539,7 @@ for (const path of [
   "docs/ko/m2/output-cancellation-redaction.md",
   "docs/ko/m2/lifecycle-cleanup-state.md",
   "docs/ko/m2/event-state-recovery.md",
+  "docs/ko/m2/sqlite-durable-state.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

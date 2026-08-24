@@ -282,6 +282,20 @@ _TRANSITIONS: dict[BrokerState | None, frozenset[BrokerState]] = {
 }
 
 
+def validate_state_transition(
+    previous: BrokerState | None,
+    next_state: BrokerState,
+) -> None:
+    """Apply the shared fail-closed transition contract used by every adapter."""
+
+    if previous is not None and not isinstance(previous, BrokerState):
+        _invalid_event()
+    if not isinstance(next_state, BrokerState):
+        _invalid_event()
+    if next_state not in _TRANSITIONS[previous]:
+        raise StateStoreError(StateStoreErrorCode.INVALID_TRANSITION)
+
+
 class InMemoryStateStoreBacking:
     """Shared process-local backing for adapter conformance tests only."""
 
@@ -344,8 +358,7 @@ class InMemoryJobStateStore:
             if revision != expected_revision:
                 raise StateStoreError(StateStoreErrorCode.REVISION_CONFLICT)
             prior_state = current.state if current is not None else None
-            if event.state not in _TRANSITIONS[prior_state]:
-                raise StateStoreError(StateStoreErrorCode.INVALID_TRANSITION)
+            validate_state_transition(prior_state, event.state)
 
             snapshot = JobStateSnapshot(event.identity, revision + 1, event)
             self._backing._snapshots[event.identity.job_id] = snapshot

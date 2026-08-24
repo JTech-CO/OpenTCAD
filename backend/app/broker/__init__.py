@@ -46,6 +46,13 @@ from .state import (
     RecoverableStatePage,
     StateStoreError,
     StateStoreErrorCode,
+    validate_state_transition,
+)
+from .sqlite_state import (
+    SQLITE_STATE_PRODUCT_ENABLED,
+    SQLITE_STATE_RETENTION_POLICY,
+    SQLITE_STATE_SCHEMA_VERSION,
+    SQLiteJobStateStore,
 )
 from .state_mapping import (
     BrokerStateMapper,
@@ -91,6 +98,10 @@ __all__ = [
     "RecoveryReport",
     "RecoveryRequest",
     "RecoveryStatus",
+    "SQLITE_STATE_PRODUCT_ENABLED",
+    "SQLITE_STATE_RETENTION_POLICY",
+    "SQLITE_STATE_SCHEMA_VERSION",
+    "SQLiteJobStateStore",
     "SandboxBroker",
     "StateEventRecorder",
     "StateMappingContext",
@@ -103,4 +114,5 @@ __all__ = [
     "output_archive_limits",
     "validate_canonical_input_archive",
     "validate_canonical_output_archive",
+    "validate_state_transition",
 ]
