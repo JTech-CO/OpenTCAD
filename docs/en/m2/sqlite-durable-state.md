@@ -5,10 +5,11 @@
 - Status: candidate adapter and recovery contract tested, not product-enabled
 - Work items: RUN-007 and BRK-006 extension
 - Runtime, solver, and service authority: unchanged and disabled
+- Inactive phase-time composition: mock execution contract tested
 
 ## Decision
 
-`SQLiteJobStateStore` is the first file-backed candidate for the existing `DurableJobStateStore` boundary. SQLite is available through the Python standard library on Windows, macOS, and Linux and fits the single-machine local-server target. This decision does not select a multi-host queue or enable the candidate in the running broker.
+`SQLiteJobStateStore` is the first file-backed candidate for the existing `DurableJobStateStore` boundary. SQLite is available through the Python standard library on Windows, macOS, and Linux and fits the single-machine local-server target. This decision does not select a multi-host queue. An explicit mock-only composition can open the candidate for contract tests, but direct broker execution and every product path remain disabled.
 
 The constructor accepts only a local file path. It rejects the in-memory database and SQLite URI forms. The database location is an administrator-owned internal setting, not a project archive field, request field, host mount, or sandbox input.
 
@@ -37,8 +38,8 @@ This is process hard-exit evidence. It is not a claim of host power-loss toleran
 
 Version 1 performs no automatic deletion or compaction. Removing old rows would discard event-ID and operation-slot idempotency evidence as well as the audit sequence. A future retention design must preserve the latest snapshot, event-ID tombstones, operation-slot tombstones, revision monotonicity, backup and restore behavior, and recovery scan semantics before deletion can be enabled.
 
-The database remains a candidate test artifact. The live broker does not write phase-time events to it, no service opens it, and no product runtime or solver operation depends on it.
+The database remains a candidate test artifact. An explicit mock-only composition writes execution phase events to it after startup recovery, but direct broker execution, external cancellation, and services do not open it. No product runtime or solver operation depends on it.
 
 ## Next gate
 
-The next state slice is live broker event-to-store integration behind an inactive composition boundary. It must define partial-operation failure behavior and startup ordering while keeping product execution disabled. Distributed fencing, backup and restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.
+The next state slice is durable external cancellation and restart-safe cancellation arbitration. Distributed fencing, backup and restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.

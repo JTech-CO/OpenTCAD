@@ -5,10 +5,11 @@
 - 상태: 후보 adapter 및 recovery 계약 test 완료, 제품 활성화 안 됨
 - 작업 항목: RUN-007 및 BRK-006 확장
 - Runtime, solver, service 권한: 변경 없이 비활성
+- 비활성 phase-time composition: mock execution 계약 test 완료
 
 ## 결정
 
-`SQLiteJobStateStore`는 기존 `DurableJobStateStore` 경계를 구현하는 첫 file-backed 후보입니다. SQLite는 Windows, macOS, Linux의 Python 표준 library에서 사용할 수 있고 단일 장비 local-server 목표에 적합합니다. 이 결정은 multi-host queue를 선택하지 않으며 실행 중 broker에서 후보를 활성화하지 않습니다.
+`SQLiteJobStateStore`는 기존 `DurableJobStateStore` 경계를 구현하는 첫 file-backed 후보입니다. SQLite는 Windows, macOS, Linux의 Python 표준 library에서 사용할 수 있고 단일 장비 local-server 목표에 적합합니다. 이 결정은 multi-host queue를 선택하지 않습니다. 명시적인 mock 전용 composition은 계약 test에서 후보를 열 수 있지만 broker 직접 실행과 모든 제품 경로는 계속 비활성입니다.
 
 Constructor는 local file path만 받습니다. Memory database와 SQLite URI 형식은 거부합니다. Database 위치는 관리자가 소유하는 내부 설정이며 project archive field, request field, host mount 또는 sandbox 입력이 아닙니다.
 
@@ -37,8 +38,8 @@ SQLite 후보는 변경하지 않은 공통 adapter conformance case 6개를 실
 
 Version 1은 자동 삭제나 compaction을 수행하지 않습니다. 과거 row를 제거하면 event-ID 및 operation-slot idempotency 증거와 audit sequence가 사라집니다. 향후 retention 설계는 삭제를 활성화하기 전에 latest snapshot, event-ID tombstone, operation-slot tombstone, revision 단조 증가, backup 및 restore 동작, recovery scan 의미를 보존해야 합니다.
 
-Database는 후보 test artifact로 남습니다. Live broker는 phase-time event를 여기에 쓰지 않고 service는 database를 열지 않으며 제품 runtime 또는 solver operation도 이에 의존하지 않습니다.
+Database는 후보 test artifact로 남습니다. 명시적인 mock 전용 composition은 startup recovery 뒤 execution phase event를 여기에 쓰지만 broker 직접 실행, 외부 cancellation, service는 database를 열지 않습니다. 제품 runtime 또는 solver operation도 이에 의존하지 않습니다.
 
 ## 다음 게이트
 
-다음 state 범위는 비활성 composition 경계 뒤에서 live broker event를 store에 연결하는 작업입니다. 제품 실행은 비활성으로 유지하면서 부분 operation 실패 동작과 startup 순서를 정의해야 합니다. Distributed fencing, backup 및 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.
+다음 state 범위는 durable external cancellation과 restart-safe cancellation arbitration입니다. Distributed fencing, backup 및 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.

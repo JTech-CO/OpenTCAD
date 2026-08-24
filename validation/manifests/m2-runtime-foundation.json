@@ -25,7 +25,7 @@
     ],
     "numericalDelta": "none",
     "dataMigration": "candidate-sqlite-schema-v1-forward-only",
-    "rollback": "remove the inactive SQLite candidate and engine-independent broker foundation"
+    "rollback": "remove the inactive live-state composition, SQLite candidate, and engine-independent broker foundation"
   },
   "entryConditions": {
     "m1CorpusGreen": false,
@@ -75,8 +75,8 @@
     },
     {
       "id": "RUN-007",
-      "status": "candidate-sqlite-restart-contract-tested",
-      "result": "standard-library SQLite candidate passes common conformance and separate-process hard-exit restart recovery without a solver or container runtime"
+      "status": "candidate-live-state-startup-tested",
+      "result": "inactive mock-only live-state composition adds startup recovery admission, phase-time SQLite writes, and partial-write cleanup without a solver or product runtime"
     }
   ],
   "securityBoundary": {
@@ -102,14 +102,20 @@
     "processLocalCleanupCoordinatorImplemented": true,
     "durableStateInterfaceDefined": true,
     "durableStateStoreImplemented": false,
-    "brokerStateStoreWiringImplemented": false,
     "distributedCleanupLeaseImplemented": false,
     "brokerEventStateMappingDefined": true,
     "durableAdapterConformanceSuiteImplemented": true,
     "crashRestartRecoveryContractImplemented": true,
     "candidateDurableStateStoreImplemented": true,
     "candidateDurableStateStoreProductEnabled": false,
-    "externalProcessRestartContractTested": true
+    "externalProcessRestartContractTested": true,
+    "productBrokerStateStoreWiringImplemented": false,
+    "candidateLiveBrokerStateCompositionImplemented": true,
+    "candidateLiveBrokerStateCompositionProductEnabled": false,
+    "liveExecuteStateWiringTested": true,
+    "liveCancellationStateWiringImplemented": false,
+    "startupRecoveryAdmissionGateImplemented": true,
+    "productRuntimeAcceptedByComposition": false
   },
   "contract": {
     "protocolOperations": [
@@ -197,7 +203,7 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 77,
+    "testCount": 86,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
@@ -240,7 +246,13 @@
     "sqliteSpecificContractTests": 4,
     "externalProcessHardExitTests": 1,
     "sqliteStateStoreTestPath": "backend/tests/broker/test_sqlite_state_store.py",
-    "sqliteHardExitHelperPath": "backend/tests/broker/sqlite_recovery_child.py"
+    "sqliteHardExitHelperPath": "backend/tests/broker/sqlite_recovery_child.py",
+    "stateCompositionTests": 9,
+    "stateCompositionTestPath": "backend/tests/broker/test_state_composition.py",
+    "compositionImplementation": "backend/app/broker/state_composition.py",
+    "liveStateImplementation": "backend/app/broker/live_state.py",
+    "usesMockBackend": true,
+    "usesProductRuntime": false
   },
   "sourceFiles": [
     {
@@ -275,8 +287,8 @@
     },
     {
       "path": "backend/app/broker/__init__.py",
-      "bytes": 3030,
-      "sha256": "a6fb1ab583a8303cab65de752c9f41b82dcc2e268ee71d6e9d1fac08f1b31945"
+      "bytes": 3660,
+      "sha256": "521dc57a2ae2c731e3a1b038c834b094b6278eedfc9070062abd631afa6ed095"
     },
     {
       "path": "backend/app/broker/archive.py",
@@ -304,14 +316,19 @@
       "sha256": "f61bda45867b06b3339468263f098d35131b45302b172fa388a3e22e1ec8584d"
     },
     {
+      "path": "backend/app/broker/live_state.py",
+      "bytes": 7350,
+      "sha256": "6d08b59982558f130336a065ef27a95a10ed4aba6f928fe51f6f4c7c2b412253"
+    },
+    {
       "path": "backend/app/broker/models.py",
       "bytes": 9733,
       "sha256": "a23931a8404427a82c2719dc00505791b59decb521181e6119a772a46fbe0025"
     },
     {
       "path": "backend/app/broker/orchestrator.py",
-      "bytes": 23371,
-      "sha256": "5d1880467cbbbd29a7a2cbbb85edd4a8610f707c833999735e9ee8fd820c2aef"
+      "bytes": 28954,
+      "sha256": "b3ea6963b602a840e24f2fba373b2cb741fcc46f3dfedd0f5fc96c00cd9bbad7"
     },
     {
       "path": "backend/app/broker/output_archive.py",
@@ -337,6 +354,11 @@
       "path": "backend/app/broker/recovery.py",
       "bytes": 14382,
       "sha256": "b9759c996852a05950588d8eb78db2382d4804223b8110b7b235deeb91f3d794"
+    },
+    {
+      "path": "backend/app/broker/state_composition.py",
+      "bytes": 7452,
+      "sha256": "8e7307bb3ac2540228bd23c6f4e602956d9a71310f13de4da97e9baadf0fd6fa"
     },
     {
       "path": "backend/pyproject.toml",
@@ -419,6 +441,11 @@
       "sha256": "eaa7b9a654f98e32671f7ba85243f7a15a32c5baaa5e82b27848b517a087ab84"
     },
     {
+      "path": "backend/tests/broker/test_state_composition.py",
+      "bytes": 17277,
+      "sha256": "5ddd97357fa0aca41b0eeb0ed236dd4cd35f918049bf5a5725b5b6784954892b"
+    },
+    {
       "path": "backend/tests/broker/test_state_mapping.py",
       "bytes": 7634,
       "sha256": "a527bebe7b3decca815d86faabcd7a96c9b8ab5e2e2ea2090c65d4fdc312b89a"
@@ -435,8 +462,8 @@
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 31745,
-      "sha256": "89ba8a2d3a264a693addb292ce0b9e237c31342cdac3737fcf85a734f3e99994"
+      "bytes": 37576,
+      "sha256": "c6e07003e7b9caf2d22585e08fddd4b82aab295605092d3bd9f7f14ff50829ca"
     },
     {
       "path": "tools/run-python-tests.mjs",
@@ -445,83 +472,93 @@
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 8924,
-      "sha256": "82d532d3baf8e705bd2c0e60215d13f888ca72da550c6efedfee63394130cca8"
+      "bytes": 9772,
+      "sha256": "c822375b340568c18c977af47e3552cf9dc97f8bb01c98beff5e874005f395d2"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
-      "bytes": 4653,
-      "sha256": "5d084d1ea6adbbc26e772c8acd043e41990b90ff898b69054c6f9e1a25e37929"
+      "bytes": 4735,
+      "sha256": "f969976909cbf28811c22c36a91e9f4165df6e93a208b3fb09379d537cd36555"
     },
     {
       "path": "docs/en/m2/broker-threat-model.md",
-      "bytes": 6270,
-      "sha256": "7744d62a2406be3a32f0de185e8e1cf168e14b2d90b4f30525a4323b8c121046"
+      "bytes": 6369,
+      "sha256": "e759b1eda5a7b1bed584979fe2de3fee7676421ede7cfbfa5c5538f404a209d5"
     },
     {
       "path": "docs/en/m2/broker-archive-foundation.md",
-      "bytes": 3598,
-      "sha256": "9fe46c2ed2025ddf6ce8a96afd832389909661fa50a57ceeca4303272fe76b9a"
+      "bytes": 3717,
+      "sha256": "43d2405b40c6088e763c1331d7a71b45dc3080266ade6d1f9ec18f911b34cc60"
     },
     {
       "path": "docs/en/m2/output-cancellation-redaction.md",
-      "bytes": 3415,
-      "sha256": "e18197d9e32d66bc47ea10940624a7d4ce30d1b95c3a77a1ecca0fb6bbea8b33"
+      "bytes": 3459,
+      "sha256": "1f3652a38a42f9b359835aeab9241c9b02502e9655f308dd8e656379d10abf5c"
     },
     {
       "path": "docs/en/m2/lifecycle-cleanup-state.md",
-      "bytes": 6260,
-      "sha256": "ebbe583498a77c5e78a13eafcae1dcfb3237b5355eeb1095af8ac77e2920b1a2"
+      "bytes": 6457,
+      "sha256": "f0b0deb31f9d3a251ba82bccfd631aaeb691b5cc295501f956e58a4cc3c7c0ae"
     },
     {
       "path": "docs/en/m2/event-state-recovery.md",
-      "bytes": 6601,
-      "sha256": "2b4f09c8724a50f118aaeec3fb7194810b7d75dba3117057111cda13836c6f05"
+      "bytes": 6825,
+      "sha256": "23b4547b4cbada7c126a64b623939274892b1ddf3792ff2845f6e26f12187768"
     },
     {
       "path": "docs/en/m2/sqlite-durable-state.md",
-      "bytes": 3994,
-      "sha256": "642399faf2e5a4a8802ea510b6503b5650ce772cad0c26a6d341074b72773153"
+      "bytes": 4133,
+      "sha256": "f8176210952088ab85b86a33535861ea6a644e3092001ade6a53cf4bad2a59f8"
+    },
+    {
+      "path": "docs/en/m2/live-state-composition.md",
+      "bytes": 4768,
+      "sha256": "c39d015eab8c8242bce08939195693795ed1a77afc97440bb8a4af147be6fc04"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 9165,
-      "sha256": "deb0aa297b5d5daa48ed1ac9a61e4bac81464e0fedcea74608416e68c7bef9f4"
+      "bytes": 10059,
+      "sha256": "5be503f4856ef03ffd183411bc19ed8ab39227dd91829381f73ccaccaa4f7322"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
-      "bytes": 5019,
-      "sha256": "fb4ddaf3dac4c40797345bc1cd6523df459b89033a721aaa6562a42ae2079609"
+      "bytes": 5100,
+      "sha256": "499b7a71ebafd3e583e1c37ae87f3bffd9a1a14648c1a104e770b9940e25aafd"
     },
     {
       "path": "docs/ko/m2/broker-threat-model.md",
-      "bytes": 6697,
-      "sha256": "af79a52ec6c5ec6010ca403fbfd381561a3257b359e8978932231e30ddcdf415"
+      "bytes": 6795,
+      "sha256": "7abaf8551480acb32ccbb548e61bf3fa4bf09e80f74bd388a683eefb49733364"
     },
     {
       "path": "docs/ko/m2/broker-archive-foundation.md",
-      "bytes": 3966,
-      "sha256": "8e2d2b41d79f9b73ceec73b3d81908297af13d18fba883cc71ed170260d6a3dc"
+      "bytes": 4088,
+      "sha256": "f8ab27d0cb8c46f842e2797cab27db116252f1863f9713bb5898b37fcdbb7b8b"
     },
     {
       "path": "docs/ko/m2/output-cancellation-redaction.md",
-      "bytes": 3634,
-      "sha256": "87b895e03d9ad6719e8366672e2f7058a5f55505909dc9348dc9c5c482ac6b7a"
+      "bytes": 3675,
+      "sha256": "41003c1ce71d0ef57711ce590061808f78305f4b97f9f04c57266c73a081e8c3"
     },
     {
       "path": "docs/ko/m2/lifecycle-cleanup-state.md",
-      "bytes": 6719,
-      "sha256": "4a3d73da9ce55ca58ef3676e61d948de2fc7afa4607add9a8ef6567e637ff7a6"
+      "bytes": 6912,
+      "sha256": "2b6e60c56b55057fb46a4d0d0126c529a0c25058a9cee3bd17982c58449fb695"
     },
     {
       "path": "docs/ko/m2/event-state-recovery.md",
-      "bytes": 7188,
-      "sha256": "c8d05dc570075f647cdd85829526e5f5286fb59efa94f702c1b65725d3383f50"
+      "bytes": 7384,
+      "sha256": "dc52ac80b2432f2d63332870dce653fa52f12c89e9e56f47af45ed9c2c56605b"
     },
     {
       "path": "docs/ko/m2/sqlite-durable-state.md",
-      "bytes": 4339,
-      "sha256": "18b7a74cd7a5890485aeabe9244c655edba105c79063f1e0193e3926813f6dcd"
+      "bytes": 4461,
+      "sha256": "8584c560ff6a3c2eb668bd6896de962c95dbdb43970f2a8f59feb94a5e84fae7"
+    },
+    {
+      "path": "docs/ko/m2/live-state-composition.md",
+      "bytes": 5223,
+      "sha256": "f6d58dcf5dd97c3abb024741a88fbde37a5a23cc954fc472401f849105ac966d"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -530,8 +567,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 6672,
-      "sha256": "523f2835b531a8c842f863bdfdc9aec0c5ff6ecc5bbd88d8e44a56a38cc32e22"
+      "bytes": 7475,
+      "sha256": "1c7918ae60fceaa1222b5609442f670cd6eb29e5a7772d89ca2ca9867740dde1"
     }
   ],
   "exitCriteria": {
@@ -557,7 +594,11 @@
     "candidateSQLiteAdapter": "framework-verified",
     "separateProcessRestart": "framework-verified",
     "productDurableState": "pending",
-    "liveBrokerStateWiring": "pending"
+    "candidateLiveStateComposition": "framework-verified",
+    "startupRecoveryOrdering": "framework-verified",
+    "partialStateWriteCleanup": "framework-verified",
+    "productLiveBrokerStateWiring": "pending",
+    "externalCancellationStateWiring": "pending"
   },
   "productExecutionAllowed": false,
   "distributionAllowed": false,
@@ -579,8 +620,8 @@
     },
     {
       "id": "BRK-006",
-      "status": "candidate-sqlite-hard-exit-recovery-tested",
-      "result": "process-local cleanup leases, common memory and SQLite conformance, CAS recovery claims, four deterministic crash boundaries, and separate-process hard-exit convergence are tested without product activation"
+      "status": "candidate-live-state-recovery-gate-tested",
+      "result": "startup drains bounded recoverable pages before admission, exact-job reconciliation closes stale state, and incomplete cleanup keeps the gate closed without product activation"
     },
     {
       "id": "BRK-007",
@@ -589,8 +630,8 @@
     },
     {
       "id": "BRK-008",
-      "status": "structured-mapping-redaction-tested",
-      "result": "deterministic broker event mapping persists normalized fields and keeps raw diagnostics private"
+      "status": "candidate-phase-time-state-tested",
+      "result": "deterministic complete-outcome and phase-time execution mapping persist normalized fields, stop after the first store failure, and keep raw diagnostics private"
     }
   ],
   "archiveContract": {
@@ -688,7 +729,6 @@
     "rawDetailPersisted": false,
     "inMemoryImplementationDurable": false,
     "durableAdapterImplemented": false,
-    "brokerWiringImplemented": false,
     "persistedFields": [
       "job_id",
       "event_id",
@@ -705,7 +745,9 @@
     "recoveryPageSorted": true,
     "recoveryCursorIsLastJobId": true,
     "operationSlotUnique": true,
-    "candidateDurableAdapterImplemented": true
+    "candidateDurableAdapterImplemented": true,
+    "candidateExecuteWiringImplemented": true,
+    "productBrokerWiringImplemented": false
   },
   "eventStateMappingContract": {
     "sourceSequenceContiguous": true,
@@ -715,7 +757,9 @@
     "backendMismatchAccepted": false,
     "incompleteCleanupMappedTerminal": false,
     "partialBatchReplayTested": true,
-    "liveBrokerWiringImplemented": false
+    "candidateExecuteWiringImplemented": true,
+    "externalCancellationWiringImplemented": false,
+    "productLiveBrokerWiringImplemented": false
   },
   "adapterConformanceContract": {
     "suitePath": "backend/tests/broker/state_store_conformance.py",
@@ -755,7 +799,9 @@
     "processHardExitTested": true,
     "hardExitCheckpoint": "after-claim",
     "powerLossTested": false,
-    "productBrokerWiringTested": false
+    "productBrokerWiringTested": false,
+    "startupAdmissionTested": true,
+    "finalRecoverableRescanTested": true
   },
   "sqliteDurableStateContract": {
     "adapter": "python-stdlib-sqlite3",
@@ -773,10 +819,40 @@
     "unknownForwardVersionAccepted": false,
     "destructiveMigrationAutomatic": false,
     "productEnabled": false,
-    "liveBrokerWiring": false,
     "powerLossTested": false,
     "backupRestoreTested": false,
     "multiHostTested": false,
-    "exactSchemaRequired": true
+    "exactSchemaRequired": true,
+    "candidateMockExecutionWiring": true,
+    "productLiveBrokerWiring": false
+  },
+  "liveStateCompositionContract": {
+    "productEnabled": false,
+    "acceptedRuntime": "mock",
+    "productRuntimeAccepted": false,
+    "directBrokerExecutionPersisted": false,
+    "executeWiring": true,
+    "externalCancelWiring": false,
+    "firstDurableStateBeforeRuntimeProbe": true,
+    "startupRecoveryBeforeAdmission": true,
+    "startupPagesBounded": true,
+    "finalRecoverableRescan": true,
+    "existingJobReadmissionAccepted": false,
+    "phaseWritesAwaited": true,
+    "firstWriteFailureStopsProgress": true,
+    "cleanupRunsAfterWriteFailure": true,
+    "terminalWriteFailureCanReportSuccess": false,
+    "terminalWriteFailureLeavesRecoverablePrefix": true,
+    "deterministicUuidV5": true,
+    "rawStoreDetailPublic": false,
+    "serviceTransport": false,
+    "runtimeSocket": false,
+    "compositionErrorCodes": [
+      "startup-required",
+      "recovery-incomplete",
+      "job-state-exists",
+      "store-unavailable",
+      "product-runtime-disabled"
+    ]
   }
 }

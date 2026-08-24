@@ -1,0 +1,64 @@
+# M2 비활성 live-state composition
+
+[English](../../en/m2/live-state-composition.md) | [M2 상태](README.md)
+
+## 상태와 권한
+
+- 상태: 계약 test를 갖춘 비활성 mock 전용 composition 후보
+- 제품 활성화 flag: `false`
+- 제품 Docker 및 Podman runtime kind: constructor에서 거부
+- Service, worker, runtime socket, network, solver 권한: 없음
+- Phase-time execution persistence: 명시적으로 선택하는 composition을 통해 구현
+- 외부 `SandboxBroker.cancel()` persistence: 미구현
+
+`DurableBrokerComposition`은 기존 broker lifecycle과 `DurableJobStateStore`를 연결하지만 이를 제품 실행 경로로 만들지 않습니다. `SandboxBroker.execute()`를 직접 호출하면 기존의 memory event 동작을 유지합니다. Composition은 `RuntimeKind.MOCK`만 허용하므로 향후 제품 backend가 추가되어도 이 후보가 암묵적으로 활성화되지 않습니다.
+
+## Admission 전 startup
+
+직렬화된 `startup()` 호출 하나가 완료되어야 `execute()`가 job을 받습니다.
+
+1. Recoverable snapshot을 제한된 page 하나씩 scan합니다.
+2. 결정론적 page recovery UUID를 사용해 각 revision을 compare-and-swap으로 claim합니다.
+3. 정확한 job identity의 runtime object를 reconcile합니다.
+4. 모든 cursor를 처리합니다.
+5. Recoverable item 하나를 찾는 최종 scan을 수행합니다.
+6. 최종 scan이 비어 있을 때만 ready 상태를 공개합니다.
+
+Reconciliation이 미완료이면 job은 `cleaning`에 남고 admission gate도 닫힌 상태를 유지합니다. Store 실패는 공개 세부 정보가 없는 stable `store-unavailable` composition error가 됩니다. Ready 상태 뒤의 반복 startup 호출은 처음 완료된 report를 반환합니다. 이는 단일 process startup gate이며 distributed ownership lease 또는 fencing protocol이 아닙니다.
+
+## Phase-time 순서
+
+`LiveStateSession`은 admission된 job 하나, canonical operation UUID 하나, 정규화 backend 하나, expected revision 하나를 결합합니다. `BrokerStateMapper`와 같은 결정론적 UUID v5 event ID를 만들고 각 compare-and-swap append를 기다립니다.
+
+| Durable event | Commit이 먼저 완료되어야 하는 작업 |
+| --- | --- |
+| `validating` | Runtime probe |
+| `preparing` | Image 확인 및 volume 할당 |
+| `running` | Runtime wait |
+| `collecting` | Artifact 전달 및 검증 |
+| `cancelling` | Execution 경로 cancellation kill |
+| `cleaning` | Object cleanup |
+| Terminal state | 최종 outcome 반환 |
+
+Composition은 session을 만들기 전에 job을 load합니다. Terminal 또는 recoverable 상태와 관계없이 기존 snapshot이 있으면 runtime probe 전에 거부합니다. 동시에 시작한 첫 writer도 revision CAS로 보호합니다. Phase-time record에는 정규화된 state, phase, code, retry, backend, classification, cleanup 완료 field만 포함합니다.
+
+## 부분 write 동작
+
+첫 state-store 실패가 발생하면 session은 failed 상태가 됩니다. 이후 phase emission은 no-op이 되어 store 장애가 broker의 `finally` cleanup 경로를 막지 못하게 합니다.
+
+| 실패 지점 | 실행 동작 | Durable 결과 |
+| --- | --- | --- |
+| `preparing` commit 전 | Image 또는 volume 할당을 시작하지 않음 | 마지막 `validating` revision이 recoverable 상태로 유지됨 |
+| `running` commit 전 | 이후 실행을 중단하고 할당된 object를 제거함 | 마지막 `preparing` revision이 recoverable 상태로 유지됨 |
+| Cleanup 또는 terminal commit | Cleanup을 계속 수행함 | 마지막 nonterminal prefix가 recoverable 상태로 유지됨 |
+| 성공 실행의 terminal commit 실패 | 공개 success를 `failed`로 강등하고 artifact를 제거함 | Commit된 `cleaning` prefix를 startup recovery가 `failed:stale-state`로 닫음 |
+
+공개 state write 실패는 `invalid-state`, infrastructure retry 구분, 실패 phase, 정규화된 mock backend만 사용합니다. Driver message와 database path는 공개 outcome에 복사하지 않습니다. Recovery는 success를 만들어 내지 않습니다.
+
+Runtime cleanup 자체가 미완료이면 공개 마지막 event는 `failed`일 수 있지만 durable 마지막 append는 code가 있는 `cleaning`에 머뭅니다. 따라서 recovery scan에서 계속 보이며 complete-outcome mapper 계약과 일치합니다.
+
+## 증거와 남은 게이트
+
+집중 test 9개는 startup admission 순서, SQLite phase 순서 및 mapper 동등성, 할당 전과 할당 후 write 실패, terminal write 실패 강등 및 restart 수렴, 기존 job 거부, stale object startup reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. 전체 dependency-free Python suite는 test 86개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
+
+다음 state 경계는 durable external cancellation과 restart-safe cancellation arbitration입니다. 제품 service transport, worker integration, distributed ownership 및 fencing, retention compaction, backup 및 restore, host 전원 손실 자격 검증, 제품 runtime adapter, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
