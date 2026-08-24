@@ -26,8 +26,8 @@ M0 작업을 시작했습니다. 이 기록은 라이선스, 출처, 아키텍�
 | LIC-004 릴리스 이미지 정책 | 시작 전 | 미승인 또는 고정되지 않은 이미지를 거부해야 함 |
 | BASE-001 Linux 참조 기준선 | 진행 중, 미충족 | Rootless Podman이 Docker structure byte와 일치하고 통제된 image 재빌드도 정확하지만 clean log, 권리, SBOM 검토, corpus, 승인 게이트는 미충족 |
 | 현행 아키텍처 기록 | 초안 완료 | 목표 저장소와 참조 저장소 경계를 기록함 |
-| 이식성 spike | 사전 관찰 | Windows Docker Desktop과 WSL2 rootless Podman에서 진단 증거를 얻었으나 지원을 주장하지 않음 |
-| 엔진 독립 장애 경로 | 계약 test 완료, runtime 증거 대기 | Timeout, 취소, 합산 출력 상한, worker 초기화를 실제 자식 프로세스로 검사했으나 OCI runtime과 solver는 사용하지 않음 |
+| 이식성 spike | 비솔버 runtime 특성 관찰 | Windows Docker Desktop과 WSL2 rootless Podman이 OCI 장애 행렬을 통과했으나 native host 및 지원 주장은 계속 열려 있음 |
+| 장애 경로 | 계약 및 비솔버 OCI 행렬 관찰 | 두 runtime이 이름 있는 사례 6개와 20회 혼합 반복을 label orphan 0으로 통과했으나 제품 adapter 및 solver 장애는 미검증 |
 | M0 종료 게이트 | 미충족 | 수치, 플랫폼, runtime 장애, 지원 행렬 증거가 남아 있음 |
 
 ## M0 산출물
@@ -36,6 +36,8 @@ M0 작업을 시작했습니다. 이 기록은 라이선스, 출처, 아키텍�
 - [기준선 및 clean-room 정책](baseline-and-clean-room.md)
 - [BASE-001 참조 관찰 하네스](base001-reference-observation.md)
 - [엔진 독립 장애 경로 계약](fault-path-foundation.md)
+- [비솔버 OCI 장애 행렬 관찰](oci-fault-matrix.md)
+- [기계 판독 OCI 장애 관찰](../../../m0/OCI_FAULT_MATRIX_OBSERVATION.json)
 - [기계 판독 장애 경로 상태](../../../validation/manifests/m0-fault-path-foundation.json)
 - [현행 아키텍처](current-architecture.md)
 - [이식성 spike 보고서](portability-spike-report.md)
@@ -46,16 +48,18 @@ M0 작업을 시작했습니다. 이 기록은 라이선스, 출처, 아키텍�
 - [기계 판독용 통제 image 및 SBOM 관찰](../../../m0/BASE001_REPRODUCIBLE_IMAGE_OBSERVATION.json)
 - [5회 1D 관찰 계획](../../../validation/plans/base001-process-1d-boron.json)
 - [통제된 참조 image build 계획](../../../validation/plans/base001-suprem-image-build.json)
+- [검토된 OCI 장애 계획](../../../validation/plans/m0-oci-fault-matrix.json)
+- [외부 OCI 장애 collector](../../../tools/observe-oci-fault-matrix.mjs)
 - [외부 build 준비 도구](../../../tools/prepare-reference-image-build.mjs)
 
-`npm run check:m0`는 실행 관찰 2건, 통제 image 관찰, build 계획, collector hash, image 및 SBOM identity, 엔진 독립 장애 경로 계약, 한·영 문서 쌍, 실패 폐쇄 상태를 검사합니다. Timestamp, base, snapshot을 고정한 Podman image는 같은 ID, digest, 크기, layer 5개로 재빌드됐고 network를 차단한 로컬 scan에서 CycloneDX SBOM을 생성했습니다. 실제 자식 프로세스 suite는 계약 계층에서 timeout, 취소, 합산 출력 상한, 장애 후 worker 교체를 검증합니다. 실제 OCI adapter cleanup과 solver 장애 증거는 대기 상태입니다. 선언된 solver log 오류, 권리, SBOM license 검토, corpus 범위, 수치 승인은 계속 열린 상태입니다.
+`npm run check:m0`는 실행 관찰 2건, 통제 image 관찰, build 및 OCI 계획, collector hash, image 및 SBOM identity, 엔진 독립 장애 경로 계약, 정규화한 OCI runtime 기록, 한·영 문서 쌍, 실패 폐쇄 상태를 검사합니다. Timestamp, base, snapshot을 고정한 Podman image는 같은 ID, digest, 크기, layer 5개로 재빌드됐고 network를 차단한 로컬 scan에서 CycloneDX SBOM을 생성했습니다. 자식 프로세스 계약과 비솔버 OCI 행렬은 두 관찰 runtime에서 timeout, 취소, 합산 출력 상한, worker 교체, 정확한 이름 cleanup, label orphan 0을 검증합니다. 제품 runtime adapter와 solver 장애 증거는 대기 상태입니다. 선언된 solver log 오류, 권리, SBOM license 검토, corpus 범위, 수치 승인은 계속 열린 상태입니다.
 
 ## 다음 게이트
 
 1. SUPREM 소스, 패치, 바이너리, 이미지 배포에 대한 전문가 판단을 받습니다.
 2. 외부 SBOM license evidence를 검토하고 release image recipe를 승인하거나 거부합니다.
 3. 사용 권한이 있고 독립 검토된 fixture에서 선언된 input 오류를 수정합니다.
-4. 제안된 NMOS 공정·소자, CMOS 공정·소자 case를 실행하고 실제 runtime adapter에서 timeout, 취소, 출력 상한, 재시작을 반복합니다.
+4. 제안된 NMOS 공정·소자, CMOS 공정·소자 case를 실행하고 제품 runtime adapter와 영속 job state를 통해 관찰된 장애 행렬을 반복합니다.
 5. 검토된 증거를 고정한 뒤 같은 기준선으로 native Linux, Windows, macOS, Podman Machine 이식성 spike를 수행합니다.
 
 엔진 독립 M1 계약 작업은 `gated-active` 상태로 진행할 수 있습니다. 적용되는 M0 게이트를 통과하기 전에는 수치 코퍼스를 고정하거나 솔버 기반 제품 주장을 시작하지 않습니다.

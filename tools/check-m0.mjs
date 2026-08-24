@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateReferenceImageBuildPlan } from "../validation/baseline/reference-image-build.mjs";
+import { validateOciFaultPlan } from "../validation/faults/oci-fault-observation.mjs";
 import { FAULT_CLASSIFICATIONS } from "../validation/faults/supervisor.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -38,6 +39,13 @@ const faultPathManifestPath = join(
   "manifests",
   "m0-fault-path-foundation.json",
 );
+const ociFaultPlanPath = join(
+  projectRoot,
+  "validation",
+  "plans",
+  "m0-oci-fault-matrix.json",
+);
+const ociFaultRecordPath = join(projectRoot, "m0", "OCI_FAULT_MATRIX_OBSERVATION.json");
 
 const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
 const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
@@ -48,6 +56,9 @@ const imageBuildPlanBytes = await readFile(imageBuildPlanPath);
 const imageBuildPlan = JSON.parse(imageBuildPlanBytes.toString("utf8"));
 const imageBuildObservation = JSON.parse(await readFile(imageBuildObservationPath, "utf8"));
 const faultPathManifest = JSON.parse(await readFile(faultPathManifestPath, "utf8"));
+const ociFaultPlanBytes = await readFile(ociFaultPlanPath);
+const ociFaultPlan = JSON.parse(ociFaultPlanBytes.toString("utf8"));
+const ociFaultRecord = JSON.parse(await readFile(ociFaultRecordPath, "utf8"));
 const errors = [];
 
 function requireValue(condition, message) {
@@ -71,7 +82,13 @@ requireValue(
   "Unsupported BASE-001 reproducible image observation schema.",
 );
 requireValue(faultPathManifest.schemaVersion === 1, "Unsupported M0 fault-path schema.");
+requireValue(ociFaultRecord.schemaVersion === 1, "Unsupported M0 OCI fault record schema.");
 requireValue(observationPlan.schemaVersion === 1, "Unsupported BASE-001 plan schema.");
+try {
+  validateOciFaultPlan(ociFaultPlan);
+} catch (error) {
+  errors.push(error instanceof Error ? error.message : String(error));
+}
 try {
   validateReferenceImageBuildPlan(imageBuildPlan);
 } catch (error) {
@@ -607,6 +624,192 @@ requireValue(
   "The fault-path record must not contain an absolute host path.",
 );
 
+requireValue(
+  ociFaultRecord.milestone === "M0" &&
+    ociFaultRecord.recordId === "M0-OCI-FAULT-001" &&
+    ociFaultRecord.status === "observed-nonpromoting" &&
+    ociFaultRecord.evidenceClass === "oci-runtime-nonsolver",
+  "The OCI fault record identity or evidence class drifted.",
+);
+requireValue(
+  ociFaultRecord.baselinePromotionAllowed === false &&
+    ociFaultRecord.distributionAllowed === false &&
+    ociFaultRecord.scope.usesSolver === false &&
+    ociFaultRecord.scope.usesProductRuntimeAdapter === false &&
+    ociFaultRecord.scope.hostSupportClaimed === false &&
+    ociFaultRecord.scope.containerNetwork === "none" &&
+    ociFaultRecord.scope.pullPerformed === false,
+  "The OCI observation must remain non-promoting, non-solver, and non-product.",
+);
+requireValue(
+  ociFaultRecord.image.reference === ociFaultPlan.image.reference &&
+    ociFaultRecord.image.indexDigest === ociFaultPlan.image.indexDigest &&
+    ociFaultRecord.image.platformManifestDigest === ociFaultPlan.image.platformManifestDigest &&
+    ociFaultRecord.image.rootFilesystemLayer === ociFaultPlan.image.rootFilesystemLayer &&
+    ociFaultRecord.image.created === ociFaultPlan.image.created &&
+    ociFaultRecord.image.platform === ociFaultPlan.image.platform &&
+    ociFaultRecord.image.pullPolicy === ociFaultPlan.image.pullPolicy &&
+    ociFaultRecord.image.identityPassedOnEveryRuntime === true &&
+    ociFaultRecord.image.distributionApproved === false,
+  "The OCI image identity or distribution boundary drifted.",
+);
+for (const key of [
+  "network",
+  "capDrop",
+  "noNewPrivileges",
+  "readOnlyRootFilesystem",
+  "writableTemporaryFilesystems",
+  "user",
+  "pidsLimit",
+  "memoryBytes",
+  "cpus",
+  "restart",
+  "stopTimeoutSeconds",
+]) {
+  requireValue(
+    ociFaultRecord.policy[key] === ociFaultPlan.policy[key],
+    "OCI policy drifted from the reviewed plan: " + key,
+  );
+}
+requireValue(
+  JSON.stringify(ociFaultRecord.policy.mounts) === JSON.stringify(ociFaultPlan.policy.mounts) &&
+    ociFaultRecord.policy.passedOnEveryCase === true &&
+    ociFaultRecord.limits.faultTimeoutMs === ociFaultPlan.limits.faultTimeoutMs &&
+    ociFaultRecord.limits.cancelAfterMs === ociFaultPlan.limits.cancelAfterMs &&
+    ociFaultRecord.limits.terminationGraceMs === ociFaultPlan.limits.terminationGraceMs &&
+    ociFaultRecord.limits.outputBombLimitBytes === ociFaultPlan.limits.outputBombLimitBytes,
+  "The OCI policy mounts, limits, or all-case result drifted.",
+);
+requireValue(
+  JSON.stringify(ociFaultRecord.observations.map(({ runtime }) => runtime)) ===
+    JSON.stringify(["docker", "podman"]),
+  "The OCI record must contain Docker and Podman exactly once.",
+);
+const injectedOciModes = new Set(["timed-out", "cancelled", "output-limit-exceeded"]);
+for (const runtimeObservation of ociFaultRecord.observations) {
+  requireValue(
+    runtimeObservation.runtimeProfile.operatingSystem === "linux" &&
+      runtimeObservation.runtimeProfile.architecture === "amd64" &&
+      runtimeObservation.runtimeProfile.cgroupManager === "cgroupfs",
+    "The OCI runtime profile drifted: " + runtimeObservation.runtime,
+  );
+  if (runtimeObservation.runtime === "podman") {
+    requireValue(
+      runtimeObservation.runtimeProfile.rootless === true &&
+        runtimeObservation.transport.launcher === "wsl" &&
+        runtimeObservation.transport.distribution === "Debian",
+      "The Podman observation must remain rootless in WSL Debian.",
+    );
+  }
+  requireValue(
+    runtimeObservation.namedScenarios.length === ociFaultPlan.scenarios.length,
+    "The named OCI scenario count drifted: " + runtimeObservation.runtime,
+  );
+  for (const [index, result] of runtimeObservation.namedScenarios.entries()) {
+    const scenario = ociFaultPlan.scenarios[index];
+    const expectedClassification = scenario.mode === "completed"
+      ? "succeeded"
+      : scenario.mode === "nonzero-exit"
+        ? "nonzero-exit"
+        : scenario.mode;
+    requireValue(
+      result.id === scenario.id &&
+        result.mode === scenario.mode &&
+        result.classification === expectedClassification &&
+        result.outcomePassed === true &&
+        result.exactNameRemoved === true &&
+        result.labelledOrphans === 0,
+      "OCI scenario outcome or cleanup drifted: " + runtimeObservation.runtime + "/" + scenario.id,
+    );
+    if (["completed", "nonzero-exit"].includes(scenario.mode)) {
+      requireValue(
+        result.processExitCode === scenario.expectedContainerExitCode,
+        "OCI process exit code drifted: " + runtimeObservation.runtime + "/" + scenario.id,
+      );
+    } else {
+      requireValue(
+        result.processExitCode === null && result.postFaultRecoveryPassed === true,
+        "OCI fault recovery evidence drifted: " + runtimeObservation.runtime + "/" + scenario.id,
+      );
+    }
+    if (scenario.id === "policy-process-status") {
+      requireValue(
+        result.processStatusPassed === true,
+        "OCI process policy evidence is missing: " + runtimeObservation.runtime,
+      );
+    }
+    requireValue(
+      injectedOciModes.has(scenario.mode) === (result.postFaultRecoveryPassed === true),
+      "OCI recovery applicability drifted: " + runtimeObservation.runtime + "/" + scenario.id,
+    );
+  }
+  requireValue(
+    runtimeObservation.mixedLoop.count === ociFaultPlan.mixedLoop.count &&
+      JSON.stringify(runtimeObservation.mixedLoop.countsByMode) ===
+        JSON.stringify({ completed: 7, "nonzero-exit": 7, cancelled: 6 }) &&
+      runtimeObservation.mixedLoop.allPassed === true,
+    "The 20-case OCI mixed loop drifted: " + runtimeObservation.runtime,
+  );
+  requireValue(
+    runtimeObservation.cleanup.initialLabelledContainers === 0 &&
+      runtimeObservation.cleanup.queryAfterEveryCase === true &&
+      runtimeObservation.cleanup.finalLabelledContainers === 0 &&
+      runtimeObservation.cleanup.everyCaseExactNameRemoved === true,
+    "The OCI cleanup or orphan result drifted: " + runtimeObservation.runtime,
+  );
+  requireValue(
+    /^[0-9a-f]{64}$/u.test(runtimeObservation.externalEvidence.manifestSha256) &&
+      !Number.isNaN(Date.parse(runtimeObservation.externalEvidence.manifestRecordedAt)) &&
+      runtimeObservation.externalEvidence.rawArtifactCount > 0 &&
+      runtimeObservation.externalEvidence.rawArtifactsCommitted === false &&
+      runtimeObservation.externalEvidence.absolutePathRecorded === false,
+    "The external OCI evidence boundary is incomplete: " + runtimeObservation.runtime,
+  );
+}
+const expectedOciCollectorPaths = [
+  "tools/observe-oci-fault-matrix.mjs",
+  "validation/faults/oci-fault-observation.mjs",
+  "validation/faults/supervisor.mjs",
+  "validation/faults/command-worker.mjs",
+  "validation/plans/m0-oci-fault-matrix.json",
+];
+requireValue(
+  JSON.stringify(ociFaultRecord.collectorFiles.map(({ path }) => path)) ===
+    JSON.stringify(expectedOciCollectorPaths),
+  "The OCI collector file inventory drifted.",
+);
+for (const collectorFile of ociFaultRecord.collectorFiles) {
+  requireValue(
+    !/^(?:[A-Za-z]:[\\/]|[\\/])/u.test(collectorFile.path) &&
+      !collectorFile.path.split(/[\\/]+/u).includes(".."),
+    "OCI collector path must stay inside OpenTCAD: " + collectorFile.path,
+  );
+  const bytes = await readFile(join(projectRoot, collectorFile.path));
+  const actual = createHash("sha256").update(bytes).digest("hex");
+  requireValue(
+    bytes.byteLength === collectorFile.bytes && actual === collectorFile.sha256,
+    "OCI collector identity drifted: " + collectorFile.path,
+  );
+}
+requireValue(
+  ociFaultRecord.collectorFiles.at(-1).sha256 ===
+    createHash("sha256").update(ociFaultPlanBytes).digest("hex"),
+  "The recorded OCI plan hash does not match the reviewed plan.",
+);
+requireValue(
+  ociFaultRecord.m0Result.runtimeFaultCharacterizationObserved === true &&
+    ociFaultRecord.m0Result.solverFaultEvidenceObserved === false &&
+    ociFaultRecord.m0Result.productRuntimeAdapterQualified === false &&
+    ociFaultRecord.m0Result.hostSupportQualified === false &&
+    ociFaultRecord.m0Result.m0Exit === "not-met" &&
+    baseline.m0Exit.overall === "not-met",
+  "The OCI runtime observation must not close the solver, adapter, support, or M0 gates.",
+);
+requireValue(
+  !JSON.stringify(ociFaultRecord).includes("/mnt/c/") &&
+    !/[A-Za-z]:\\/.test(JSON.stringify(ociFaultRecord)),
+  "The sanitized OCI record must not contain an absolute host path.",
+);
 const localHashes = inventory.evidenceHashes.filter(({ repository }) => repository === "OpenTCAD");
 for (const evidence of localHashes) {
   const bytes = await readFile(join(projectRoot, evidence.path));
@@ -622,6 +825,7 @@ const bilingualPairs = [
   ["docs/en/m0/portability-spike-report.md", "docs/ko/m0/portability-spike-report.md"],
   ["docs/en/m0/base001-reference-observation.md", "docs/ko/m0/base001-reference-observation.md"],
   ["docs/en/m0/fault-path-foundation.md", "docs/ko/m0/fault-path-foundation.md"],
+  ["docs/en/m0/oci-fault-matrix.md", "docs/ko/m0/oci-fault-matrix.md"],
 ];
 
 for (const pair of bilingualPairs.flat()) {
@@ -638,6 +842,6 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `M0 evidence check passed (${inventory.components.length} components, ${inventory.images.length} images, ${baseline.references.length} frozen references, 2 ineligible run observations, 1 non-baseline image build observation, 1 engine-independent fault-path contract).`,
+    `M0 evidence check passed (${inventory.components.length} components, ${inventory.images.length} images, ${baseline.references.length} frozen references, 2 ineligible run observations, 1 non-baseline image build observation, 1 engine-independent fault-path contract, 2 non-solver OCI runtime observations).`,
   );
 }

@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M0",
+  "recordId": "M0-OCI-FAULT-001",
+  "status": "observed-nonpromoting",
+  "evidenceClass": "oci-runtime-nonsolver",
+  "recordedAt": "2026-08-24T04:49:02.793Z",
+  "scope": {
+    "hostOperatingSystem": "windows",
+    "usesSolver": false,
+    "usesProductRuntimeAdapter": false,
+    "containerNetwork": "none",
+    "pullPerformed": false,
+    "hostSupportClaimed": false
+  },
+  "image": {
+    "reference": "docker.io/library/debian@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
+    "indexDigest": "sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
+    "platformManifestDigest": "sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143",
+    "rootFilesystemLayer": "sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe",
+    "created": "2026-08-03T00:00:00Z",
+    "platform": "linux/amd64",
+    "pullPolicy": "never",
+    "identityPassedOnEveryRuntime": true,
+    "distributionApproved": false
+  },
+  "policy": {
+    "network": "none",
+    "capDrop": "ALL",
+    "noNewPrivileges": true,
+    "readOnlyRootFilesystem": true,
+    "writableTemporaryFilesystems": false,
+    "user": "65534:65534",
+    "pidsLimit": 32,
+    "memoryBytes": 67108864,
+    "cpus": 0.5,
+    "restart": "no",
+    "stopTimeoutSeconds": 1,
+    "mounts": [],
+    "passedOnEveryCase": true
+  },
+  "limits": {
+    "faultTimeoutMs": 250,
+    "cancelAfterMs": 250,
+    "terminationGraceMs": 500,
+    "outputBombLimitBytes": 32768
+  },
+  "observations": [
+    {
+      "runtime": "docker",
+      "runtimeProfile": {
+        "version": "29.6.2",
+        "operatingSystem": "linux",
+        "architecture": "amd64",
+        "kernel": "6.18.33.2-microsoft-standard-WSL2",
+        "rootless": false,
+        "cgroupVersion": "2",
+        "cgroupManager": "cgroupfs"
+      },
+      "transport": {
+        "launcher": "docker",
+        "runtimeExecutable": "docker",
+        "distribution": null
+      },
+      "namedScenarios": [
+        {
+          "id": "policy-process-status",
+          "mode": "completed",
+          "classification": "succeeded",
+          "processExitCode": 0,
+          "outcomePassed": true,
+          "processStatusPassed": true,
+          "postFaultRecoveryPassed": null,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "read-only-root",
+          "mode": "nonzero-exit",
+          "classification": "nonzero-exit",
+          "processExitCode": 1,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": null,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "declared-nonzero-exit",
+          "mode": "nonzero-exit",
+          "classification": "nonzero-exit",
+          "processExitCode": 1,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": null,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "timeout",
+          "mode": "timed-out",
+          "classification": "timed-out",
+          "processExitCode": null,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": true,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "cancellation",
+          "mode": "cancelled",
+          "classification": "cancelled",
+          "processExitCode": null,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": true,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "output-bomb",
+          "mode": "output-limit-exceeded",
+          "classification": "output-limit-exceeded",
+          "processExitCode": null,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": true,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        }
+      ],
+      "mixedLoop": {
+        "count": 20,
+        "countsByMode": {
+          "completed": 7,
+          "nonzero-exit": 7,
+          "cancelled": 6
+        },
+        "allPassed": true
+      },
+      "cleanup": {
+        "initialLabelledContainers": 0,
+        "queryAfterEveryCase": true,
+        "finalLabelledContainers": 0,
+        "everyCaseExactNameRemoved": true
+      },
+      "externalEvidence": {
+        "manifestSha256": "eaa824d09adef3bdb68972f65f9d67ed8e7118e6c47ecd92d1fbd9a8db296ccb",
+        "manifestRecordedAt": "2026-08-24T04:49:02.793Z",
+        "rawArtifactCount": 614,
+        "rawArtifactsCommitted": false,
+        "absolutePathRecorded": false
+      }
+    },
+    {
+      "runtime": "podman",
+      "runtimeProfile": {
+        "version": "5.4.2",
+        "operatingSystem": "linux",
+        "architecture": "amd64",
+        "kernel": "6.18.33.2-microsoft-standard-WSL2",
+        "rootless": true,
+        "cgroupVersion": "v2",
+        "cgroupManager": "cgroupfs"
+      },
+      "transport": {
+        "launcher": "wsl",
+        "runtimeExecutable": "podman",
+        "distribution": "Debian"
+      },
+      "namedScenarios": [
+        {
+          "id": "policy-process-status",
+          "mode": "completed",
+          "classification": "succeeded",
+          "processExitCode": 0,
+          "outcomePassed": true,
+          "processStatusPassed": true,
+          "postFaultRecoveryPassed": null,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "read-only-root",
+          "mode": "nonzero-exit",
+          "classification": "nonzero-exit",
+          "processExitCode": 1,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": null,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "declared-nonzero-exit",
+          "mode": "nonzero-exit",
+          "classification": "nonzero-exit",
+          "processExitCode": 1,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": null,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "timeout",
+          "mode": "timed-out",
+          "classification": "timed-out",
+          "processExitCode": null,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": true,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "cancellation",
+          "mode": "cancelled",
+          "classification": "cancelled",
+          "processExitCode": null,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": true,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        },
+        {
+          "id": "output-bomb",
+          "mode": "output-limit-exceeded",
+          "classification": "output-limit-exceeded",
+          "processExitCode": null,
+          "outcomePassed": true,
+          "processStatusPassed": null,
+          "postFaultRecoveryPassed": true,
+          "exactNameRemoved": true,
+          "labelledOrphans": 0
+        }
+      ],
+      "mixedLoop": {
+        "count": 20,
+        "countsByMode": {
+          "completed": 7,
+          "nonzero-exit": 7,
+          "cancelled": 6
+        },
+        "allPassed": true
+      },
+      "cleanup": {
+        "initialLabelledContainers": 0,
+        "queryAfterEveryCase": true,
+        "finalLabelledContainers": 0,
+        "everyCaseExactNameRemoved": true
+      },
+      "externalEvidence": {
+        "manifestSha256": "6f646173b14f417309e4c3722891abdd7a354200b84501cba655ddef9c640839",
+        "manifestRecordedAt": "2026-08-24T04:49:00.673Z",
+        "rawArtifactCount": 590,
+        "rawArtifactsCommitted": false,
+        "absolutePathRecorded": false
+      }
+    }
+  ],
+  "collectorFiles": [
+    {
+      "path": "tools/observe-oci-fault-matrix.mjs",
+      "bytes": 24648,
+      "sha256": "e30aa2118affaf3d4229ef33c3c022dfcc1e53809a9d0f2c90698161661fe090"
+    },
+    {
+      "path": "validation/faults/oci-fault-observation.mjs",
+      "bytes": 15318,
+      "sha256": "8d6b7161d5a9398e616dbe77d8cf5034ddfa17d276a2be8ac469849b1f11b4d4"
+    },
+    {
+      "path": "validation/faults/supervisor.mjs",
+      "bytes": 10575,
+      "sha256": "7fe2f952f6cfce47b2703da2f65116c92a321e3776351c857c7951a1f714d3ed"
+    },
+    {
+      "path": "validation/faults/command-worker.mjs",
+      "bytes": 6169,
+      "sha256": "f5499ebfeb83d0bf178af26d9a591b39e8f6eb7a29db5241877126fc8d0b49a6"
+    },
+    {
+      "path": "validation/plans/m0-oci-fault-matrix.json",
+      "bytes": 4398,
+      "sha256": "54c4a0b013c963755c02a090d8e9c1c5fc81f429f4b4c1411f11338ef9ddcba1"
+    }
+  ],
+  "findings": [
+    "Docker and rootless Podman retained the reviewed security and resource policy on every case.",
+    "Podman required an explicit read-only-tmpfs=false mapping to match Docker read-only temporary-filesystem semantics.",
+    "Timeout, cancellation, and combined-output faults reset the supervisor worker before cleanup inspection.",
+    "Both 20-case mixed loops ended with zero labelled containers."
+  ],
+  "limitations": [
+    "The image contains no OpenTCAD solver and is not approved for product distribution.",
+    "The collector is validation tooling, not the M2 product RuntimeBackend adapter.",
+    "Only Windows Docker Desktop and WSL2 Debian rootless Podman were observed.",
+    "Native Linux, macOS, and Podman Machine remain unqualified.",
+    "Raw runtime output, inspect data, and command metadata remain external and uncommitted."
+  ],
+  "m0Result": {
+    "runtimeFaultCharacterizationObserved": true,
+    "solverFaultEvidenceObserved": false,
+    "productRuntimeAdapterQualified": false,
+    "hostSupportQualified": false,
+    "m0Exit": "not-met"
+  },
+  "baselinePromotionAllowed": false,
+  "distributionAllowed": false
+}

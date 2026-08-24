@@ -6,7 +6,7 @@
 
 현재 OpenTCAD은 한·영 React 및 Vite 정적 애플리케이션, 결정론적 참조 미리보기 데이터, 문서, GitHub Pages 배포로 구성됩니다. Backend, database, queue, worker, container runtime adapter, solver source, solver binary, solver image는 없습니다.
 
-정적 애플리케이션은 유용한 제품 셸이지만 시뮬레이션 서비스는 아닙니다. 라이선스와 수치 기준선이 열려 있는 동안 browser-only 경계를 의도적으로 유지합니다. Node 장애 경로 supervisor는 검증 전용 코드이며 제품 backend, queue worker, runtime adapter가 아닙니다.
+정적 애플리케이션은 유용한 제품 셸이지만 시뮬레이션 서비스는 아닙니다. 라이선스와 수치 기준선이 열려 있는 동안 browser-only 경계를 의도적으로 유지합니다. Node 장애 경로 supervisor와 OCI 장애 collector는 검증 전용 코드이며 제품 backend, queue worker, broker, runtime adapter가 아닙니다.
 
 ## 고정된 동작 참조
 
@@ -53,7 +53,7 @@ Runtime contract에는 불변 engine identity, 관리형 job storage, 기본 net
 - 참조본은 가변 base 및 service image tag를 사용합니다.
 - 배포 금지 OpenTCAD 관찰 계획은 외부 SUPREM recipe를 고정 base manifest와 Debian snapshot으로 변환하지만 release recipe는 승인되지 않았습니다.
 - WSL2 rootless Podman은 1D case 1개에서 선언 profile을 충족했지만 사용 권한이 확인된 OpenTCAD 기준선은 승인되지 않았습니다.
-- Docker Desktop과 WSL2 Podman 사전 관찰을 수행했고 엔진 독립 장애 계약도 검사했지만 native Linux, Podman Machine, macOS, 전체 runtime 장애 동작은 열려 있습니다.
+- Docker Desktop과 WSL2 rootless Podman은 비솔버 OCI policy 및 장애 행렬을 label orphan 0으로 통과했지만 제품 adapter, solver 장애, native Linux, Podman Machine, macOS는 열려 있습니다.
 - 솔버 배포와 패치 권리가 승인되지 않았습니다.
 - 불변 입력, engine, metric, tolerance를 고정하기 전에는 과학적 결과를 비교할 수 없습니다.
 

@@ -17,7 +17,7 @@
 
 정상 작업은 같은 worker 세대를 재사용합니다. `nonzero-exit`는 실패 작업 분류로 유지하지만 종료가 완료된 자식 프로세스 때문에 supervisor를 초기화하지는 않습니다. Spawn 오류와 protocol 오류는 worker를 초기화합니다.
 
-POSIX host에서는 command를 별도 process group에서 실행하므로 해당 group을 종료 대상으로 삼습니다. 이 기반에서 Windows는 직접 자식 프로세스 signal 경로를 사용합니다. 지원을 주장하려면 runtime adapter에서 container identity, kill, remove, orphan query를 추가로 검증해야 합니다.
+POSIX host에서는 command를 별도 process group에서 실행하므로 해당 group을 종료 대상으로 삼습니다. 이 기반에서 Windows는 직접 자식 프로세스 signal 경로를 사용합니다. 검증 전용 OCI collector는 container identity, kill, remove, orphan query를 추가로 관찰했습니다. 지원을 주장하려면 제품 adapter가 이 계약을 구현해야 합니다.
 
 ## 장애 주입 증거
 
@@ -35,14 +35,17 @@ POSIX host에서는 command를 별도 process group에서 실행하므로 해당
 npm run test:validation
 ```
 
-기계 판독 상태는 [`m0-fault-path-foundation.json`](../../../validation/manifests/m0-fault-path-foundation.json)에 있습니다. `baselinePromotionAllowed`, solver evidence, container runtime evidence는 계속 `false`입니다.
+기계 판독 상태는 [`m0-fault-path-foundation.json`](../../../validation/manifests/m0-fault-path-foundation.json)에 있습니다. 이 기록은 엔진 독립 suite만 다루므로 `baselinePromotionAllowed`, solver evidence, container runtime evidence는 계속 `false`입니다.
+
+## 비솔버 OCI 확장
+
+별도의 [OCI 장애 행렬 관찰](oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 종료 분류를 실행했습니다. 두 runtime 모두 이름 있는 사례 6개와 혼합 반복 20건을 통과했고 주입 장애 뒤 command worker를 교체했으며 모든 container를 정확한 이름으로 제거한 뒤 label container 0개로 끝났습니다. 고정 Debian image에는 solver가 없고 collector는 제품 adapter가 아닌 검증 도구입니다.
 
 ## 남은 런타임 증거
 
-- Docker 및 Podman adapter 계약이 생기면 같은 장애 행렬을 각 adapter에서 반복합니다.
-- 불변 job identity로 container cleanup을 검증하고 혼합 반복 후 orphan 수가 0임을 입증합니다.
+- 제품 Docker 및 Podman adapter, broker, 영속 job state를 통해 행렬을 반복합니다.
 - 사용 권한이 확인된 input과 image로 실제 SUPREM, remesh, DEVSIM 실행 중 취소를 시험합니다.
 - Worker, broker, runtime, host crash를 주입하고 영속 job state 복구를 확인합니다.
 - 같은 동작을 native Windows, macOS, Linux에서 검증합니다.
 
-이 계약은 엔진 독립 구현 범위만 완료합니다. BASE-001이나 M0 종료 게이트를 닫지 않습니다.
+기반 계약과 OCI 관찰은 엔진 독립 감독 및 비솔버 runtime 특성 범위만 완료합니다. BASE-001이나 M0 종료 게이트를 닫지 않습니다.

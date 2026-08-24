@@ -6,7 +6,7 @@
 
 OpenTCAD currently consists of a bilingual React and Vite static application, deterministic reference preview data, documentation, and GitHub Pages deployment. It has no backend, database, queue, worker, container runtime adapter, solver source, solver binary, or solver image.
 
-The static application is a useful product shell, not a simulation service. Its browser-only boundary is deliberate while licensing and numerical baselines remain open. The Node fault-path supervisor is validation-only code and is not a product backend, queue worker, or runtime adapter.
+The static application is a useful product shell, not a simulation service. Its browser-only boundary is deliberate while licensing and numerical baselines remain open. The Node fault-path supervisor and OCI fault collector are validation-only code and are not a product backend, queue worker, broker, or runtime adapter.
 
 ## Frozen behavior reference
 
@@ -53,7 +53,7 @@ The runtime contract must use immutable engine identities, managed job storage, 
 - The reference uses mutable base and service image tags.
 - A non-distributable OpenTCAD observation plan now rewrites the external SUPREM recipe to pinned base manifests and Debian snapshots; no release recipe is approved.
 - WSL2 rootless Podman met the declared profile for one 1D case, but no authorized OpenTCAD baseline is approved.
-- Docker Desktop and WSL2 Podman preflights are measured and the engine-independent fault contract is tested; native Linux, Podman Machine, macOS, and full runtime fault behavior remain open.
+- Docker Desktop and WSL2 rootless Podman passed a non-solver OCI policy and fault matrix with zero labelled orphans; product adapters, solver faults, native Linux, Podman Machine, and macOS remain open.
 - Solver distribution and patch rights are not approved.
 - No scientific result can be compared until immutable inputs, engines, metrics, and tolerances are frozen.
 
