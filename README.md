@@ -44,7 +44,7 @@ npm run check
 npm run coverage
 ```
 
-This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement without claiming OCI runtime or solver evidence. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
+This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement. A separate non-promoting [OCI fault matrix](docs/en/m0/oci-fault-matrix.md) observed the same controls on Docker Desktop and WSL2 rootless Podman with 20-case mixed loops and zero labelled orphans. It uses a fixed non-solver image and does not qualify a product adapter, solver, release image, or host. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
 
 ## Documentation
 
@@ -57,6 +57,7 @@ This repository stores no solver output or numerical baseline. The external [BAS
 | [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
 | [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
 | [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
+| [M0 OCI fault matrix](docs/en/m0/oci-fault-matrix.md) | [M0 OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md) |
 | [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |

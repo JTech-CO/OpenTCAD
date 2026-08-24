@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M0",
+  "observationId": "M0-OCI-FAULT-001",
+  "classification": "non-promoting-runtime-characterization",
+  "baselinePromotionAllowed": false,
+  "distributionAllowed": false,
+  "issueIntake": {
+    "problem": "The engine-independent supervisor is tested, but Docker and rootless Podman cleanup and orphan behavior have not been observed under timeout, cancellation, or output pressure.",
+    "priority": "P1",
+    "riskLevel": "L3",
+    "domain": "runtime/sandbox",
+    "reproduction": "Create a uniquely named and labelled container under the reviewed policy, attach to a fixed command, inject one declared terminal condition, inspect state, remove the exact container, and query the observation label.",
+    "expected": "Both runtimes retain the declared policy, classify every scenario, remove every managed container, and report zero labelled containers after each case and after a 20-case success/failure/cancellation loop.",
+    "acceptance": [
+      "policy inspection passes on Docker and rootless Podman",
+      "timeout, cancellation, and combined-output-limit classifications are observed",
+      "faults reset the command worker before cleanup",
+      "every exact-name cleanup succeeds",
+      "the 20-case mixed loop ends with zero labelled containers"
+    ],
+    "nonGoals": [
+      "solver or numerical validation",
+      "release image approval",
+      "runtime adapter or sandbox broker implementation",
+      "native Linux, macOS, or Podman Machine qualification"
+    ]
+  },
+  "image": {
+    "reference": "docker.io/library/debian@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
+    "indexDigest": "sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
+    "platformManifestDigest": "sha256:362e64223cc0da95422b3b13c045186fc0a81250e765d31c025fbddf257f6143",
+    "rootFilesystemLayer": "sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe",
+    "created": "2026-08-03T00:00:00Z",
+    "platform": "linux/amd64",
+    "pullPolicy": "never",
+    "distribution": "local-observation-only-not-for-publication"
+  },
+  "policy": {
+    "network": "none",
+    "capDrop": "ALL",
+    "noNewPrivileges": true,
+    "readOnlyRootFilesystem": true,
+    "writableTemporaryFilesystems": false,
+    "user": "65534:65534",
+    "pidsLimit": 32,
+    "memoryBytes": 67108864,
+    "cpus": 0.5,
+    "restart": "no",
+    "stopTimeoutSeconds": 1,
+    "mounts": []
+  },
+  "limits": {
+    "probeTimeoutMs": 10000,
+    "probeOutputLimitBytes": 1048576,
+    "normalOutputLimitBytes": 65536,
+    "faultTimeoutMs": 250,
+    "cancelAfterMs": 250,
+    "terminationGraceMs": 500,
+    "outputBombLimitBytes": 32768
+  },
+  "scenarios": [
+    {
+      "id": "policy-process-status",
+      "mode": "completed",
+      "command": ["/usr/bin/cat", "/proc/self/status"],
+      "expectedContainerExitCode": 0
+    },
+    {
+      "id": "read-only-root",
+      "mode": "nonzero-exit",
+      "command": ["/usr/bin/touch", "/tmp/opentcad-write-probe"],
+      "expectedContainerExitCode": 1
+    },
+    {
+      "id": "declared-nonzero-exit",
+      "mode": "nonzero-exit",
+      "command": ["/usr/bin/false"],
+      "expectedContainerExitCode": 1
+    },
+    {
+      "id": "timeout",
+      "mode": "timed-out",
+      "command": ["/usr/bin/sleep", "30"]
+    },
+    {
+      "id": "cancellation",
+      "mode": "cancelled",
+      "command": ["/usr/bin/sleep", "30"]
+    },
+    {
+      "id": "output-bomb",
+      "mode": "output-limit-exceeded",
+      "command": ["/usr/bin/yes", "OpenTCAD fault output"]
+    }
+  ],
+  "mixedLoop": {
+    "count": 20,
+    "pattern": [
+      {
+        "mode": "completed",
+        "command": ["/usr/bin/true"],
+        "expectedContainerExitCode": 0
+      },
+      {
+        "mode": "nonzero-exit",
+        "command": ["/usr/bin/false"],
+        "expectedContainerExitCode": 1
+      },
+      {
+        "mode": "cancelled",
+        "command": ["/usr/bin/sleep", "30"]
+      }
+    ]
+  },
+  "cleanup": {
+    "observationLabel": "org.opentcad.observation",
+    "managedLabel": "org.opentcad.managed=true",
+    "removeByExactName": true,
+    "queryAfterEveryCase": true,
+    "expectedOrphans": 0
+  },
+  "rawEvidence": {
+    "repositoryPathAllowed": false,
+    "absolutePathInSanitizedRecordAllowed": false,
+    "commitLogs": false,
+    "commitRuntimeInspect": false,
+    "commitContainerOutput": false
+  }
+}

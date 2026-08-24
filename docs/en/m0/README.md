@@ -26,8 +26,8 @@ This is an engineering distribution gate, not legal advice.
 | LIC-004 release image policy | Not started | Must reject unapproved or unpinned images |
 | BASE-001 Linux reference baseline | In progress, not met | Rootless Podman matched Docker structure bytes and a controlled image rebuild is exact; clean-log, rights, SBOM review, corpus, and approval gates remain open |
 | Current architecture record | Draft complete | Target and reference boundaries are recorded |
-| Portability spikes | Preflight observed | Windows Docker Desktop and WSL2 rootless Podman produced diagnostic evidence but no support claim |
-| Engine-independent fault paths | Contract tested, runtime evidence pending | Timeout, cancellation, combined output cap, and worker reset use real child processes but no OCI runtime or solver |
+| Portability spikes | Non-solver runtime characterization observed | Windows Docker Desktop and WSL2 rootless Podman passed the OCI fault matrix; native hosts and support claims remain open |
+| Fault paths | Contract and non-solver OCI matrix observed | Both runtimes passed six named cases and a 20-case mixed loop with zero labelled orphans; product adapters and solver faults remain open |
 | M0 exit gate | Not met | Numerical, platform, runtime-fault, and support-matrix evidence remains open |
 
 ## M0 artifacts
@@ -36,6 +36,8 @@ This is an engineering distribution gate, not legal advice.
 - [Baseline and clean-room policy](baseline-and-clean-room.md)
 - [BASE-001 reference observation harness](base001-reference-observation.md)
 - [Engine-independent fault-path contract](fault-path-foundation.md)
+- [Non-solver OCI fault matrix observation](oci-fault-matrix.md)
+- [Machine-readable OCI fault observation](../../../m0/OCI_FAULT_MATRIX_OBSERVATION.json)
 - [Machine-readable fault-path status](../../../validation/manifests/m0-fault-path-foundation.json)
 - [Current architecture](current-architecture.md)
 - [Portability spike report](portability-spike-report.md)
@@ -46,16 +48,18 @@ This is an engineering distribution gate, not legal advice.
 - [Machine-readable controlled image and SBOM observation](../../../m0/BASE001_REPRODUCIBLE_IMAGE_OBSERVATION.json)
 - [Five-run 1D observation plan](../../../validation/plans/base001-process-1d-boron.json)
 - [Controlled reference image build plan](../../../validation/plans/base001-suprem-image-build.json)
+- [Reviewed OCI fault plan](../../../validation/plans/m0-oci-fault-matrix.json)
+- [External OCI fault collector](../../../tools/observe-oci-fault-matrix.mjs)
 - [External build preparation tool](../../../tools/prepare-reference-image-build.mjs)
 
-`npm run check:m0` validates the two run observations, controlled image observation, build plan, collector hashes, image and SBOM identities, the engine-independent fault-path contract, English/Korean document pairs, and fail-closed status. The timestamp-, base-, and snapshot-pinned Podman image rebuilt to the same ID, digest, size, and five layers, and a network-disabled local scan produced a CycloneDX SBOM. A real child-process suite now proves timeout, cancellation, combined-output capping, and post-fault worker replacement at the contract layer. Actual OCI adapter cleanup and solver fault evidence remain pending. Declared solver log errors, rights, SBOM license review, corpus coverage, and numerical approval keep BASE-001 open.
+`npm run check:m0` validates the two run observations, controlled image observation, build and OCI plans, collector hashes, image and SBOM identities, the engine-independent fault-path contract, the sanitized OCI runtime record, English/Korean document pairs, and fail-closed status. The timestamp-, base-, and snapshot-pinned Podman image rebuilt to the same ID, digest, size, and five layers, and a network-disabled local scan produced a CycloneDX SBOM. The child-process contract and non-solver OCI matrix now prove timeout, cancellation, combined-output capping, worker replacement, exact-name cleanup, and zero labelled orphans on the two observed runtimes. Product runtime adapters and solver fault evidence remain pending. Declared solver log errors, rights, SBOM license review, corpus coverage, and numerical approval keep BASE-001 open.
 
 ## Next gates
 
 1. Obtain a qualified decision for SUPREM source, patch, binary, and image distribution.
 2. Review the external SBOM license evidence and approve or reject a release image recipe.
 3. Correct the declared input errors using an authorized, independently reviewed fixture.
-4. Run the proposed NMOS process/device and CMOS process/device cases, then repeat timeout, cancellation, output-limit, and restart through real runtime adapters.
+4. Run the proposed NMOS process/device and CMOS process/device cases, then repeat the observed fault matrix through product runtime adapters and durable job state.
 5. Freeze reviewed evidence, then run native Linux, Windows, macOS, and Podman Machine portability spikes against it.
 
 Engine-independent M1 contract work may proceed in `gated-active` mode. No numerical corpus may be frozen and no solver-backed product claim may begin until the applicable M0 gates are met.
