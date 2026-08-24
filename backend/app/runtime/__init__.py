@@ -16,6 +16,7 @@ from .models import (
     SandboxSpec,
     TerminalClassification,
     TerminationReason,
+    ValidatedInputArchive,
     ValidatedSandboxSpec,
     VolumeHandle,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "SandboxSpec",
     "TerminalClassification",
     "TerminationReason",
+    "ValidatedInputArchive",
     "ValidatedSandboxSpec",
     "VolumeHandle",
 ]

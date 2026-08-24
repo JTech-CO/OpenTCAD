@@ -45,7 +45,7 @@ npm run check
 npm run coverage
 ```
 
-이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. Gate 상태의 [M2 런타임 계약 기반](docs/ko/m2/README.md)은 타입이 지정된 lifecycle, capability, error, policy, mock 정리 의미를 고정했지만 broker, 제품 adapter, runtime detection, worker integration, socket 접근은 포함하지 않습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
+이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. Gate 상태의 [M2 런타임 및 mock broker 기반](docs/ko/m2/README.md)은 타입이 지정된 lifecycle, capability, error, policy, canonical input archive, reconciliation, mock 정리 의미를 고정했지만 broker service, 제품 adapter, runtime detection, worker integration, socket 접근은 포함하지 않습니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
 
 ## 문서
 

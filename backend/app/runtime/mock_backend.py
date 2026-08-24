@@ -23,6 +23,7 @@ from .models import (
     RuntimeProbe,
     TerminalClassification,
     TerminationReason,
+    ValidatedInputArchive,
     ValidatedSandboxSpec,
     VolumeHandle,
     _require_uuid,
@@ -68,6 +69,7 @@ def full_mock_capabilities(**overrides: bool) -> RuntimeCapabilities:
 class _MockVolume:
     handle: VolumeHandle
     inputs_staged: bool = False
+    archive_sha256: str | None = None
 
 
 @dataclass(slots=True)
@@ -203,6 +205,7 @@ class MockRuntimeBackend:
         self,
         volume: VolumeHandle,
         spec: ValidatedSandboxSpec,
+        archive: ValidatedInputArchive,
     ) -> None:
         self._require_available(RuntimePhase.INPUT)
         if not isinstance(spec, ValidatedSandboxSpec):
@@ -211,6 +214,20 @@ class MockRuntimeBackend:
                 RuntimePhase.INPUT,
                 backend=self.name.value,
                 detail="validated-spec-required",
+            )
+        if not isinstance(archive, ValidatedInputArchive):
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.INPUT,
+                backend=self.name.value,
+                detail="validated-input-archive-required",
+            )
+        if archive.manifest != spec.spec.input_manifest:
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.INPUT,
+                backend=self.name.value,
+                detail="input-archive-manifest-mismatch",
             )
         managed = self._volume(volume, RuntimePhase.INPUT)
         if volume.job_id != spec.spec.job_id:
@@ -223,6 +240,7 @@ class MockRuntimeBackend:
         if managed.inputs_staged:
             raise self._invalid_state(RuntimePhase.INPUT, "inputs-already-staged")
         managed.inputs_staged = True
+        managed.archive_sha256 = archive.archive_sha256
 
     async def create_container(
         self,

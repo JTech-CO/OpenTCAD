@@ -25,7 +25,7 @@
 | 호스트 경로 또는 마운트 탈출 | 브로커만 관리 볼륨을 만들고 요청에는 호스트 경로, bind mount, device, 런타임 소켓이 없음 | 모델 형태로 강제 |
 | 런타임 소켓 노출 | 별도 검토된 브로커 프로세스만 소켓을 받고 브라우저, API, 워커에는 전달하지 않음 | 아키텍처 규칙만 있으며 브로커는 없음 |
 | capability 또는 정책 하향 | 모든 필수 capability를 명시적으로 보고하고 누락되거나 알 수 없는 capability가 있으면 요청 거부 | 정책 테스트로 강제 |
-| 아카이브 경로 탈출 또는 특수 파일 | 압축 해제 전에 절대 경로, 상위 경로, 링크, device, 정규화 후 중복 이름, 파일 수 및 크기 초과를 거부 | 평면 manifest 이름은 강제하며 byte stream validator는 대기 |
+| 아카이브 경로 탈출 또는 특수 파일 | 압축 해제 전에 절대 경로, 상위 경로, 링크, device, 정규화 후 중복 이름, 파일 수 및 크기 초과를 거부 | Canonical 비압축 USTAR를 memory에서 검증하며 runtime transfer와 output archive는 대기 |
 | 리소스 또는 출력 서비스 거부 | CPU, 메모리, PID, 시간, 출력, 파일 수, 산출물, tmpfs 상한 고정 | 모델과 정책이 선언 상한을 강제하며 런타임 집행은 대기 |
 | 잡 간 접근 | 서버 UUID label, opaque handle, 정확한 잡 소유권, 관리 볼륨 격리, 정확한 산출물 manifest | mock lifecycle이 소유권을 강제하며 런타임 격리는 대기 |
 | 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 컨테이너 다음 볼륨 순서로 정리하고 orphan 0을 조회 | stable stale-state error와 mock 정리는 있으며 crash reconciliation은 대기 |
@@ -53,7 +53,7 @@
 
 ## 승인 게이트
 
-승인하려면 M1 corpus green, runtime ADR 승인, 담당자가 명시된 보안 검토, archive validator 테스트, broker state machine 테스트, runtime별 policy trace, crash reconciliation 증거가 필요합니다. 그전까지 RUN-004와 RUN-005는 차단되며 이 초안은 런타임 접근을 허가하지 않습니다.
+승인하려면 M1 corpus green, runtime ADR 승인, 담당자가 명시된 보안 검토, runtime별 policy trace, durable crash reconciliation 증거, 현재 추가된 archive validator 및 mock broker state machine test 검토가 필요합니다. 그전까지 RUN-004와 RUN-005는 차단되며 이 초안은 런타임 접근을 허가하지 않습니다.
 
 ## 롤백
 

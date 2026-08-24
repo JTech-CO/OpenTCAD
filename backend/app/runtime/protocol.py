@@ -13,6 +13,7 @@ from .models import (
     RuntimeKind,
     RuntimeProbe,
     TerminationReason,
+    ValidatedInputArchive,
     ValidatedSandboxSpec,
     VolumeHandle,
 )
@@ -37,6 +38,7 @@ class RuntimeBackend(Protocol):
         self,
         volume: VolumeHandle,
         spec: ValidatedSandboxSpec,
+        archive: ValidatedInputArchive,
     ) -> None: ...
 
     async def create_container(

@@ -23,6 +23,7 @@ class ErrorCode(StrEnum):
     WAIT_FAILED = "wait-failed"
     KILL_FAILED = "kill-failed"
     CLEANUP_FAILED = "cleanup-failed"
+    INPUT_ARCHIVE_REJECTED = "input-archive-rejected"
     ARTIFACT_REJECTED = "artifact-rejected"
 
 

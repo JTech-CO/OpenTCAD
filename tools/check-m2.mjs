@@ -63,27 +63,37 @@ const expectedErrorCodes = [
   "wait-failed",
   "kill-failed",
   "cleanup-failed",
+  "input-archive-rejected",
   "artifact-rejected",
 ];
 
 const expectedSourceFiles = [
+  "backend/app/runtime/__init__.py",
   "backend/app/runtime/errors.py",
   "backend/app/runtime/models.py",
   "backend/app/runtime/policy.py",
   "backend/app/runtime/protocol.py",
   "backend/app/runtime/mock_backend.py",
+  "backend/app/broker/__init__.py",
+  "backend/app/broker/archive.py",
+  "backend/app/broker/models.py",
+  "backend/app/broker/orchestrator.py",
   "backend/pyproject.toml",
   "backend/tests/runtime/support.py",
   "backend/tests/runtime/test_policy.py",
   "backend/tests/runtime/test_mock_backend.py",
+  "backend/tests/broker/test_archive.py",
+  "backend/tests/broker/test_orchestrator.py",
   "tools/check-m2.mjs",
   "tools/run-python-tests.mjs",
   "docs/en/m2/README.md",
   "docs/en/m2/runtime-backend-adr.md",
   "docs/en/m2/broker-threat-model.md",
+  "docs/en/m2/broker-archive-foundation.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
+  "docs/ko/m2/broker-archive-foundation.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -143,8 +153,8 @@ requireValue(manifest.schemaVersion === 1, "Unsupported M2 manifest schema.");
 requireValue(manifest.milestone === "M2", "Manifest milestone must be M2.");
 requireValue(manifest.status === "gated-active", "M2 must remain gated-active.");
 requireValue(
-  manifest.scope === "engine-independent-contract-only",
-  "M2 scope must remain engine-independent-contract-only.",
+  manifest.scope === "engine-independent-broker-foundation-only",
+  "M2 scope must remain engine-independent-broker-foundation-only.",
 );
 requireValue(manifest.entryConditions.m1CorpusGreen === false, "M1 corpus is not green.");
 requireValue(
@@ -159,6 +169,11 @@ requireValue(manifest.entryConditions.overall === "not-met", "M2 entry must rema
 requireValue(manifest.exitCriteria.overall === "not-met", "M2 exit must remain not-met.");
 requireValue(manifest.productExecutionAllowed === false, "Product execution must remain disabled.");
 requireValue(manifest.distributionAllowed === false, "Solver distribution must remain disabled.");
+
+requireValue(manifest.securityBoundary.brokerLibraryImplemented === true, "Mock broker library must be recorded.");
+requireValue(manifest.securityBoundary.canonicalInputArchiveImplemented === true, "Canonical input archive must be recorded.");
+requireValue(manifest.securityBoundary.filesystemExtractionPerformed === false, "Archive validation must remain in memory.");
+requireValue(manifest.securityBoundary.compressedArchiveAccepted === false, "Compressed archives must remain forbidden.");
 
 for (const key of [
   "productRuntimeSocketAccess",
@@ -224,15 +239,32 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "mock-only"],
+  ["RUN-007", "mock-broker-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
   requireValue(workItems.get(id) === status, `${id} must remain ${status}.`);
 }
 
+const brokerWorkItems = new Map(manifest.brokerWorkItems.map((item) => [item.id, item.status]));
+for (const [id, status] of [
+  ["BRK-001", "foundation-tested"],
+  ["BRK-003", "mock-lifecycle-tested"],
+  ["BRK-004", "canonical-archive-tested"],
+  ["BRK-006", "mock-reconciliation-tested"],
+]) {
+  requireValue(brokerWorkItems.get(id) === status, `${id} must remain ${status}.`);
+}
+
+requireValue(manifest.archiveContract.format === "ustar-uncompressed", "Archive format drifted.");
+requireValue(manifest.archiveContract.filesystemExtraction === false, "Archive extraction must remain memory-only.");
+requireValue(manifest.archiveContract.compressionAccepted === false, "Archive compression must remain forbidden.");
+requireValue(manifest.archiveContract.specialFilesAccepted === false, "Archive special files must remain forbidden.");
+
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 15, "Runtime test count must be 15.");
+requireValue(manifest.testContract.testCount === 29, "Runtime and broker test count must be 29.");
+requireValue(manifest.testContract.archiveDefenseTests === 6, "Archive defense test count must be 6.");
+requireValue(manifest.testContract.brokerTests === 8, "Broker test count must be 8.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
 requireValue(manifest.testContract.usesSolver === false, "Contract tests must not use a solver.");
 requireValue(manifest.testContract.loopCases === 20, "Cleanup loop must contain 20 cases.");
@@ -270,30 +302,49 @@ for (const path of [
   "backend/app/runtime/docker_backend.py",
   "backend/app/runtime/podman_backend.py",
   "backend/app/runtime/detection.py",
-  "backend/app/broker",
+  "backend/app/broker/service.py",
+  "backend/app/broker/transport.py",
   "backend/app/worker",
 ]) {
   requireValue(!(await exists(path)), `Blocked product implementation exists: ${path}`);
 }
 
-const implementation = [protocol, models, policy, errorsSource, await readFile(join(root, "backend/app/runtime/mock_backend.py"), "utf8")].join("\n");
+const brokerArchive = await readFile(join(root, "backend/app/broker/archive.py"), "utf8");
+const brokerOrchestrator = await readFile(join(root, "backend/app/broker/orchestrator.py"), "utf8");
+const implementation = [
+  protocol,
+  models,
+  policy,
+  errorsSource,
+  await readFile(join(root, "backend/app/runtime/mock_backend.py"), "utf8"),
+  brokerArchive,
+  brokerOrchestrator,
+].join("\n");
 for (const [label, pattern] of [
   ["subprocess API", /\bsubprocess\b/u],
   ["shell execution", /\bos\.system\b|shell\s*=\s*True/u],
   ["Docker socket", /docker\.sock|npipe:\/\/\.\/pipe\/docker_engine/u],
   ["Podman socket", /podman\.sock/u],
   ["runtime socket path", /\/var\/run\//u],
+  ["filesystem tar extraction", /\.extract(?:all)?\(/u],
+  ["temporary filesystem staging", /\btempfile\b|NamedTemporaryFile/u],
 ]) {
   requireValue(!pattern.test(implementation), `Runtime foundation contains forbidden ${label}.`);
 }
+
+requireValue(brokerArchive.includes('mode="r:"'), "Archive validator must reject compression.");
+requireValue(brokerArchive.includes("compare_digest(canonical, payload)"), "Archive validator must require canonical bytes.");
+requireValue(brokerOrchestrator.includes("list_managed(request.spec.job_id)"), "Broker must verify zero managed objects.");
 
 for (const path of [
   "docs/en/m2/README.md",
   "docs/en/m2/runtime-backend-adr.md",
   "docs/en/m2/broker-threat-model.md",
+  "docs/en/m2/broker-archive-foundation.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
+  "docs/ko/m2/broker-archive-foundation.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

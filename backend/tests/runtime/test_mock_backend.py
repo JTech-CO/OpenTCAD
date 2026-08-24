@@ -11,7 +11,7 @@ from backend.app.runtime.models import (
 )
 from backend.app.runtime.protocol import RuntimeBackend
 
-from .support import ARTIFACT, IMAGE, POLICY, make_result, make_spec
+from .support import ARCHIVE, ARTIFACT, IMAGE, POLICY, make_result, make_spec
 
 
 class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
@@ -27,7 +27,7 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
         validated = POLICY.validate(spec, (await backend.probe()).capabilities)
         await backend.ensure_image(IMAGE)
         volume = await backend.create_volume(job_id)
-        await backend.stage_inputs(volume, validated)
+        await backend.stage_inputs(volume, validated, ARCHIVE)
         container = await backend.create_container(validated, volume)
         return validated, volume, container
 
@@ -76,11 +76,11 @@ class MockRuntimeContractTests(unittest.IsolatedAsyncioTestCase):
         raw = make_spec(job_id)
         volume = await backend.create_volume(job_id)
         with self.assertRaises(RuntimeBackendError) as unvalidated:
-            await backend.stage_inputs(volume, raw)  # type: ignore[arg-type]
+            await backend.stage_inputs(volume, raw, ARCHIVE)  # type: ignore[arg-type]
         self.assertEqual(unvalidated.exception.code, ErrorCode.INVALID_SPEC)
 
         validated = POLICY.validate(raw, (await backend.probe()).capabilities)
-        await backend.stage_inputs(volume, validated)
+        await backend.stage_inputs(volume, validated, ARCHIVE)
         container = await backend.create_container(validated, volume)
         await backend.start(container)
         with self.assertRaises(RuntimeBackendError) as invalid_reason:
