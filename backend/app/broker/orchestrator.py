@@ -16,6 +16,7 @@ from backend.app.runtime.models import (
     JobIdentity,
     RunResult,
     RuntimeHealth,
+    RuntimeKind,
     TerminalClassification,
     TerminationReason,
     ValidatedArtifactArchive,
@@ -29,6 +30,7 @@ from .cancellation import CancellationOutcome, CancellationRequest
 from .cleanup import JobCleanupCoordinator
 from .diagnostics import InternalDiagnostic
 from .lifecycle import CancellationSignal, LifecycleCheckpoint
+from .live_state import LiveStateEmission, LiveStateSession, LiveStateWriteError
 from .models import (
     BrokerError,
     BrokerEvent,
@@ -79,19 +81,42 @@ class SandboxBroker:
         self._diagnostic_sink = diagnostic_sink
         self._cleanup_coordinator = cleanup_coordinator or JobCleanupCoordinator()
 
+    @property
+    def runtime_kind(self) -> RuntimeKind:
+        return self._backend.name
+
     @staticmethod
-    def _event(
+    async def _event(
         events: list[BrokerEvent],
         state: BrokerState,
         phase: RuntimePhase,
         error: BrokerError | None = None,
+        *,
+        state_session: LiveStateSession | None = None,
+        durable_state: BrokerState | None = None,
+        durable_phase: RuntimePhase | None = None,
+        durable_error: BrokerError | None = None,
+        classification: TerminalClassification | None = None,
+        cleanup_complete: bool = False,
     ) -> None:
-        events.append(
-            BrokerEvent(
-                len(events) + 1,
-                state,
-                phase,
-                error.code if error is not None else None,
+        source = BrokerEvent(
+            len(events) + 1,
+            state,
+            phase,
+            error.code if error is not None else None,
+        )
+        events.append(source)
+        if state_session is None:
+            return
+        persisted_state = durable_state or state
+        await state_session.record(
+            LiveStateEmission(
+                source,
+                persisted_state,
+                durable_phase or phase,
+                durable_error if durable_state is not None else error,
+                classification,
+                cleanup_complete,
             ),
         )
 
@@ -104,6 +129,27 @@ class SandboxBroker:
         if self._diagnostic_sink is not None:
             self._diagnostic_sink(diagnostic)
         return diagnostic.public_error
+
+    def _capture_state_write_error(
+        self,
+        error: LiveStateWriteError,
+    ) -> BrokerError:
+        return BrokerError(
+            ErrorCode.INVALID_STATE,
+            error.phase,
+            RetryDisposition.INFRASTRUCTURE,
+            self._backend.name.value,
+        )
+
+    @staticmethod
+    def _live_classification(
+        result: RunResult | None,
+        cancellation_checkpoint: LifecycleCheckpoint | None,
+        primary_error: BrokerError | None,
+    ) -> TerminalClassification | None:
+        if cancellation_checkpoint is not None and primary_error is None:
+            return TerminalClassification.CANCELLED
+        return result.classification if result is not None else None
 
     @staticmethod
     def _validate_cancellation_signal(
@@ -223,6 +269,24 @@ class SandboxBroker:
         request: BrokerRequest,
         cancellation: CancellationSignal | None = None,
     ) -> BrokerOutcome:
+        return await self._execute(request, cancellation, None)
+
+    async def _execute_with_state_session(
+        self,
+        request: BrokerRequest,
+        cancellation: CancellationSignal | None,
+        state_session: LiveStateSession,
+    ) -> BrokerOutcome:
+        if not isinstance(state_session, LiveStateSession):
+            raise TypeError("SandboxBroker state session has the wrong type.")
+        return await self._execute(request, cancellation, state_session)
+
+    async def _execute(
+        self,
+        request: BrokerRequest,
+        cancellation: CancellationSignal | None,
+        state_session: LiveStateSession | None,
+    ) -> BrokerOutcome:
         if not isinstance(request, BrokerRequest):
             raise RuntimeBackendError(
                 ErrorCode.INVALID_SPEC,
@@ -232,6 +296,15 @@ class SandboxBroker:
 
         identity = JobIdentity(request.spec.job_id)
         self._validate_cancellation_signal(identity, cancellation)
+        if state_session is not None and (
+            state_session.identity != identity
+            or state_session.backend is not self._backend.name
+        ):
+            raise RuntimeBackendError(
+                ErrorCode.IDENTITY_MISMATCH,
+                RuntimePhase.VALIDATE,
+                detail="state-session-context-mismatch",
+            )
         events: list[BrokerEvent] = []
         result: RunResult | None = None
         artifacts: tuple[ArtifactRecord, ...] = ()
@@ -244,8 +317,13 @@ class SandboxBroker:
         started = False
         terminal = False
 
-        self._event(events, BrokerState.VALIDATING, RuntimePhase.VALIDATE)
         try:
+            await self._event(
+                events,
+                BrokerState.VALIDATING,
+                RuntimePhase.VALIDATE,
+                state_session=state_session,
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.PROBE)
             probe = await self._backend.probe()
             if probe.health is not RuntimeHealth.AVAILABLE or probe.capabilities is None:
@@ -271,7 +349,12 @@ class SandboxBroker:
                 self._archive_limits,
             )
 
-            self._event(events, BrokerState.PREPARING, RuntimePhase.IMAGE)
+            await self._event(
+                events,
+                BrokerState.PREPARING,
+                RuntimePhase.IMAGE,
+                state_session=state_session,
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.IMAGE)
             await self._backend.ensure_image(request.spec.image)
             self._checkpoint(cancellation, LifecycleCheckpoint.VOLUME)
@@ -284,12 +367,23 @@ class SandboxBroker:
             await self._backend.start(container)
             started = True
 
-            self._event(events, BrokerState.RUNNING, RuntimePhase.WAIT)
+            await self._event(
+                events,
+                BrokerState.RUNNING,
+                RuntimePhase.WAIT,
+                state_session=state_session,
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.WAIT)
             result = await self._backend.wait(container)
             terminal = True
             if result.classification is TerminalClassification.SUCCEEDED:
-                self._event(events, BrokerState.COLLECTING, RuntimePhase.ARTIFACT)
+                await self._event(
+                    events,
+                    BrokerState.COLLECTING,
+                    RuntimePhase.ARTIFACT,
+                    state_session=state_session,
+                    classification=result.classification,
+                )
                 self._checkpoint(cancellation, LifecycleCheckpoint.ARTIFACT_COLLECTION)
                 raw_archive = await self._backend.collect_artifacts(container)
                 limits = output_archive_limits(
@@ -308,7 +402,12 @@ class SandboxBroker:
             cancellation_checkpoint = interruption.checkpoint
             artifacts = ()
             artifact_archive = None
-            self._event(events, BrokerState.CANCELLING, interruption.checkpoint.phase)
+            await self._event(
+                events,
+                BrokerState.CANCELLING,
+                interruption.checkpoint.phase,
+                state_session=state_session,
+            )
             if started and not terminal and container is not None:
                 try:
                     result = await self._backend.kill(
@@ -327,10 +426,26 @@ class SandboxBroker:
                     primary_error = self._capture_error(identity, error)
             else:
                 result = None
+        except LiveStateWriteError as error:
+            primary_error = self._capture_state_write_error(error)
         except RuntimeBackendError as error:
             primary_error = self._capture_error(identity, error)
         finally:
-            self._event(events, BrokerState.CLEANING, RuntimePhase.CLEANUP)
+            try:
+                await self._event(
+                    events,
+                    BrokerState.CLEANING,
+                    RuntimePhase.CLEANUP,
+                    state_session=state_session,
+                    classification=self._live_classification(
+                        result,
+                        cancellation_checkpoint,
+                        primary_error,
+                    ),
+                )
+            except LiveStateWriteError as error:
+                if primary_error is None:
+                    primary_error = self._capture_state_write_error(error)
             cleanup_error = await self._cleanup(
                 identity,
                 container,
@@ -367,7 +482,51 @@ class SandboxBroker:
             if cancellation_checkpoint is not None
             else RuntimePhase.WAIT
         )
-        self._event(events, state, final_phase, final_error)
+        classification = self._live_classification(
+            result,
+            cancellation_checkpoint,
+            primary_error,
+        )
+        durable_state = BrokerState.CLEANING if cleanup_error is not None else None
+        try:
+            await self._event(
+                events,
+                state,
+                final_phase,
+                final_error,
+                state_session=state_session,
+                durable_state=durable_state,
+                durable_phase=(
+                    RuntimePhase.CLEANUP if durable_state is not None else None
+                ),
+                durable_error=cleanup_error,
+                classification=classification,
+                cleanup_complete=cleanup_error is None,
+            )
+        except LiveStateWriteError as error:
+            if primary_error is None:
+                primary_error = self._capture_state_write_error(error)
+            state = BrokerState.FAILED
+            artifacts = ()
+            artifact_archive = None
+            final_error = primary_error or cleanup_error
+            final_phase = (
+                final_error.phase if final_error is not None else RuntimePhase.WAIT
+            )
+            events.pop()
+            await self._event(
+                events,
+                state,
+                final_phase,
+                final_error,
+                state_session=state_session,
+                classification=self._live_classification(
+                    result,
+                    cancellation_checkpoint,
+                    primary_error,
+                ),
+                cleanup_complete=cleanup_error is None,
+            )
         return BrokerOutcome(
             job_id=identity.job_id,
             state=state,
@@ -401,7 +560,7 @@ class SandboxBroker:
         volume: VolumeHandle | None = None
         terminal = False
 
-        self._event(events, BrokerState.VALIDATING, RuntimePhase.QUERY)
+        await self._event(events, BrokerState.VALIDATING, RuntimePhase.QUERY)
         try:
             managed = await self._backend.list_managed(identity.job_id)
             handles = (*managed.containers, *managed.volumes)
@@ -428,7 +587,7 @@ class SandboxBroker:
                 )
             container = managed.containers[0]
             volume = managed.volumes[0] if managed.volumes else None
-            self._event(events, BrokerState.CANCELLING, RuntimePhase.KILL)
+            await self._event(events, BrokerState.CANCELLING, RuntimePhase.KILL)
             result = await self._backend.kill(container, TerminationReason.CANCELLATION)
             terminal = True
             if result.classification is not TerminalClassification.CANCELLED:
@@ -441,7 +600,7 @@ class SandboxBroker:
         except RuntimeBackendError as error:
             primary_error = self._capture_error(identity, error)
         finally:
-            self._event(events, BrokerState.CLEANING, RuntimePhase.CLEANUP)
+            await self._event(events, BrokerState.CLEANING, RuntimePhase.CLEANUP)
             first_cleanup_error = await self._cleanup_unlocked(
                 identity,
                 container,
@@ -461,7 +620,7 @@ class SandboxBroker:
         state = BrokerState.CANCELLED if cancelled else BrokerState.FAILED
         final_error = primary_error or cleanup_error
         final_phase = final_error.phase if final_error is not None else RuntimePhase.KILL
-        self._event(events, state, final_phase, final_error)
+        await self._event(events, state, final_phase, final_error)
         return CancellationOutcome(
             identity=identity,
             state=state,

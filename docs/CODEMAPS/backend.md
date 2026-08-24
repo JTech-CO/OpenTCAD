@@ -2,7 +2,7 @@
 
 ## English
 
-The current backend is an engine-independent M2 runtime and mock broker foundation. It includes an inactive file-backed SQLite durable-state candidate but has no live state wiring, web service, worker integration, broker service transport, product Docker or Podman adapter, runtime detection, socket access, or solver invocation.
+The current backend is an engine-independent M2 runtime and mock broker foundation. It includes an inactive file-backed SQLite durable-state candidate and an explicit mock-only phase-time composition with startup recovery admission. It has no external cancellation persistence, web service, worker integration, broker service transport, product Docker or Podman adapter, runtime detection, socket access, or solver invocation.
 
 | Path | Responsibility |
 |---|---|
@@ -19,19 +19,21 @@ The current backend is an engine-independent M2 runtime and mock broker foundati
 | `backend/app/broker/state.py` | Durable state protocol, shared revision/transition and operation-slot rules, and non-durable shared-backing test double |
 | `backend/app/broker/sqlite_state.py` | Inactive file-backed SQLite candidate, schema v1, transactional CAS, redacted failures, and bounded recovery scan |
 | `backend/app/broker/state_mapping.py` | Deterministic redacted outcome mapping and CAS batch recorder |
+| `backend/app/broker/live_state.py` | Phase-time deterministic durable emissions and fail-safe write-session contract |
 | `backend/app/broker/recovery.py` | Bounded CAS claim, exact-job reconciliation, and mock crash/restart convergence |
+| `backend/app/broker/state_composition.py` | Mock-only startup recovery gate and opt-in durable execution composition |
 | `backend/app/broker/diagnostics.py` | Repr-hidden internal raw diagnostics separated from public errors |
 | `backend/app/broker/orchestrator.py` | Mock-only typed execution, phase cancellation, redacted outcome, idempotent cleanup, and reconciliation |
 | `backend/tests/runtime/` | Policy, identity, lifecycle, fault mapping, and cleanup contract tests |
-| `backend/tests/broker/` | Archive attacks, phase cancellation, redaction, cleanup concurrency, event mapping, common adapter conformance, reconciliation, and crash/restart contract tests |
+| `backend/tests/broker/` | Archive attacks, phase cancellation, redaction, cleanup concurrency, event mapping, common adapter conformance, live-state composition, reconciliation, and crash/restart contract tests |
 | `validation/manifests/m2-runtime-foundation.json` | Machine-readable gate state and frozen source evidence |
 | `tools/check-m2.mjs` | Drift, gate, scope, and hash verifier |
 
-The allowed execution dependency direction is `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec and JobIdentity -> RuntimeBackend`. Durable state remains a side boundary through `DurableJobStateStore`, not part of `RuntimeBackend`; outcome mapping, SQLite persistence, and recovery depend on that boundary without granting runtime access. A future runtime adapter belongs behind the runtime protocol. A future reviewed broker service is the only component allowed to own runtime access, after entry and security gates are approved.
+The allowed execution dependency direction is `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec and JobIdentity -> RuntimeBackend`. Durable state remains a side boundary through `DurableJobStateStore`, not part of `RuntimeBackend`; outcome mapping, SQLite persistence, mock-only live composition, and recovery depend on that boundary without granting product runtime access. A future runtime adapter belongs behind the runtime protocol. A future reviewed broker service is the only component allowed to own runtime access, after entry and security gates are approved.
 
 ## 한국어
 
-현재 백엔드는 엔진 독립 M2 runtime 및 mock broker 기반입니다. 비활성 file-backed SQLite durable-state 후보를 포함하지만 live state wiring, 웹 service, worker 통합, broker service transport, 제품 Docker 또는 Podman adapter, runtime detection, socket 접근, solver 호출은 없습니다.
+현재 백엔드는 엔진 독립 M2 runtime 및 mock broker 기반입니다. 비활성 file-backed SQLite durable-state 후보와 startup recovery admission을 갖춘 명시적인 mock 전용 phase-time composition을 포함합니다. 외부 cancellation persistence, 웹 service, worker 통합, broker service transport, 제품 Docker 또는 Podman adapter, runtime detection, socket 접근, solver 호출은 없습니다.
 
 | 경로 | 책임 |
 |---|---|
@@ -48,12 +50,14 @@ The allowed execution dependency direction is `domain worker -> SandboxSpec -> S
 | `backend/app/broker/state.py` | Durable state protocol, 공통 revision, transition 및 operation slot 규칙, non-durable shared-backing test double |
 | `backend/app/broker/sqlite_state.py` | 비활성 file-backed SQLite 후보, schema v1, transactional CAS, redacted failure, bounded recovery scan |
 | `backend/app/broker/state_mapping.py` | 결정론적 redacted outcome mapping 및 CAS batch recorder |
+| `backend/app/broker/live_state.py` | Phase-time 결정론적 durable emission 및 fail-safe write session 계약 |
 | `backend/app/broker/recovery.py` | Bounded CAS claim, 정확한 job reconciliation, mock crash/restart 수렴 |
+| `backend/app/broker/state_composition.py` | Mock 전용 startup recovery gate 및 opt-in durable execution composition |
 | `backend/app/broker/diagnostics.py` | 공개 error와 분리하고 repr에서 숨긴 내부 raw diagnostic |
 | `backend/app/broker/orchestrator.py` | Mock 전용 typed execution, phase cancellation, redacted outcome, idempotent cleanup, reconciliation |
 | `backend/tests/runtime/` | 정책, identity, lifecycle, 장애 mapping, 정리 계약 test |
-| `backend/tests/broker/` | Archive 공격, phase cancellation, redaction, cleanup concurrency, event mapping, 공통 adapter conformance, reconciliation, crash/restart 계약 test |
+| `backend/tests/broker/` | Archive 공격, phase cancellation, redaction, cleanup concurrency, event mapping, 공통 adapter conformance, live-state composition, reconciliation, crash/restart 계약 test |
 | `validation/manifests/m2-runtime-foundation.json` | 기계 판독 게이트 상태와 고정 source 증거 |
 | `tools/check-m2.mjs` | drift, gate, 범위, hash 검증기 |
 
-허용된 execution 의존 방향은 `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec 및 JobIdentity -> RuntimeBackend`입니다. Durable state는 `RuntimeBackend` 일부가 아니라 `DurableJobStateStore`를 통한 별도 경계이며 outcome mapping, SQLite persistence, recovery는 runtime 접근 권한을 부여하지 않고 이 경계에 의존합니다. 향후 런타임 adapter는 runtime protocol 뒤에 있어야 합니다. 향후 검토된 broker service는 진입 및 보안 게이트 승인 후 런타임 접근을 소유할 수 있는 유일한 구성 요소입니다.
+허용된 execution 의존 방향은 `domain worker -> SandboxSpec -> SandboxPolicy -> ValidatedSandboxSpec 및 JobIdentity -> RuntimeBackend`입니다. Durable state는 `RuntimeBackend` 일부가 아니라 `DurableJobStateStore`를 통한 별도 경계이며 outcome mapping, SQLite persistence, mock 전용 live composition, recovery는 제품 runtime 접근 권한을 부여하지 않고 이 경계에 의존합니다. 향후 런타임 adapter는 runtime protocol 뒤에 있어야 합니다. 향후 검토된 broker service는 진입 및 보안 게이트 승인 후 런타임 접근을 소유할 수 있는 유일한 구성 요소입니다.

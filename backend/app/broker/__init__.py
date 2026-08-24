@@ -10,6 +10,7 @@ from .cancellation import CancellationOutcome, CancellationRequest
 from .cleanup import JobCleanupCoordinator
 from .diagnostics import InternalDiagnostic
 from .lifecycle import CancellationSignal, LifecycleCheckpoint, PhaseCancellation
+from .live_state import LiveStateEmission, LiveStateSession, LiveStateWriteError
 from .models import (
     BrokerError,
     BrokerEvent,
@@ -54,6 +55,15 @@ from .sqlite_state import (
     SQLITE_STATE_SCHEMA_VERSION,
     SQLiteJobStateStore,
 )
+from .state_composition import (
+    BROKER_STATE_COMPOSITION_PRODUCT_ENABLED,
+    BrokerStartupReport,
+    BrokerStartupRequest,
+    DurableBrokerComposition,
+    StateCompositionError,
+    StateCompositionErrorCode,
+    StateOperationContext,
+)
 from .state_mapping import (
     BrokerStateMapper,
     MappedStateBatch,
@@ -70,6 +80,9 @@ __all__ = [
     "BrokerEvent",
     "BrokerOutcome",
     "BrokerRequest",
+    "BROKER_STATE_COMPOSITION_PRODUCT_ENABLED",
+    "BrokerStartupReport",
+    "BrokerStartupRequest",
     "BrokerState",
     "BrokerStateMapper",
     "CancellationOutcome",
@@ -77,6 +90,7 @@ __all__ = [
     "CancellationSignal",
     "CrashRecoveryCoordinator",
     "DurableJobEvent",
+    "DurableBrokerComposition",
     "DurableJobStateStore",
     "InMemoryJobStateStore",
     "InMemoryStateStoreBacking",
@@ -85,6 +99,9 @@ __all__ = [
     "JobCleanupCoordinator",
     "JobStateSnapshot",
     "LifecycleCheckpoint",
+    "LiveStateEmission",
+    "LiveStateSession",
+    "LiveStateWriteError",
     "MappedStateBatch",
     "PhaseCancellation",
     "RecoverableStatePage",
@@ -103,11 +120,14 @@ __all__ = [
     "SQLITE_STATE_SCHEMA_VERSION",
     "SQLiteJobStateStore",
     "SandboxBroker",
+    "StateCompositionError",
+    "StateCompositionErrorCode",
     "StateEventRecorder",
     "StateMappingContext",
     "StateMappingError",
     "StateMappingErrorCode",
     "StateStoreError",
+    "StateOperationContext",
     "StateStoreErrorCode",
     "build_canonical_input_archive",
     "build_canonical_output_archive",
