@@ -28,8 +28,8 @@
 | 아카이브 경로 탈출 또는 특수 파일 | 압축 해제 전에 절대 경로, 상위 경로, 링크, device, 정규화 후 중복 이름, 파일 수 및 크기 초과, byte substitution을 거부 | Canonical 비압축 input/output USTAR stream을 memory에서 검증하며 제품 runtime transfer는 대기 |
 | 리소스 또는 출력 서비스 거부 | CPU, 메모리, PID, 시간, 출력, 파일 수, 산출물, tmpfs 상한 고정 | 모델과 정책이 선언 상한을 강제하며 런타임 집행은 대기 |
 | 잡 간 접근 | 서버 UUID label, opaque handle, 정확한 잡 소유권, 관리 볼륨 격리, 정확한 산출물 manifest | mock lifecycle이 소유권을 강제하며 런타임 격리는 대기 |
-| 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 job별 cleanup을 직렬화하고 container 다음 volume 순서로 정리하며 이미 사라진 상태는 수렴으로 처리한 뒤 orphan 0을 조회 | Process-local lease, concurrent mock reconciliation, 정확한 cancellation query가 있으며 distributed ownership과 durable restart recovery는 대기 |
-| 상태 혼동과 안전하지 않은 재시도 | Redacted event, 원자적 revision CAS, event idempotency, 허용 transition, terminal 불변성, 제한된 recovery scan | Interface와 memory 기반 contract test는 있으며 durable adapter 및 broker 연결은 대기 |
+| 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 생성한 정확한 identity를 사용하며 job별 cleanup을 직렬화하고 container 다음 volume 순서로 정리하며 이미 사라진 상태는 수렴으로 처리한 뒤 orphan 0을 조회 | Process-local lease, concurrent mock reconciliation, 정확한 cancellation query, 결정론적 restart 경계 4곳이 있으며 distributed ownership과 durable 외부 process recovery는 대기 |
+| 상태 혼동과 안전하지 않은 재시도 | 연속 broker event를 결정론적 event 및 operation slot으로 mapping하고 원자적 revision CAS, 허용 transition, terminal 불변성, 제한된 recovery scan으로 저장 | Mapping, partial replay, 공통 adapter conformance, mock recovery test가 있으며 durable adapter 및 live broker 연결은 대기 |
 | 진단 정보 노출 | secret과 호스트 경로를 제거하고 정규화된 capability와 error record만 노출 | 공개 event는 raw detail과 비정규 backend 값을 제외하며 raw detail은 repr에서 숨긴 내부 diagnostic에만 존재 |
 | backend 의미 차이 | Docker와 Podman 정책을 각각 매핑하고 계약 및 장애 테스트로 동등한 통제를 입증 | capability 어휘는 있으며 adapter는 차단 |
 
@@ -49,7 +49,7 @@
 - 위조 이미지 응답, 누락 capability, 예상하지 않은 런타임 version, rootless drift, Docker와 Podman flag 차이
 - lifecycle 각 단계의 취소, 브로커 재시작, 런타임 재시작, 호스트 재시작, 부분 정리, 남은 label, 동시 정리
 - 출력 flood, 산출물 바꿔치기, 잡 간 handle 재사용, 중복 잡 제출, 진단 secret 주입
-- label container와 volume이 0임을 입증하는 20회 혼합 반복 및 crash recovery 행렬
+- 현재의 20회 혼합 반복과 결정론적 memory 기반 crash 경계, 그리고 label container 및 volume이 0임을 별도로 증명해야 하는 durable database 및 process-restart 행렬
 
 ## 승인 게이트
 

@@ -68,6 +68,7 @@ class DurableJobEvent:
     identity: JobIdentity
     event_id: str
     operation_id: str
+    operation_sequence: int
     state: BrokerState
     phase: RuntimePhase
     code: ErrorCode | None = None
@@ -81,6 +82,12 @@ class DurableJobEvent:
             _invalid_event()
         _require_uuid(self.event_id)
         _require_uuid(self.operation_id)
+        if (
+            not isinstance(self.operation_sequence, int)
+            or isinstance(self.operation_sequence, bool)
+            or self.operation_sequence < 1
+        ):
+            _invalid_event()
         if not isinstance(self.state, BrokerState):
             _invalid_event()
         if not isinstance(self.phase, RuntimePhase):
@@ -132,11 +139,12 @@ class DurableJobEvent:
         if self.cleanup_complete != (self.state in TERMINAL_STATES):
             _invalid_event()
 
-    def as_dict(self) -> dict[str, str | bool | None]:
+    def as_dict(self) -> dict[str, str | int | bool | None]:
         return {
             "job_id": self.identity.job_id,
             "event_id": self.event_id,
             "operation_id": self.operation_id,
+            "operation_sequence": self.operation_sequence,
             "state": self.state.value,
             "phase": self.phase.value,
             "code": self.code.value if self.code is not None else None,
@@ -274,19 +282,32 @@ _TRANSITIONS: dict[BrokerState | None, frozenset[BrokerState]] = {
 }
 
 
-class InMemoryJobStateStore:
-    """Contract test double. Data is lost with the process and is not durable."""
+class InMemoryStateStoreBacking:
+    """Shared process-local backing for adapter conformance tests only."""
 
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._snapshots: dict[str, JobStateSnapshot] = {}
         self._events: dict[str, tuple[DurableJobEvent, JobStateSnapshot]] = {}
+        self._operation_slots: dict[
+            tuple[str, str, int],
+            tuple[DurableJobEvent, JobStateSnapshot],
+        ] = {}
+
+
+class InMemoryJobStateStore:
+    """Contract test double. Data is lost with the process and is not durable."""
+
+    def __init__(self, backing: InMemoryStateStoreBacking | None = None) -> None:
+        if backing is not None and not isinstance(backing, InMemoryStateStoreBacking):
+            raise TypeError("InMemoryJobStateStore backing has the wrong type.")
+        self._backing = backing or InMemoryStateStoreBacking()
 
     async def load(self, identity: JobIdentity) -> JobStateSnapshot | None:
         if not isinstance(identity, JobIdentity):
             _invalid_event()
-        async with self._lock:
-            return self._snapshots.get(identity.job_id)
+        async with self._backing._lock:
+            return self._backing._snapshots.get(identity.job_id)
 
     async def append(
         self,
@@ -302,15 +323,23 @@ class InMemoryJobStateStore:
             or expected_revision < 0
         ):
             _invalid_event()
-        async with self._lock:
-            replay = self._events.get(event.event_id)
+        async with self._backing._lock:
+            replay = self._backing._events.get(event.event_id)
             if replay is not None:
                 prior_event, prior_snapshot = replay
                 if prior_event == event:
                     return prior_snapshot
                 raise StateStoreError(StateStoreErrorCode.EVENT_CONFLICT)
 
-            current = self._snapshots.get(event.identity.job_id)
+            operation_slot = (
+                event.identity.job_id,
+                event.operation_id,
+                event.operation_sequence,
+            )
+            if operation_slot in self._backing._operation_slots:
+                raise StateStoreError(StateStoreErrorCode.EVENT_CONFLICT)
+
+            current = self._backing._snapshots.get(event.identity.job_id)
             revision = current.revision if current is not None else 0
             if revision != expected_revision:
                 raise StateStoreError(StateStoreErrorCode.REVISION_CONFLICT)
@@ -319,8 +348,9 @@ class InMemoryJobStateStore:
                 raise StateStoreError(StateStoreErrorCode.INVALID_TRANSITION)
 
             snapshot = JobStateSnapshot(event.identity, revision + 1, event)
-            self._snapshots[event.identity.job_id] = snapshot
-            self._events[event.event_id] = (event, snapshot)
+            self._backing._snapshots[event.identity.job_id] = snapshot
+            self._backing._events[event.event_id] = (event, snapshot)
+            self._backing._operation_slots[operation_slot] = (event, snapshot)
             return snapshot
 
     async def scan_recoverable(
@@ -338,11 +368,11 @@ class InMemoryJobStateStore:
             or limit > 1_000
         ):
             _invalid_event()
-        async with self._lock:
+        async with self._backing._lock:
             candidates = sorted(
                 (
                     snapshot
-                    for job_id, snapshot in self._snapshots.items()
+                    for job_id, snapshot in self._backing._snapshots.items()
                     if snapshot.recoverable and (after is None or job_id > after)
                 ),
                 key=lambda snapshot: snapshot.identity.job_id,

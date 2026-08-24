@@ -87,6 +87,8 @@ const expectedSourceFiles = [
   "backend/app/broker/orchestrator.py",
   "backend/app/broker/output_archive.py",
   "backend/app/broker/state.py",
+  "backend/app/broker/state_mapping.py",
+  "backend/app/broker/recovery.py",
   "backend/pyproject.toml",
   "backend/tests/runtime/support.py",
   "backend/tests/runtime/test_identity.py",
@@ -99,6 +101,10 @@ const expectedSourceFiles = [
   "backend/tests/broker/test_lifecycle_control.py",
   "backend/tests/broker/test_orchestrator.py",
   "backend/tests/broker/test_output_archive.py",
+  "backend/tests/broker/state_store_conformance.py",
+  "backend/tests/broker/test_recovery.py",
+  "backend/tests/broker/test_state_mapping.py",
+  "backend/tests/broker/test_state_store_conformance.py",
   "backend/tests/broker/test_state_store.py",
   "tools/check-m2.mjs",
   "tools/run-python-tests.mjs",
@@ -108,12 +114,14 @@ const expectedSourceFiles = [
   "docs/en/m2/broker-archive-foundation.md",
   "docs/en/m2/output-cancellation-redaction.md",
   "docs/en/m2/lifecycle-cleanup-state.md",
+  "docs/en/m2/event-state-recovery.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
   "docs/ko/m2/output-cancellation-redaction.md",
   "docs/ko/m2/lifecycle-cleanup-state.md",
+  "docs/ko/m2/event-state-recovery.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -202,6 +210,9 @@ requireValue(manifest.securityBoundary.rawDiagnosticExposedPublicly === false, "
 requireValue(manifest.securityBoundary.phaseCancellationInjectionImplemented === true, "Phase cancellation injection must be recorded.");
 requireValue(manifest.securityBoundary.processLocalCleanupCoordinatorImplemented === true, "Process-local cleanup coordination must be recorded.");
 requireValue(manifest.securityBoundary.durableStateInterfaceDefined === true, "Durable state interface must be recorded.");
+requireValue(manifest.securityBoundary.brokerEventStateMappingDefined === true, "Broker event-state mapping must be recorded.");
+requireValue(manifest.securityBoundary.durableAdapterConformanceSuiteImplemented === true, "Adapter conformance suite must be recorded.");
+requireValue(manifest.securityBoundary.crashRestartRecoveryContractImplemented === true, "Mock crash/restart recovery must be recorded.");
 requireValue(manifest.securityBoundary.durableStateStoreImplemented === false, "A durable state store must not be claimed.");
 requireValue(manifest.securityBoundary.brokerStateStoreWiringImplemented === false, "Broker-to-store wiring must remain absent.");
 requireValue(manifest.securityBoundary.distributedCleanupLeaseImplemented === false, "Distributed cleanup leasing must remain absent.");
@@ -270,7 +281,7 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "mock-concurrency-state-contract-tested"],
+  ["RUN-007", "mock-recovery-contract-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
@@ -282,9 +293,9 @@ const expectedBrokerWorkItems = [
   ["BRK-001", "foundation-tested"],
   ["BRK-003", "mock-lifecycle-tested"],
   ["BRK-004", "canonical-input-output-archive-tested"],
-  ["BRK-006", "mock-concurrent-reconciliation-state-tested"],
+  ["BRK-006", "mock-crash-restart-contract-tested"],
   ["BRK-007", "mock-phase-cancellation-tested"],
-  ["BRK-008", "structured-redaction-tested"],
+  ["BRK-008", "structured-mapping-redaction-tested"],
 ];
 requireValue(brokerWorkItems.size === expectedBrokerWorkItems.length, "M2 broker work item set drifted.");
 for (const [id, status] of expectedBrokerWorkItems) {
@@ -310,7 +321,7 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 52, "Runtime and broker test count must be 52.");
+requireValue(manifest.testContract.testCount === 67, "Runtime and broker test count must be 67.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
 requireValue(manifest.testContract.brokerOrchestrationTests === 8, "Broker orchestration test count must be 8.");
@@ -320,6 +331,10 @@ requireValue(manifest.testContract.lifecycleCancellationTests === 3, "Lifecycle 
 requireValue(manifest.testContract.lifecycleCancellationCheckpoints === 11, "Lifecycle cancellation checkpoint count must be 11.");
 requireValue(manifest.testContract.cleanupConcurrencyTests === 3, "Cleanup concurrency test count must be 3.");
 requireValue(manifest.testContract.durableStateTests === 7, "Durable state interface test count must be 7.");
+requireValue(manifest.testContract.durableAdapterConformanceTests === 6, "Adapter conformance test count must be 6.");
+requireValue(manifest.testContract.stateMappingTests === 5, "State mapping test count must be 5.");
+requireValue(manifest.testContract.crashRecoveryTests === 4, "Crash recovery test count must be 4.");
+requireValue(manifest.testContract.crashInjectionCheckpoints === 4, "Crash injection checkpoint count must be 4.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
 requireValue(manifest.testContract.usesSolver === false, "Contract tests must not use a solver.");
 requireValue(manifest.testContract.loopCases === 20, "Cleanup loop must contain 20 cases.");
@@ -373,6 +388,8 @@ const brokerLifecycle = await readFile(join(root, "backend/app/broker/lifecycle.
 const brokerModels = await readFile(join(root, "backend/app/broker/models.py"), "utf8");
 const brokerOrchestrator = await readFile(join(root, "backend/app/broker/orchestrator.py"), "utf8");
 const brokerState = await readFile(join(root, "backend/app/broker/state.py"), "utf8");
+const brokerStateMapping = await readFile(join(root, "backend/app/broker/state_mapping.py"), "utf8");
+const brokerRecovery = await readFile(join(root, "backend/app/broker/recovery.py"), "utf8");
 const implementation = [
   protocol,
   models,
@@ -388,6 +405,8 @@ const implementation = [
   brokerModels,
   brokerOrchestrator,
   brokerState,
+  brokerStateMapping,
+  brokerRecovery,
 ].join("\n");
 for (const [label, pattern] of [
   ["subprocess API", /\bsubprocess\b/u],
@@ -431,11 +450,23 @@ for (const operation of manifest.durableStateContract.operations) {
   requireValue(brokerState.includes(`async def ${operation}(`), `Durable state protocol is missing ${operation}.`);
 }
 requireValue(brokerState.includes("expected_revision"), "State append must require an expected revision.");
-for (const field of ["retry", "backend", "classification"]) {
+for (const field of ["operation_sequence", "retry", "backend", "classification"]) {
   requireValue(brokerState.includes(`    ${field}:`), `Durable event is missing ${field}.`);
 }
 requireValue(brokerState.includes("StateStoreErrorCode.REVISION_CONFLICT"), "State CAS conflict must be stable.");
 requireValue(!brokerState.includes("raw_detail"), "Durable event source must not expose raw detail.");
+requireValue(brokerState.includes("_operation_slots"), "State adapter must reject operation-slot reuse.");
+requireValue(brokerStateMapping.includes("class BrokerStateMapper"), "Broker state mapper must be defined.");
+requireValue(brokerStateMapping.includes("uuid5("), "Mapped event IDs must be deterministic UUID v5 values.");
+requireValue(brokerStateMapping.includes("class StateEventRecorder"), "State batch recorder must be defined.");
+requireValue(brokerRecovery.includes("class CrashRecoveryCoordinator"), "Crash recovery coordinator must be defined.");
+for (const checkpoint of manifest.crashRestartRecoveryContract.checkpoints) {
+  requireValue(brokerRecovery.includes(`= "${checkpoint}"`), `Recovery source is missing ${checkpoint}.`);
+}
+requireValue(manifest.eventStateMappingContract.liveBrokerWiringImplemented === false, "Live broker wiring must remain absent.");
+requireValue(manifest.adapterConformanceContract.inMemoryBackingDurable === false, "Memory conformance backing must not be durable.");
+requireValue(manifest.crashRestartRecoveryContract.externalProcessRestartTested === false, "External-process durability must remain unclaimed.");
+requireValue(manifest.crashRestartRecoveryContract.recoversAsSucceeded === false, "Recovery must never synthesize success.");
 
 for (const path of [
   "docs/en/m2/README.md",
@@ -444,12 +475,14 @@ for (const path of [
   "docs/en/m2/broker-archive-foundation.md",
   "docs/en/m2/output-cancellation-redaction.md",
   "docs/en/m2/lifecycle-cleanup-state.md",
+  "docs/en/m2/event-state-recovery.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
   "docs/ko/m2/output-cancellation-redaction.md",
   "docs/ko/m2/lifecycle-cleanup-state.md",
+  "docs/ko/m2/event-state-recovery.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {
