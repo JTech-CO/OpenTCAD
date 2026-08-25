@@ -6,6 +6,11 @@ from .fence_authority import (
     RUNTIME_FENCE_AUTHORITY_PRODUCT_ENABLED,
     RuntimeFenceAuthority,
 )
+from .sqlite_fence_authority import (
+    SQLITE_RUNTIME_FENCE_PRODUCT_ENABLED,
+    SQLITE_RUNTIME_FENCE_SCHEMA_VERSION,
+    SQLiteRuntimeFenceAuthority,
+)
 from .fencing import (
     RUNTIME_FENCE_LABEL_KEYS,
     RUNTIME_FENCING_TOKEN_LABEL,
@@ -69,6 +74,9 @@ __all__ = [
     "RuntimeKind",
     "RuntimePhase",
     "RuntimeProbe",
+    "SQLITE_RUNTIME_FENCE_PRODUCT_ENABLED",
+    "SQLITE_RUNTIME_FENCE_SCHEMA_VERSION",
+    "SQLiteRuntimeFenceAuthority",
     "SandboxPolicy",
     "SandboxSpec",
     "TAKEOVER_OBJECT_PHASES",

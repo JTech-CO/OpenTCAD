@@ -52,6 +52,10 @@ from .recovery import (
     RecoveryRequest,
     RecoveryStatus,
 )
+from .runtime_fence_activation import (
+    RUNTIME_FENCE_ACTIVATION_PRODUCT_ENABLED,
+    DurableRuntimeFenceActivator,
+)
 from .state import (
     DurableJobEvent,
     DurableJobStateStore,
@@ -60,6 +64,7 @@ from .state import (
     InMemoryJobStateStore,
     InMemoryStateStoreBacking,
     JobStateSnapshot,
+    OperationFenceActivator,
     OperationOwnershipError,
     OperationOwnershipGuard,
     RecoverableStatePage,
@@ -116,6 +121,7 @@ __all__ = [
     "DurableJobStateStore",
     "DurableOperationGuard",
     "DurableOperationOwnership",
+    "DurableRuntimeFenceActivator",
     "DEFAULT_OWNER_HEARTBEAT_INTERVAL_MS",
     "DEFAULT_OWNER_LEASE_DURATION_MS",
     "InMemoryJobStateStore",
@@ -131,6 +137,7 @@ __all__ = [
     "LiveStateWriteError",
     "MAX_OWNER_LEASE_DURATION_MS",
     "MappedStateBatch",
+    "OperationFenceActivator",
     "OperationOwnershipError",
     "OperationOwnershipGuard",
     "OwnerLeasePolicy",
@@ -146,6 +153,7 @@ __all__ = [
     "RecoveryReport",
     "RecoveryRequest",
     "RecoveryStatus",
+    "RUNTIME_FENCE_ACTIVATION_PRODUCT_ENABLED",
     "SQLITE_STATE_PRODUCT_ENABLED",
     "SQLITE_STATE_RETENTION_POLICY",
     "SQLITE_STATE_SCHEMA_VERSION",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from .fence_authority import RuntimeFenceAuthority
 from .fencing import RuntimeFencingContext
 from .models import (
     ContainerHandle,
@@ -76,6 +77,9 @@ class RuntimeBackend(Protocol):
 
     @property
     def name(self) -> RuntimeKind: ...
+
+    @property
+    def fence_authority(self) -> RuntimeFenceAuthority: ...
 
     async def probe(self) -> RuntimeProbe: ...
 

@@ -138,7 +138,13 @@
     "candidateRuntimeFenceAuthorityProductEnabled": false,
     "nativeObjectFenceLabelsPersistedInMock": true,
     "runtimeFenceConformanceSuiteImplemented": true,
-    "runtimeFencePostMutationVerificationTested": true
+    "runtimeFencePostMutationVerificationTested": true,
+    "candidateCrossProcessRuntimeFenceAuthorityImplemented": true,
+    "candidateCrossProcessRuntimeFenceAuthorityProductEnabled": false,
+    "runtimeFenceAuthorityCrossProcessDurabilityTested": true,
+    "runtimeFenceActivationBridgeImplemented": true,
+    "runtimeFenceActivationGapRecoveryTested": true,
+    "storeRuntimeActivationAtomic": false
   },
   "contract": {
     "protocolOperations": [
@@ -234,7 +240,7 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 121,
+    "testCount": 133,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
@@ -275,7 +281,7 @@
     "adapterHandleReopenTested": true,
     "sqliteAdapterConformanceTests": 10,
     "sqliteSpecificContractTests": 6,
-    "externalProcessHardExitTests": 1,
+    "externalProcessHardExitTests": 2,
     "sqliteStateStoreTestPath": "backend/tests/broker/test_sqlite_state_store.py",
     "sqliteHardExitHelperPath": "backend/tests/broker/sqlite_recovery_child.py",
     "stateCompositionTests": 9,
@@ -298,13 +304,25 @@
     "runtimeFenceConformanceSuitePath": "backend/tests/runtime/fence_conformance.py",
     "runtimeFenceConformanceTestPath": "backend/tests/runtime/test_runtime_fence_conformance.py",
     "runtimeFenceAuthorityImplementation": "backend/app/runtime/fence_authority.py",
-    "runtimeTestProcessTimeoutMs": 120000
+    "runtimeTestProcessTimeoutMs": 120000,
+    "runtimeFenceAuthorityCommonCases": 4,
+    "sqliteRuntimeFenceAuthorityTests": 8,
+    "durableFenceActivationTests": 4,
+    "runtimeFenceAuthorityConformanceSuitePath": "backend/tests/runtime/fence_authority_conformance.py",
+    "sqliteRuntimeFenceAuthorityTestPath": "backend/tests/runtime/test_sqlite_fence_authority.py",
+    "sqliteRuntimeFenceHardExitHelperPath": "backend/tests/runtime/sqlite_fence_authority_child.py",
+    "durableFenceActivationTestPath": "backend/tests/broker/test_durable_fence_activation.py",
+    "sqliteRuntimeFenceAuthorityImplementation": "backend/app/runtime/sqlite_fence_authority.py",
+    "runtimeFenceActivationImplementation": "backend/app/broker/runtime_fence_activation.py",
+    "candidateSQLiteRuntimeFenceAuthority": "framework-verified",
+    "durableStoreRuntimeActivation": "framework-verified",
+    "activationGapRestartRecovery": "framework-verified"
   },
   "sourceFiles": [
     {
       "path": "backend/app/runtime/__init__.py",
-      "bytes": 2046,
-      "sha256": "128dd0a77a2e91dcb404cf3919aa86175b93c7f52b7011b1d8372feb72e4b014"
+      "bytes": 2324,
+      "sha256": "faa2e1c771b760823737c0220586678af40b5222d32377b9beb4aa39fab430b4"
     },
     {
       "path": "backend/app/runtime/errors.py",
@@ -323,8 +341,8 @@
     },
     {
       "path": "backend/app/runtime/protocol.py",
-      "bytes": 2289,
-      "sha256": "5d577308ca4c877b44a46c8e8be4fecf5e3b0d87217d2547c72fdaf69b5673ae"
+      "bytes": 2415,
+      "sha256": "4a682d931c209b567c55bea367d4b45608ad6f44bfc4f9e1867bdf0272e61122"
     },
     {
       "path": "backend/app/runtime/fencing.py",
@@ -337,14 +355,19 @@
       "sha256": "8970e195975fa3da08f370961e3c5b571914b81ccff00b7d0e57c4ddd4c3fc28"
     },
     {
+      "path": "backend/app/runtime/sqlite_fence_authority.py",
+      "bytes": 12804,
+      "sha256": "0d5e51df5e432eada3da1b4ecc5b86b1995d0393071034dfea61499e4399dc0b"
+    },
+    {
       "path": "backend/app/runtime/mock_backend.py",
-      "bytes": 27888,
-      "sha256": "d7d20b12cf7371dcd0e987f0daea9ea70aa67b734ff9e5323a44760eb4452c32"
+      "bytes": 27996,
+      "sha256": "b0bae67102d66f0988ef662d75d782865adc74187e5ed5586a61d289db5e693e"
     },
     {
       "path": "backend/app/broker/__init__.py",
-      "bytes": 4619,
-      "sha256": "d9cb3cd36163011cca125e367ebefbb96048700f79fc635aef6245053ccd3846"
+      "bytes": 4885,
+      "sha256": "c1b5cc5c8011c4365d6efd70ec16b6f73a0ff43ddb8d8e250770851cf08490b5"
     },
     {
       "path": "backend/app/broker/archive.py",
@@ -383,8 +406,8 @@
     },
     {
       "path": "backend/app/broker/live_state.py",
-      "bytes": 9676,
-      "sha256": "b38816947cfad4bb50f302bafead8e06623fb526a259c2ee94a4c48f0d52fb03"
+      "bytes": 10275,
+      "sha256": "015165ee745ebd8f074fd417848fdc1b52686eaaa3d7734223f62e6a7d253578"
     },
     {
       "path": "backend/app/broker/models.py",
@@ -393,8 +416,8 @@
     },
     {
       "path": "backend/app/broker/orchestrator.py",
-      "bytes": 45165,
-      "sha256": "331e8d7333f8c4132d105979217ab4b78173cdb3dcdd507cbacf69860b038779"
+      "bytes": 45359,
+      "sha256": "d7d711d83ced8cffca1794ca66b100cc081a721feeddcc35f8709580388c3c63"
     },
     {
       "path": "backend/app/broker/output_archive.py",
@@ -403,8 +426,8 @@
     },
     {
       "path": "backend/app/broker/state.py",
-      "bytes": 25020,
-      "sha256": "5e10a4a69bec55f15217d5a58171846b206efd9bdcf3e8eb7b19530bad867fac"
+      "bytes": 26020,
+      "sha256": "afaefde64469ff12577ac5a4c531526d296a80ac18752711ec295555ca1410f0"
     },
     {
       "path": "backend/app/broker/sqlite_state.py",
@@ -418,13 +441,18 @@
     },
     {
       "path": "backend/app/broker/recovery.py",
-      "bytes": 18060,
-      "sha256": "ff02b457ecedb2751cf191bc38b4b8a12754e2baaabe2f01c4a636c2d8b134d5"
+      "bytes": 18454,
+      "sha256": "0882de159a7b3171a9f7255846fd07e0ac6aec071b78fa08f5ab0b783dcbf6f6"
+    },
+    {
+      "path": "backend/app/broker/runtime_fence_activation.py",
+      "bytes": 2612,
+      "sha256": "01b3f09e15a4d0f5845d8fa99ec46b6224f5f1d67cabf979cf2df4a2f58c9a7c"
     },
     {
       "path": "backend/app/broker/state_composition.py",
-      "bytes": 11623,
-      "sha256": "364a8ca47c963d29ea3742f815373498e228aeef7664690bcbf2ebe02baafc3d"
+      "bytes": 12003,
+      "sha256": "9253012a572bb71c714410b991fce7a2661582a08d50d3adcc5a5ec52e53ddb5"
     },
     {
       "path": "backend/pyproject.toml",
@@ -440,6 +468,11 @@
       "path": "backend/tests/runtime/fence_conformance.py",
       "bytes": 5947,
       "sha256": "4be1941bbc8fb8b9b4a1b83caed088a290be6706337a178659fe9d1442a25836"
+    },
+    {
+      "path": "backend/tests/runtime/fence_authority_conformance.py",
+      "bytes": 4107,
+      "sha256": "4787b4ba396fe0ba39963fa8ed3b935a99322aea704d982f8d8044c7690c9ea6"
     },
     {
       "path": "backend/tests/runtime/test_identity.py",
@@ -467,6 +500,16 @@
       "sha256": "4b198fbc7f56ae6900bed3c3f241e55a8ad2e7b3ac6722c151954d7a3d9e7677"
     },
     {
+      "path": "backend/tests/runtime/sqlite_fence_authority_child.py",
+      "bytes": 1058,
+      "sha256": "a705778407566efd828b032a6e7621cbcdc46ef587c61f44351bd8e9edde525c"
+    },
+    {
+      "path": "backend/tests/runtime/test_sqlite_fence_authority.py",
+      "bytes": 8107,
+      "sha256": "15c29bb7e495e1bfa1a6f223e0bfbb7db733f3af048d043abc033ca5615981a2"
+    },
+    {
       "path": "backend/tests/broker/test_archive.py",
       "bytes": 6638,
       "sha256": "b811c516fab5be441b06e63b9adc0a56dd2cce5a90d2560ea3ed7936d858d0ec"
@@ -490,6 +533,11 @@
       "path": "backend/tests/broker/test_durable_cancellation.py",
       "bytes": 26809,
       "sha256": "8b128e0683ee3aab7e6f63f804a9063993e0cdf6a1c093cd883ee2ec2d2b1292"
+    },
+    {
+      "path": "backend/tests/broker/test_durable_fence_activation.py",
+      "bytes": 12749,
+      "sha256": "61064b40782388d7501b04d881f8241df415018bbc93421e4ea937e039aba8cf"
     },
     {
       "path": "backend/tests/broker/test_operation_ownership.py",
@@ -558,8 +606,8 @@
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 62376,
-      "sha256": "ebfb271d3dcdff4de9d180593eca2a4dce3dc1864e4b48875ac3dfb6da7fb001"
+      "bytes": 72032,
+      "sha256": "509c69e38e1b1269e63921328e83d7496402e2dd1b29e49ad68ea8c349e00196"
     },
     {
       "path": "tools/run-python-tests.mjs",
@@ -568,8 +616,8 @@
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 13867,
-      "sha256": "b737fed5cde2fcbd2b26e5f19b8887f0d052c4164e98f480be846a807394bf89"
+      "bytes": 14850,
+      "sha256": "0992acec6c44e8c0d1c1dba7f3138a2d6127bd1b353ca231021dcd2af79b7d97"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
@@ -589,17 +637,17 @@
     {
       "path": "docs/en/m2/output-cancellation-redaction.md",
       "bytes": 3587,
-      "sha256": "8021b62e178535819fc553f4a1c46365ddb41c7362abc19257716fd3c0ddf6a0"
+      "sha256": "832f490caf39c52d794d9de7da9cfcabf68c672067573bb6f7cb243dc927df2d"
     },
     {
       "path": "docs/en/m2/lifecycle-cleanup-state.md",
       "bytes": 7488,
-      "sha256": "3ab6e7ac856789b82bfd9cd2b40c1607175ae7cb618244393bcecea959e022ed"
+      "sha256": "8619421b8a9b10f6cada8e5bf0ded2508f7b457390a86b6ce2d507aaa574c4c6"
     },
     {
       "path": "docs/en/m2/event-state-recovery.md",
       "bytes": 9022,
-      "sha256": "39051e1f6be701c62ca799b4fc42852cfcb9e5b41b1f7f9f08650ea53632877c"
+      "sha256": "57d80cd5129bbb7eab3642297753db017e2df4c2b04501de94afd760b352cf06"
     },
     {
       "path": "docs/en/m2/sqlite-durable-state.md",
@@ -609,32 +657,37 @@
     {
       "path": "docs/en/m2/live-state-composition.md",
       "bytes": 5821,
-      "sha256": "1193a3498ae1de3faa92fb6a080c7286cda4b4bd6431cac5d6d0ecd573b0ac10"
+      "sha256": "ef65b8ccbcd35db6bc415c4f7abd302817cd29210c0137b2b1766809829f611c"
     },
     {
       "path": "docs/en/m2/durable-cancellation-arbitration.md",
       "bytes": 6271,
-      "sha256": "d4b757cc7b408ddf0782e29c7fb8f37617e6c0b85290fbf5bb311e1603312821"
+      "sha256": "548baf3a8f69b5fd6030e62927df4dca2fec7198137e476242bf89254ff31d25"
     },
     {
       "path": "docs/en/m2/durable-operation-ownership.md",
-      "bytes": 6746,
-      "sha256": "6778cb1b4a2535c86549742d589ea33fb0a9a140ef1c7874e14ccf69d354785c"
+      "bytes": 6943,
+      "sha256": "05f7896f35c51d4adb73903a92b1bfeba697986e2ec6f9f58845ad8f9ba5c336"
     },
     {
       "path": "docs/en/m2/owner-lease-runtime-fencing.md",
-      "bytes": 5123,
-      "sha256": "8afbabf676c03c3f1835a191e6cfaea43a507063baea36af9897343c6a8b7a40"
+      "bytes": 5514,
+      "sha256": "b1b9498f8834a6396c9dc5a8edb39612669445a652da07e3d4ae0e5dfb47d865"
     },
     {
       "path": "docs/en/m2/native-runtime-fence-conformance.md",
-      "bytes": 4181,
-      "sha256": "304c97702d51674c7b5e5ab052e9a8d00a93f0b34b651375d33968b87b8b3774"
+      "bytes": 4586,
+      "sha256": "110d20e28645e6a560106874ec6e582ee051cd9879d32432bf8e55dc180c4579"
+    },
+    {
+      "path": "docs/en/m2/durable-runtime-fence-authority.md",
+      "bytes": 5251,
+      "sha256": "6d1ab36dadfc6cedbcfbe9109ff21beedb0d59ad53d040a67e286d6eddd68921"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 14463,
-      "sha256": "f1f05825bc3ed7cd7785197a2d17ef6dce6172a18a7810ba101b251b7491d034"
+      "bytes": 15496,
+      "sha256": "475f38a4400a5616c86ea7441e0668fe2cddf561dc932df2b7a2109a96b5c8c7"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
@@ -654,17 +707,17 @@
     {
       "path": "docs/ko/m2/output-cancellation-redaction.md",
       "bytes": 3794,
-      "sha256": "bd41a8921273213857914867eed257da270d7b3aeefc876690b9645b29b464a4"
+      "sha256": "90819243287179c53efaab1be1f1c38fb1a1ad015ddeb7e5f9e1ba9d22306030"
     },
     {
       "path": "docs/ko/m2/lifecycle-cleanup-state.md",
       "bytes": 7957,
-      "sha256": "1b1a65694c87d1d96a299d28f3bc95bffd2869bc781fc453be5fa0982f9331b6"
+      "sha256": "daed84cc026f904ebde302108082787bfefd434cf3d4e2157f498a8f73dec401"
     },
     {
       "path": "docs/ko/m2/event-state-recovery.md",
       "bytes": 9677,
-      "sha256": "b7450c2fa129aac333267d270da1b90537e3c76ef1a370ad55c47fee03e363eb"
+      "sha256": "701a8f8b9088b31bc8a0355700c3d93e8ef9fb26bacda16fb3acccf41f256585"
     },
     {
       "path": "docs/ko/m2/sqlite-durable-state.md",
@@ -674,27 +727,32 @@
     {
       "path": "docs/ko/m2/live-state-composition.md",
       "bytes": 6365,
-      "sha256": "ae548c08bac1e1f5bbe24fbb6bd4c88ae02c94c805f0aedd10d16f1b56d52942"
+      "sha256": "c6b130be2fb9d13253a9ebfb703e77b269ee6f0d7bce520bd510d926c7302c1e"
     },
     {
       "path": "docs/ko/m2/durable-cancellation-arbitration.md",
       "bytes": 6564,
-      "sha256": "f26cf0c62001f87cbd7a03d893bb52a3bcbe5f20ac084c66f5bf202551ef330f"
+      "sha256": "ced39deb81774a4dd060a895c5d68687cb92b7b85c82f44779de441dccf6c3d7"
     },
     {
       "path": "docs/ko/m2/durable-operation-ownership.md",
-      "bytes": 7521,
-      "sha256": "2cc8ccc73b7edfa6f4de36a665ad2a4b073312f930c065d5d662a7fb824e85ca"
+      "bytes": 7706,
+      "sha256": "df14afbf484a86312ccd8d938f8cd6cb2883b2615cb3df87b5a7bd7e7102ddcc"
     },
     {
       "path": "docs/ko/m2/owner-lease-runtime-fencing.md",
-      "bytes": 5767,
-      "sha256": "24b2cb384674b075bcf846a758e65514ae1afaf9623a89e4516ee188b2ee4b54"
+      "bytes": 6157,
+      "sha256": "33ca7160dd7c0e22a8d1bcd2b893e2b8dc7ccbf5712f7e1c6fa9f7f06aa232b7"
     },
     {
       "path": "docs/ko/m2/native-runtime-fence-conformance.md",
-      "bytes": 4509,
-      "sha256": "f248dadf245c92394ef18dc20b858536437dafd97c598aacc0445e4d09860e6c"
+      "bytes": 4963,
+      "sha256": "25a8d181d6c525ad1602524a918f8034357b7d950d0a2fdba4a13b7cfd536c63"
+    },
+    {
+      "path": "docs/ko/m2/durable-runtime-fence-authority.md",
+      "bytes": 5822,
+      "sha256": "189c0a0920acfbf8457fa4f3e27018eac576ce9d41a3206f1defdec3661fb477"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -703,8 +761,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 10416,
-      "sha256": "d8f626415f2b6e1d1ad18707d2bd62bb6a9d7034d6cb84ecd5aa4f9d098befb6"
+      "bytes": 11624,
+      "sha256": "c31680f34f6e2ba865dd2e239e3b535a6e3c2e4f85bec4dc070dace10b67b166"
     }
   ],
   "exitCriteria": {
@@ -1147,7 +1205,7 @@
     "runtimeRejectsSameTokenDifferentOwner": true,
     "runtimeRejectsCrossJobContext": true,
     "clockSkewBounded": false,
-    "runtimeAuthorityScope": "process-local",
+    "runtimeAuthorityScope": "process-local-reference-plus-local-cross-process-sqlite",
     "runtimeAuthoritySharedAcrossAdapterInstances": true,
     "nativeObjectLabelsPersistedInMock": true,
     "runtimeActivatesBeforeOperation": true,
@@ -1157,7 +1215,10 @@
       "query",
       "kill",
       "cleanup"
-    ]
+    ],
+    "candidateCrossProcessAuthority": true,
+    "storeToRuntimeActivationDoubleChecked": true,
+    "activationGapRecoveryTested": true
   },
   "ownerLeaseRuntimeFencingContract": {
     "productEnabled": false,
@@ -1188,13 +1249,16 @@
     "nativeInFlightRevocationProven": false,
     "clockSkewBounded": false,
     "multiHost": false,
-    "runtimeAuthorityScope": "process-local",
+    "runtimeAuthorityScope": "process-local-reference-plus-local-cross-process-sqlite",
     "runtimeAuthoritySharedAcrossAdapterInstances": true,
     "nativeObjectLabelsPersistedInMock": true,
     "runtimeActivatesBeforeOperation": true,
     "runtimeVerifiesAfterOperation": true,
     "staleCompletedResultSuppressed": true,
-    "reusableRuntimeFenceConformanceCases": 5
+    "reusableRuntimeFenceConformanceCases": 5,
+    "candidateCrossProcessAuthority": true,
+    "storeToRuntimeActivationDoubleChecked": true,
+    "activationGapRecoveryTested": true
   },
   "runtimeFenceAuthorityContract": {
     "protocolPath": "backend/app/runtime/fence_authority.py",
@@ -1205,11 +1269,23 @@
     "verificationAfterOperation": true,
     "highestGenerationPerJob": true,
     "sharedAcrossAdapterInstances": true,
-    "crossProcessDurable": false,
+    "crossProcessDurable": true,
     "storeCommitAndActivationAtomic": false,
     "nativeInFlightRevocationProven": false,
     "staleCompletedResultSuppressed": true,
-    "stableRejectionCode": "operation-fenced"
+    "stableRejectionCode": "operation-fenced",
+    "candidateScope": "local-cross-process-sqlite",
+    "candidateImplementationPath": "backend/app/runtime/sqlite_fence_authority.py",
+    "schemaVersion": 1,
+    "journalMode": "wal",
+    "synchronous": "full",
+    "activationTransaction": "begin-immediate",
+    "candidateProductEnabled": false,
+    "productCrossProcessDurable": false,
+    "separateProcessHardExitTested": true,
+    "authorityConformanceCases": 4,
+    "unavailableCode": "runtime-unavailable",
+    "unavailableDetail": "runtime-fence-authority-unavailable"
   },
   "nativeObjectFenceConformanceContract": {
     "suitePath": "backend/tests/runtime/fence_conformance.py",
@@ -1240,5 +1316,25 @@
     "cleanupConvergenceAfterTakeover": true,
     "productDockerTested": false,
     "productPodmanTested": false
+  },
+  "runtimeFenceActivationRecoveryContract": {
+    "implementationPath": "backend/app/broker/runtime_fence_activation.py",
+    "productEnabled": false,
+    "acceptedRuntime": "mock",
+    "paths": [
+      "execution",
+      "cancellation",
+      "recovery"
+    ],
+    "preActivationStoreVerify": true,
+    "postActivationStoreVerify": true,
+    "postActivationAuthorityVerify": true,
+    "stateAndAuthorityCommitAtomic": false,
+    "stateAheadOfAuthorityGapRecoverable": true,
+    "recoveryClaimsNextToken": true,
+    "abandonedGenerationRejected": true,
+    "authoritySynthesizesBrokerState": false,
+    "hardExitGapTested": true,
+    "productWiring": false
   }
 }

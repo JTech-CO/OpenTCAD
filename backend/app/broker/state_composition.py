@@ -22,6 +22,7 @@ from .live_state import LiveStateEmission, LiveStateSession, LiveStateWriteError
 from .models import BrokerEvent, BrokerOutcome, BrokerRequest, BrokerState
 from .orchestrator import SandboxBroker
 from .recovery import CrashRecoveryCoordinator, RecoveryReport, RecoveryRequest
+from .runtime_fence_activation import DurableRuntimeFenceActivator
 from .state import (
     TERMINAL_STATES,
     DurableJobStateStore,
@@ -131,6 +132,11 @@ class DurableBrokerComposition:
         self._broker = broker
         self._store = store
         self._lease_policy = lease_policy
+        self._fence_activator = DurableRuntimeFenceActivator(
+            store,
+            broker.runtime_fence_authority,
+            broker.runtime_kind,
+        )
         self._startup_lock = asyncio.Lock()
         self._startup_report: BrokerStartupReport | None = None
 
@@ -153,6 +159,7 @@ class DurableBrokerComposition:
                 self._broker,
                 self._broker.runtime_kind,
                 self._lease_policy,
+                self._fence_activator,
             )
             pages: list[RecoveryReport] = []
             after: str | None = None
@@ -219,6 +226,7 @@ class DurableBrokerComposition:
             1,
             self._broker.runtime_kind,
             lease_policy=self._lease_policy,
+            fence_activator=self._fence_activator,
         )
         return await self._broker._execute_with_state_session(
             request,
@@ -272,6 +280,7 @@ class DurableBrokerComposition:
                 self._broker.runtime_kind,
                 expected_revision=current.revision,
                 lease_policy=self._lease_policy,
+                fence_activator=self._fence_activator,
             )
             intent = BrokerEvent(
                 1,

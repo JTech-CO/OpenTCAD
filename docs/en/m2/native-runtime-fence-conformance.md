@@ -8,11 +8,11 @@
 
 ## Contract boundary
 
-`RuntimeFenceAuthority` is the adapter-independent authority consulted around every job-bound runtime operation. The supplied `InMemoryRuntimeFenceAuthority` is a shared, process-local reference implementation for conformance testing. It records the highest activated owner generation for each canonical job UUID. A lower token, an unactivated token, or the same token paired with another owner fails with stable `operation-fenced`.
+`RuntimeFenceAuthority` is the adapter-independent authority consulted around every job-bound runtime operation. `InMemoryRuntimeFenceAuthority` remains the shared, process-local reference implementation for object-adapter conformance. The inactive `SQLiteRuntimeFenceAuthority` implements the same protocol for cross-process local durability and has its own reusable authority suite. Both record the highest activated owner generation for each canonical job UUID. A lower token, an unactivated token, or the same token paired with another owner fails with stable `operation-fenced`.
 
 Each bound call activates its `RuntimeFencingContext` immediately before entering the adapter operation and verifies the same context immediately after the operation returns. The second check suppresses a stale success result when a newer owner activates while an earlier native request is in flight.
 
-This authority is not durable across processes. Durable store commit and runtime activation are not one atomic action.
+The SQLite authority is durable across local processes, while the in-memory reference is not. Durable broker-state commit and runtime-authority activation remain separate, non-atomic actions. The activation and restart contract is documented in [durable runtime fence authority and activation recovery](durable-runtime-fence-authority.md).
 
 ## Managed-object metadata
 
@@ -48,4 +48,4 @@ This last case proves stale-result suppression and safe cleanup convergence. It 
 
 ## Product gate
 
-A future Docker or Podman adapter must implement the same authority, label persistence, normalized inspection, per-operation object enforcement, pre-operation activation, and post-operation verification, then pass the common suite unchanged. Product promotion additionally requires an approved immutable engine profile, approved M2 entry documents, native-platform fault evidence, cross-process durable authority design, and explicit in-flight revocation or convergence evidence. This slice opens no runtime socket and grants no product execution authority.
+A future Docker or Podman adapter must implement the same authority exposure, label persistence, normalized inspection, per-operation object enforcement, pre-operation activation, and post-operation verification, then pass the object and authority common suites unchanged. Product promotion additionally requires an approved immutable engine profile, approved M2 entry documents, native-platform fault evidence, qualified cross-process authority wiring, and explicit in-flight revocation or convergence evidence. This slice opens no runtime socket and grants no product execution authority.
