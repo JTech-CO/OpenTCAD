@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Self
 from uuid import UUID
 
 from .errors import ErrorCode, RuntimeBackendError, RuntimePhase
-from .models import JobIdentity
+from .models import JobIdentity, RuntimeKind
+
+
+RUNTIME_JOB_ID_LABEL = "tcad.job_id"
+RUNTIME_OWNER_ID_LABEL = "tcad.owner_id"
+RUNTIME_FENCING_TOKEN_LABEL = "tcad.fencing_token"
+RUNTIME_FENCE_LABEL_KEYS = (
+    RUNTIME_JOB_ID_LABEL,
+    RUNTIME_OWNER_ID_LABEL,
+    RUNTIME_FENCING_TOKEN_LABEL,
+)
+TAKEOVER_OBJECT_PHASES = frozenset(
+    {RuntimePhase.KILL, RuntimePhase.CLEANUP, RuntimePhase.QUERY},
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +59,64 @@ class RuntimeFencingContext:
     @property
     def labels(self) -> tuple[tuple[str, str], ...]:
         return (
-            ("tcad.job_id", self.identity.job_id),
-            ("tcad.owner_id", self.owner_id),
-            ("tcad.fencing_token", str(self.fencing_token)),
+            (RUNTIME_JOB_ID_LABEL, self.identity.job_id),
+            (RUNTIME_OWNER_ID_LABEL, self.owner_id),
+            (RUNTIME_FENCING_TOKEN_LABEL, str(self.fencing_token)),
         )
+
+    @classmethod
+    def from_labels(cls, labels: Mapping[str, str]) -> Self:
+        if not isinstance(labels, Mapping):
+            cls._invalid("runtime-fence:label-mapping-required")
+        try:
+            job_id = labels[RUNTIME_JOB_ID_LABEL]
+            owner_id = labels[RUNTIME_OWNER_ID_LABEL]
+            token_text = labels[RUNTIME_FENCING_TOKEN_LABEL]
+        except (KeyError, TypeError):
+            cls._invalid("runtime-fence:required-label-missing")
+        if not all(isinstance(value, str) for value in (job_id, owner_id, token_text)):
+            cls._invalid("runtime-fence:text-label-required")
+        try:
+            fencing_token = int(token_text)
+        except ValueError:
+            cls._invalid("runtime-fence:decimal-token-required")
+        if str(fencing_token) != token_text:
+            cls._invalid("runtime-fence:canonical-token-required")
+        return cls(JobIdentity(job_id), owner_id, fencing_token)
+
+
+def enforce_runtime_object_fence(
+    requested: RuntimeFencingContext,
+    observed: RuntimeFencingContext,
+    phase: RuntimePhase,
+    backend: RuntimeKind,
+) -> None:
+    """Authorize exact-generation work or takeover-only predecessor cleanup."""
+
+    if not isinstance(requested, RuntimeFencingContext) or not isinstance(
+        observed,
+        RuntimeFencingContext,
+    ):
+        raise TypeError("Runtime object fencing requires fencing contexts.")
+    if not isinstance(phase, RuntimePhase) or not isinstance(backend, RuntimeKind):
+        raise TypeError("Runtime object fencing requires phase and backend.")
+    if requested.identity != observed.identity:
+        raise RuntimeBackendError(
+            ErrorCode.IDENTITY_MISMATCH,
+            phase,
+            backend=backend.value,
+            detail="runtime-object-fence-job-mismatch",
+        )
+    if requested == observed:
+        return
+    if (
+        observed.fencing_token < requested.fencing_token
+        and phase in TAKEOVER_OBJECT_PHASES
+    ):
+        return
+    raise RuntimeBackendError(
+        ErrorCode.OPERATION_FENCED,
+        phase,
+        backend=backend.value,
+        detail="runtime-object-fence-rejected",
+    )
