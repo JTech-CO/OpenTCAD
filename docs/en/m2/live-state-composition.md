@@ -24,7 +24,7 @@ One serialized `startup()` call must complete before `execute()` or durable `can
 5. perform a final one-item recoverable scan; and
 6. publish readiness only when that final scan is empty.
 
-An incomplete reconciliation leaves the job in `cleaning` and keeps the admission gate closed. Store failures become the stable redacted `store-unavailable` composition error. Repeated startup calls after readiness return the first completed report. This is a single-process startup gate, not a distributed ownership lease or fencing protocol.
+An incomplete reconciliation leaves the job in `cleaning` and keeps the admission gate closed. Store failures become the stable redacted `store-unavailable` composition error. Repeated startup calls after readiness return the first completed report. The gate remains single-process, while the durable store separately enforces cooperative owner generations. Neither mechanism is a distributed lease, liveness protocol, or runtime-enforced fence.
 
 ## Phase-time ordering
 
@@ -59,6 +59,6 @@ When runtime cleanup itself is incomplete, the public final event may be `failed
 
 ## Evidence and remaining gates
 
-Nine execution-composition tests cover startup admission ordering, SQLite phase ordering and mapper equivalence, write failures, restart convergence, existing-job refusal, stale-object reconciliation, incomplete-recovery gate closure, and product-runtime rejection. Eight additional durable cancellation tests cover single-winner CAS, intent-before-query ordering, already-absent convergence, write failures, and five restart checkpoints. The complete dependency-free Python suite contains 94 tests and invokes no product runtime or solver.
+Nine execution-composition tests cover startup admission ordering, SQLite phase ordering and owner-aware mapper equivalence, write failures, restart convergence, existing-job refusal, stale-object reconciliation, incomplete-recovery gate closure, and product-runtime rejection. Eight durable cancellation tests cover single-winner CAS, intent-before-query ordering, already-absent convergence, write failures, and five restart checkpoints. Five ownership tests add execution, cancellation, and recovery takeover competition. The complete dependency-free Python suite contains 102 tests and invokes no product runtime or solver.
 
-The next state boundary is durable operation ownership and fencing across execution, cancellation, and recovery. Product service transport, worker integration, multi-host coordination, retention compaction, backup and restore, host power-loss qualification, product runtime adapters, runtime sockets, and solver execution remain blocked or pending.
+The implemented ownership boundary is documented in [durable operation ownership and fencing](durable-operation-ownership.md). Owner liveness, lease expiry, runtime-enforced token propagation, product service transport, worker integration, multi-host coordination, retention compaction, backup and restore, host power-loss qualification, product runtime adapters, runtime sockets, and solver execution remain blocked or pending.

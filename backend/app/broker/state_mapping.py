@@ -52,9 +52,20 @@ def _canonical_uuid(value: str, code: StateMappingErrorCode) -> UUID:
 class StateMappingContext:
     operation_id: str
     backend: RuntimeKind
+    owner_id: str | None = None
+    fencing_token: int = 1
 
     def __post_init__(self) -> None:
         _canonical_uuid(self.operation_id, StateMappingErrorCode.INVALID_CONTEXT)
+        owner_id = self.operation_id if self.owner_id is None else self.owner_id
+        _canonical_uuid(owner_id, StateMappingErrorCode.INVALID_CONTEXT)
+        object.__setattr__(self, "owner_id", owner_id)
+        if (
+            not isinstance(self.fencing_token, int)
+            or isinstance(self.fencing_token, bool)
+            or self.fencing_token < 1
+        ):
+            raise StateMappingError(StateMappingErrorCode.INVALID_CONTEXT)
         if not isinstance(self.backend, RuntimeKind):
             raise StateMappingError(StateMappingErrorCode.INVALID_CONTEXT)
 
@@ -206,6 +217,8 @@ class BrokerStateMapper:
                     ),
                     operation_id=context.operation_id,
                     operation_sequence=source.sequence,
+                    owner_id=context.owner_id,
+                    fencing_token=context.fencing_token,
                     state=state,
                     phase=phase,
                     code=mapped_error.code if mapped_error is not None else None,

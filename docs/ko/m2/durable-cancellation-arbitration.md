@@ -15,11 +15,11 @@ Cancellation은 다음 순서를 따릅니다.
 1. Startup recovery를 완료해 admission이 열린 상태여야 합니다.
 2. Composition은 runtime에 접촉하기 전에 `DurableJobStateStore`에서 정확한 `JobIdentity`를 불러옵니다.
 3. State가 없거나 terminal이거나 이미 `cancelling` 또는 `cleaning`이면 stable composition error로 거부합니다.
-4. 호출자별 operation UUID로 불러온 revision에서 `LiveStateSession`을 엽니다.
-5. Session은 compare-and-swap으로 `cancelling/query`를 append합니다. Commit된 이 event가 durable cancellation intent이자 중재 token입니다.
+4. 호출자별 논리적 operation UUID와 새로운 내부 owner UUID로 불러온 revision에서 다음 fencing token의 `LiveStateSession`을 엽니다.
+5. Session은 compare-and-swap으로 `cancelling/query`를 append합니다. Commit된 이 event가 durable cancellation intent이자 ownership takeover입니다.
 6. CAS 승자만 runtime object를 조회하거나 변경할 수 있습니다. 경쟁 operation ID는 `cancellation-conflict`를 받고 runtime을 호출하지 않습니다.
 
-Process-local job lease는 broker 하나 안에서 중복 작업을 피합니다. 서로 독립적인 broker instance 사이의 정확성은 lease가 아니라 store CAS가 보장합니다. 현재 계약은 distributed lease, ownership epoch, multi-host fencing을 주장하지 않습니다.
+Process-local job lease는 broker 하나 안에서 중복 작업을 피합니다. 서로 독립적인 broker instance 사이의 정확성은 lease가 아니라 store CAS와 commit된 owner generation이 보장합니다. 현재 계약은 협력형 ownership epoch를 제공하지만 owner liveness, lease expiry, distributed lease, runtime 강제형 fencing, multi-host fencing은 주장하지 않습니다.
 
 ## 저장 lifecycle
 
@@ -39,7 +39,7 @@ Complete-outcome mapper는 모든 `CancellationOutcome`을 cancellation intent�
 ## Write 실패와 공개 결과
 
 - Intent append가 실패하면 runtime 접촉을 금지합니다. Store 사용 불가는 `store-unavailable`, CAS 또는 transition 패배는 `cancellation-conflict`로 보고합니다.
-- 이후 phase append가 실패하면 cancellation 진행은 멈추지만 fail-safe cleanup은 계속합니다. 공개 outcome은 정규화된 `invalid-state`를 가진 `failed`이고 마지막 commit prefix는 recoverable 상태로 남습니다.
+- 이후 phase append가 일반 store 사용 불가로 실패하면 cancellation 진행은 멈추지만 fail-safe cleanup은 계속합니다. Owner 또는 revision이 더 새로운 값으로 대체된 경우 공개 outcome은 `failed:operation-fenced`이고 stale cleanup을 건너뛰며 현재 owner의 prefix가 authoritative 및 recoverable 상태로 남습니다.
 - Runtime cancellation과 cleanup 뒤 terminal append가 실패해도 공개 outcome은 `failed`입니다. Runtime result가 cancelled라는 사실만으로 durable 완료를 보고하지 않습니다.
 - Restart recovery는 `succeeded`를 만들어 내지 않습니다. Commit된 cancellation intent는 `cancelled`로 닫고 승인되지 않은 running prefix는 `failed:stale-state`로 닫습니다.
 
@@ -61,6 +61,6 @@ Checkpoint exception은 계약 test를 위한 결정론적 동일 process crash 
 
 ## 검증과 남은 게이트
 
-집중 test 8개는 admission 거부, SQLite 순서 및 mapper 동등성, 이미 사라진 object 수렴, 독립 broker 호출자 2개의 CAS 단일 승자, intent write 실패, 이후 phase write 실패, terminal write 실패, restart checkpoint 5곳을 검사합니다. 전체 dependency-free Python suite는 test 94개를 포함하며 제품 runtime socket, network connection, solver를 열지 않습니다.
+Cancellation 집중 test 8개는 admission 거부, SQLite 순서 및 owner-aware mapper 동등성, 이미 사라진 object 수렴, 독립 broker 호출자 2개의 CAS 단일 승자, intent write 실패, 이후 phase write 실패, terminal write 실패, restart checkpoint 5곳을 검사합니다. Ownership 경쟁 test 5개는 cancellation takeover와 stale owner fencing을 추가로 검사합니다. 전체 dependency-free Python suite는 test 102개를 포함하며 제품 runtime socket, network connection, solver를 열지 않습니다.
 
-다음 state 경계는 제품 runtime 권한을 추가하지 않는 execution, cancellation, recovery 사이의 durable operation ownership 및 fencing입니다. 제품 service transport, worker integration, Docker 및 Podman adapter, runtime detection, backup 및 restore, 전원 손실 자격 검증, multi-host coordination, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
+구현된 takeover 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)에 설명합니다. Owner liveness, lease expiry, runtime 강제형 token 전달, 제품 service transport, worker integration, Docker 및 Podman adapter, runtime detection, backup 및 restore, 전원 손실 자격 검증, multi-host coordination, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.

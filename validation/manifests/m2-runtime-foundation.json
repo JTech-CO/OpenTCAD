@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "milestone": "M2",
-  "recordedAt": "2026-08-24",
+  "recordedAt": "2026-08-26",
   "status": "gated-active",
   "scope": "engine-independent-broker-foundation-only",
   "issueIntake": {
@@ -24,8 +24,8 @@
       "security-boundary"
     ],
     "numericalDelta": "none",
-    "dataMigration": "candidate-sqlite-schema-v1-forward-only",
-    "rollback": "remove the inactive live-state composition, SQLite candidate, and engine-independent broker foundation"
+    "dataMigration": "candidate-sqlite-schema-v2-forward-from-v1",
+    "rollback": "remove the inactive ownership composition and runtime foundation; schema v2 has no automatic downgrade"
   },
   "entryConditions": {
     "m1CorpusGreen": false,
@@ -75,8 +75,8 @@
     },
     {
       "id": "RUN-007",
-      "status": "candidate-durable-cancellation-tested",
-      "result": "inactive mock-only composition commits external cancellation intent before runtime query, selects one CAS winner, and converges committed intent across restart"
+      "status": "candidate-durable-ownership-tested",
+      "result": "inactive mock-only composition persists owner generations and fences stale execution, cancellation, and recovery attempts at checked boundaries"
     }
   ],
   "securityBoundary": {
@@ -120,7 +120,17 @@
     "cancellationIntentBeforeRuntimeQuery": true,
     "cancellationArbitrationCAS": true,
     "restartSafeCancellationTested": true,
-    "productExternalCancellationWiring": false
+    "productExternalCancellationWiring": false,
+    "candidateDurableOperationOwnershipImplemented": true,
+    "candidateDurableOperationOwnershipProductEnabled": false,
+    "ownershipFencingStoreEnforced": true,
+    "ownershipFencingRuntimeEnforced": false,
+    "ownerLivenessImplemented": false,
+    "leaseExpiryImplemented": false,
+    "staleOwnerRuntimeMutationGuarded": true,
+    "staleOwnerTerminalWriteRejected": true,
+    "recoveryTakeoverFencingTested": true,
+    "schemaV1MigrationTested": true
   },
   "contract": {
     "protocolOperations": [
@@ -199,7 +209,8 @@
       "cleanup-failed",
       "input-archive-rejected",
       "output-archive-rejected",
-      "artifact-rejected"
+      "artifact-rejected",
+      "operation-fenced"
     ]
   },
   "testContract": {
@@ -208,7 +219,7 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 94,
+    "testCount": 102,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
@@ -238,7 +249,7 @@
     "durableStateTestPath": "backend/tests/broker/test_state_store.py",
     "concurrentReconcileCallers": 4,
     "stateStoreUsesDatabase": true,
-    "durableAdapterConformanceTests": 6,
+    "durableAdapterConformanceTests": 7,
     "stateMappingTests": 5,
     "crashRecoveryTests": 4,
     "crashInjectionCheckpoints": 4,
@@ -247,8 +258,8 @@
     "stateMappingTestPath": "backend/tests/broker/test_state_mapping.py",
     "crashRecoveryTestPath": "backend/tests/broker/test_recovery.py",
     "adapterHandleReopenTested": true,
-    "sqliteAdapterConformanceTests": 6,
-    "sqliteSpecificContractTests": 4,
+    "sqliteAdapterConformanceTests": 7,
+    "sqliteSpecificContractTests": 5,
     "externalProcessHardExitTests": 1,
     "sqliteStateStoreTestPath": "backend/tests/broker/test_sqlite_state_store.py",
     "sqliteHardExitHelperPath": "backend/tests/broker/sqlite_recovery_child.py",
@@ -261,7 +272,9 @@
     "durableCancellationTests": 8,
     "durableCancellationCrashCheckpoints": 5,
     "durableCancellationTestPath": "backend/tests/broker/test_durable_cancellation.py",
-    "durableCancellationImplementation": "backend/app/broker/cancellation_arbitration.py"
+    "durableCancellationImplementation": "backend/app/broker/cancellation_arbitration.py",
+    "operationOwnershipTests": 5,
+    "operationOwnershipTestPath": "backend/tests/broker/test_operation_ownership.py"
   },
   "sourceFiles": [
     {
@@ -271,8 +284,8 @@
     },
     {
       "path": "backend/app/runtime/errors.py",
-      "bytes": 2735,
-      "sha256": "cbaa23eadefb8f29673093e04cdbd03b84b1e81626b18658455e230b68aa18b9"
+      "bytes": 2777,
+      "sha256": "1d276de8d71337172e74594b3968d30e37869122c15ddbf904b637074fb0c917"
     },
     {
       "path": "backend/app/runtime/models.py",
@@ -296,8 +309,8 @@
     },
     {
       "path": "backend/app/broker/__init__.py",
-      "bytes": 4002,
-      "sha256": "9b447cbf02a0aef48533e74cc88b97ee7b6639900090cc66b50d998adec759e9"
+      "bytes": 4242,
+      "sha256": "6c1f9e44c12e3b6054bd23535e08aa7b305ac1eeb7cd914106e7f1b70742fe7d"
     },
     {
       "path": "backend/app/broker/archive.py",
@@ -331,8 +344,8 @@
     },
     {
       "path": "backend/app/broker/live_state.py",
-      "bytes": 7350,
-      "sha256": "6d08b59982558f130336a065ef27a95a10ed4aba6f928fe51f6f4c7c2b412253"
+      "bytes": 8532,
+      "sha256": "9cc1444774dc9fed9a4214a32ada27b4097e1f4d7670352848e5af6f6ff8c879"
     },
     {
       "path": "backend/app/broker/models.py",
@@ -341,8 +354,8 @@
     },
     {
       "path": "backend/app/broker/orchestrator.py",
-      "bytes": 35180,
-      "sha256": "2ac25fab8a0df81998e8487a96332fe91ef08d7abf16546fd3d5314e0bb9408d"
+      "bytes": 42431,
+      "sha256": "c85379836537aad70502e6bc50f4decf68de9b9144366df49d11fddf7b6490b3"
     },
     {
       "path": "backend/app/broker/output_archive.py",
@@ -351,28 +364,28 @@
     },
     {
       "path": "backend/app/broker/state.py",
-      "bytes": 13050,
-      "sha256": "4473acff5c11b3bb68dab5f8b0aacd1b0b2e0f07f664da45ada7f1e815210295"
+      "bytes": 19052,
+      "sha256": "a6476502f74bb938f48141ee5796bba08edde1d6adb8692a617dbde75444cf97"
     },
     {
       "path": "backend/app/broker/sqlite_state.py",
-      "bytes": 16241,
-      "sha256": "283f849af97742432b7871bfa79234cb1489e0a9fc9a723aa29b820795cf1f7a"
+      "bytes": 20672,
+      "sha256": "c5c5d17563fc91f77b762a7a5e4aac1601fbc2c8674542462429babfdf0c4451"
     },
     {
       "path": "backend/app/broker/state_mapping.py",
-      "bytes": 10023,
-      "sha256": "915722cabb21a675968c8ebd8ae825cac71f98db4f5cb75e1a4367f8550bbfca"
+      "bytes": 10636,
+      "sha256": "c454756c1dc862bc4b86fc60767f72f94b8d54200f2101ae9c7db581a93313d0"
     },
     {
       "path": "backend/app/broker/recovery.py",
-      "bytes": 14382,
-      "sha256": "b9759c996852a05950588d8eb78db2382d4804223b8110b7b235deeb91f3d794"
+      "bytes": 16518,
+      "sha256": "b949d54dff5133895093682221c4f01a5d818979fb808d468dcdfb626d347a0c"
     },
     {
       "path": "backend/app/broker/state_composition.py",
-      "bytes": 11081,
-      "sha256": "26357767bed5e87458361ad69fb1d5bf4c6f3c04d7492b581d9f71553a61cfb7"
+      "bytes": 11212,
+      "sha256": "6821489ccb82cc91f9f9fde23e6a5bc875d690a8f952186e75d07d72848e5dd5"
     },
     {
       "path": "backend/pyproject.toml",
@@ -421,8 +434,13 @@
     },
     {
       "path": "backend/tests/broker/test_durable_cancellation.py",
-      "bytes": 25022,
-      "sha256": "7d65f18e6190119cac6d7ec21124729e4536ed4c18b12910a28f36d89b2cd67c"
+      "bytes": 25740,
+      "sha256": "7689a2a6ec89a946a8cf4cbdb256ad4be3174c29bd2ff5956b8226d1f4cb3e8b"
+    },
+    {
+      "path": "backend/tests/broker/test_operation_ownership.py",
+      "bytes": 17044,
+      "sha256": "6db2454df8c4f4a9155c878bb58e9be9a6364594bbda6f43975ecc264c23783f"
     },
     {
       "path": "backend/tests/broker/test_lifecycle_control.py",
@@ -441,28 +459,28 @@
     },
     {
       "path": "backend/tests/broker/state_store_conformance.py",
-      "bytes": 8670,
-      "sha256": "f17603a43c50cc5de656a9143a315e2a10d2549cf263aa6813ad2ffb65fb4439"
+      "bytes": 11615,
+      "sha256": "38789095f3c6291f560ee3fd2145e23b15b7a1cfc282c0869a2cd1165883c2c6"
     },
     {
       "path": "backend/tests/broker/test_recovery.py",
-      "bytes": 10330,
-      "sha256": "c90d443e7268101d1cfa31becea356a6c6e3ab23c6af406baa7776e059007d14"
+      "bytes": 10672,
+      "sha256": "1c21ff0f569915e9cfad62a4963decaf9b63c191b5122bac5b68c70dd10c2888"
     },
     {
       "path": "backend/tests/broker/sqlite_recovery_child.py",
-      "bytes": 1676,
-      "sha256": "c02c1b4a9fe10821bb26fb65d2eabde2d8db1caf9667737bd8279a1a60bccdcf"
+      "bytes": 1740,
+      "sha256": "5d18f6367d4a249c68ab4725a7320d7ad2bd6b484d4ae9aaef62cf7bbec4df15"
     },
     {
       "path": "backend/tests/broker/test_sqlite_state_store.py",
-      "bytes": 8981,
-      "sha256": "eaa7b9a654f98e32671f7ba85243f7a15a32c5baaa5e82b27848b517a087ab84"
+      "bytes": 12354,
+      "sha256": "6f8ef43f9a0be99cdebe25c3a6e9b5c1e4351dbebe6fe399f97a28731e40bac5"
     },
     {
       "path": "backend/tests/broker/test_state_composition.py",
-      "bytes": 17277,
-      "sha256": "5ddd97357fa0aca41b0eeb0ed236dd4cd35f918049bf5a5725b5b6784954892b"
+      "bytes": 17869,
+      "sha256": "1e15093a7bf873848a988b1eaa917b4ce31f89fb8b37b5bca3ac3239309f6b43"
     },
     {
       "path": "backend/tests/broker/test_state_mapping.py",
@@ -476,13 +494,13 @@
     },
     {
       "path": "backend/tests/broker/test_state_store.py",
-      "bytes": 8842,
-      "sha256": "dee459ff2a3b4470fb682bccdea22ea5738a98f93b6dd11f55a99c893c7ab8b5"
+      "bytes": 9359,
+      "sha256": "1c9301e5a64f653b1f0ffabe461e88323aab14c9b9d9c2d22f6fc76f0f82bf1f"
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 42195,
-      "sha256": "57dc2b726bc3c5ab3faaadb41e75cc1291f4a9a3c33e85d58e8b69f61a2833b0"
+      "bytes": 48263,
+      "sha256": "61eef2bdb3c0e691a6e042b6721f645e7a4e10aa81cc36aa44f5f226fe20877f"
     },
     {
       "path": "tools/run-python-tests.mjs",
@@ -491,18 +509,18 @@
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 10742,
-      "sha256": "273acebce3eeaa44b04cb558c3fa3c6ae3f35077e6681001fcbcd82648a26415"
+      "bytes": 11474,
+      "sha256": "ef30ebc88f9c793415806e866cd29037433712f8bd85e564bb647a6eacd608c3"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
-      "bytes": 4819,
-      "sha256": "fe4c52ad69f3b7282f9ec5bf107d5fad02faa34854df238483b3222c53a681ea"
+      "bytes": 4943,
+      "sha256": "d97f2c21024e39b1d2ad0727f09cd7818101b226aa1c2e0528a907690341326c"
     },
     {
       "path": "docs/en/m2/broker-threat-model.md",
-      "bytes": 6442,
-      "sha256": "96358113597ac47d82bfaf0975419ab0fdf9814c9eb2045ec087f15d61fcb9b4"
+      "bytes": 6653,
+      "sha256": "8e03cefc25dd2fd92541bad4145870a7cc414da4fecf8e1f2ebbce93282ec981"
     },
     {
       "path": "docs/en/m2/broker-archive-foundation.md",
@@ -511,48 +529,53 @@
     },
     {
       "path": "docs/en/m2/output-cancellation-redaction.md",
-      "bytes": 3466,
-      "sha256": "6f538582b07d416a6732d339a56a9e65469da060a4d27281ee1216d43c6a22f4"
+      "bytes": 3513,
+      "sha256": "b29656232a29a3b64e39e26d8a683b2290f1fc3106d288ff2e5dbb339281fce9"
     },
     {
       "path": "docs/en/m2/lifecycle-cleanup-state.md",
-      "bytes": 6422,
-      "sha256": "93f9a7444a2499f847775867452e8eea0020aa8dc95e73fa60fc2ea7f5f191eb"
+      "bytes": 6845,
+      "sha256": "45b6559993d6e131946757ac271bda8a699025a1deb4c9e8b4ec6ef2768fd509"
     },
     {
       "path": "docs/en/m2/event-state-recovery.md",
-      "bytes": 7093,
-      "sha256": "9f9f007dba1cef2da28ca6787e977f3acf3883eeb5b63de77123c2cc245deaa9"
+      "bytes": 8072,
+      "sha256": "a08d865ce0a2e81fa8ead8ea83e0a1b64a5fbde9a0365847339dc33750ea91f5"
     },
     {
       "path": "docs/en/m2/sqlite-durable-state.md",
-      "bytes": 4149,
-      "sha256": "5a668b276e685a5d17de073986f81fe21aa448d8e7bfdf48da77a0c75e3a08cd"
+      "bytes": 4935,
+      "sha256": "c125d967dec47a8d01cdd651110503e5c3c82ce1ca392e50f859bd5e534e3773"
     },
     {
       "path": "docs/en/m2/live-state-composition.md",
-      "bytes": 5161,
-      "sha256": "1c21041ed4caf6963f4ebeca5c6d75deb94e12c788b21a39a87840a336cd61ec"
+      "bytes": 5430,
+      "sha256": "beb64ed03bba76331b32ca1355b2fab84bae1bda64cc5a8ef3271a7112573264"
     },
     {
       "path": "docs/en/m2/durable-cancellation-arbitration.md",
-      "bytes": 5357,
-      "sha256": "7de18848dc9cf235e844661eb66b11a364c41919733ea4d8a41b55c21812dbc2"
+      "bytes": 5799,
+      "sha256": "e9e22f4f92e51574d97def6d1a476fe9d0f0d7fa652f2833bd7f872e2ac51168"
+    },
+    {
+      "path": "docs/en/m2/durable-operation-ownership.md",
+      "bytes": 5186,
+      "sha256": "61582cdab0a6d6e671d5b64c3f219a1cd04a3904b30aed904ccb439eafd532d6"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 11093,
-      "sha256": "dc9f783dffc9703c67a681bc1f3f2a5a2de2005cf5d128f6a6881989a0a0cb13"
+      "bytes": 11865,
+      "sha256": "c87bf2dfe9973b30afb3732f815049733a242f045e6db66cc3f8d286501d9dae"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
-      "bytes": 5184,
-      "sha256": "46d49a5a4ea21b2c860f5bbf6bd2f0f8af82f739e116dd65da95b15e8deb79dc"
+      "bytes": 5314,
+      "sha256": "896aac5b68a2e44147880a328f134e0d74c1dc5d15ed7fb58585d2a6cba89474"
     },
     {
       "path": "docs/ko/m2/broker-threat-model.md",
-      "bytes": 6864,
-      "sha256": "ca273fcf3012243475262d5355db0aa63491d2f6c68ad0c51ac49745b67577f9"
+      "bytes": 7045,
+      "sha256": "a7e595386832447569596ad29daebe6381ea09d914740efbce1ae724de151c5e"
     },
     {
       "path": "docs/ko/m2/broker-archive-foundation.md",
@@ -561,33 +584,38 @@
     },
     {
       "path": "docs/ko/m2/output-cancellation-redaction.md",
-      "bytes": 3679,
-      "sha256": "3329c5a7da95af34c8d5e944743d993f719e76dbcdfa25ee0b6ea452064a9398"
+      "bytes": 3723,
+      "sha256": "2002ab1f59b53065f8e3441b84e720d4ff42641056a332c244f45c56ba32e428"
     },
     {
       "path": "docs/ko/m2/lifecycle-cleanup-state.md",
-      "bytes": 6850,
-      "sha256": "5ed9d19066cdefd9af93d357626c2676267095cea307abceab5f067670d3be26"
+      "bytes": 7287,
+      "sha256": "326cf471dedbe2df3832ad5a8c2dd07223a84d1d5a1c800c706f42b3cd8e3062"
     },
     {
       "path": "docs/ko/m2/event-state-recovery.md",
-      "bytes": 7673,
-      "sha256": "02f9d5f83979f5a82c26b2079e626d0bebb97c6b1a9b734cac580dacaef0b212"
+      "bytes": 8708,
+      "sha256": "e7655b5cc5e23da46b8cd420c68d382251e5b3ae80456a69864a1e251c70ddbe"
     },
     {
       "path": "docs/ko/m2/sqlite-durable-state.md",
-      "bytes": 4483,
-      "sha256": "e8d3bd916228c0646d3862a36b79dd7b0266683a1cd3841c3dc0a733d94c3eb6"
+      "bytes": 5314,
+      "sha256": "9d163b627d87b49e9f920f0f978ea3c860e6d5967a95227e6fd6bcd362544d31"
     },
     {
       "path": "docs/ko/m2/live-state-composition.md",
-      "bytes": 5635,
-      "sha256": "80edf08f31187caf3a8f01745990c46efe6d41bb2472462fccb602acb016ed53"
+      "bytes": 5893,
+      "sha256": "4c65eb353d512b79c11b9085ed03da21384272b72096672edbeb8ead6213689a"
     },
     {
       "path": "docs/ko/m2/durable-cancellation-arbitration.md",
-      "bytes": 5626,
-      "sha256": "e2f323c2dce179a761e5a38468745550f069de2001c5dd3959fa71f874585d06"
+      "bytes": 6087,
+      "sha256": "fdf06bbf150b56f0ef2272b369a7bf50fd44e5d22dd2fffef55de2e8a49d8036"
+    },
+    {
+      "path": "docs/ko/m2/durable-operation-ownership.md",
+      "bytes": 5745,
+      "sha256": "bfb72f80848ca63d6cc9fba2d794bb4d140cdaceb666b3a5f76f1a867566a100"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -596,8 +624,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 7959,
-      "sha256": "6e5c7289ecaeae753786d0e08b901269f0d22322db6f04887889b96acb1f00d7"
+      "bytes": 8454,
+      "sha256": "5a6ed685ad6ca9baf63a32eedf0eb2be055152fa004e8ae2a7310ea24b56fbda"
     }
   ],
   "exitCriteria": {
@@ -630,7 +658,10 @@
     "candidateDurableExternalCancellation": "framework-verified",
     "restartSafeCancellationArbitration": "framework-verified",
     "productExternalCancellationWiring": "pending",
-    "durableOperationOwnershipFencing": "pending"
+    "durableOperationOwnershipFencing": "candidate-framework-verified",
+    "candidateDurableOperationOwnership": "framework-verified",
+    "runtimeEnforcedFencing": "pending",
+    "ownerLivenessLeaseExpiry": "pending"
   },
   "productExecutionAllowed": false,
   "distributionAllowed": false,
@@ -652,18 +683,18 @@
     },
     {
       "id": "BRK-006",
-      "status": "candidate-restart-safe-cancellation-tested",
-      "result": "committed cancellation intent survives interruption and startup reconciliation closes it as cancelled without synthesizing success"
+      "status": "candidate-fenced-recovery-tested",
+      "result": "fresh recovery owners increment fencing tokens and a newer recovery fences stale reconciliation before checked mutation"
     },
     {
       "id": "BRK-007",
-      "status": "candidate-durable-cancellation-tested",
-      "result": "external cancellation commits exact-job intent before runtime query and one revision-CAS winner may contact the mock runtime"
+      "status": "candidate-fenced-cancellation-tested",
+      "result": "external cancellation takes over with the next owner generation before runtime query and stale cancellation cannot mutate or terminalize"
     },
     {
       "id": "BRK-008",
-      "status": "candidate-durable-cancellation-state-tested",
-      "result": "normalized cancellation intent, cleaning classification, write-failure prefixes, and terminal downgrade remain redacted and recoverable"
+      "status": "candidate-owner-state-tested",
+      "result": "redacted durable events persist owner UUID and fencing token and stale outcomes normalize to operation-fenced"
     }
   ],
   "archiveContract": {
@@ -748,6 +779,7 @@
     "operations": [
       "load",
       "append",
+      "verify_ownership",
       "scan_recoverable"
     ],
     "atomicCompareAndSwapRequired": true,
@@ -766,6 +798,8 @@
       "event_id",
       "operation_id",
       "operation_sequence",
+      "owner_id",
+      "fencing_token",
       "state",
       "phase",
       "code",
@@ -779,7 +813,16 @@
     "operationSlotUnique": true,
     "candidateDurableAdapterImplemented": true,
     "candidateExecuteWiringImplemented": true,
-    "productBrokerWiringImplemented": false
+    "productBrokerWiringImplemented": false,
+    "ownerAttemptUuidRequired": true,
+    "initialFencingToken": 1,
+    "takeoverTokenIncrement": 1,
+    "staleTokenAccepted": false,
+    "takeoverStates": [
+      "cancelling",
+      "cleaning"
+    ],
+    "ownershipVerificationExactRevision": true
   },
   "eventStateMappingContract": {
     "sourceSequenceContiguous": true,
@@ -792,7 +835,9 @@
     "candidateExecuteWiringImplemented": true,
     "productLiveBrokerWiringImplemented": false,
     "candidateExternalCancellationWiringImplemented": true,
-    "cancellationIntentClassificationPreserved": true
+    "cancellationIntentClassificationPreserved": true,
+    "ownerGenerationPersisted": true,
+    "candidateOwnershipWiringImplemented": true
   },
   "adapterConformanceContract": {
     "suitePath": "backend/tests/broker/state_store_conformance.py",
@@ -803,7 +848,8 @@
       "idempotent-replay",
       "event-and-operation-conflicts",
       "concurrent-cas",
-      "bounded-recovery-pagination"
+      "bounded-recovery-pagination",
+      "owner-takeover-stale-token-after-reopen"
     ],
     "freshHandleReopenTested": true,
     "inMemoryBackingDurable": false,
@@ -834,11 +880,15 @@
     "powerLossTested": false,
     "productBrokerWiringTested": false,
     "startupAdmissionTested": true,
-    "finalRecoverableRescanTested": true
+    "finalRecoverableRescanTested": true,
+    "claimUsesFreshOwnerAttempt": true,
+    "takeoverIncrementsFencingToken": true,
+    "staleReconcilerMutationAccepted": false,
+    "recoveryIdIsOwnerId": false
   },
   "sqliteDurableStateContract": {
     "adapter": "python-stdlib-sqlite3",
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "localFileOnly": true,
     "memoryDatabaseAccepted": false,
     "uriDatabaseAccepted": false,
@@ -857,7 +907,12 @@
     "multiHostTested": false,
     "exactSchemaRequired": true,
     "candidateMockExecutionWiring": true,
-    "productLiveBrokerWiring": false
+    "productLiveBrokerWiring": false,
+    "previousSchemaVersion": 1,
+    "v1MigrationTested": true,
+    "migrationPreservesRows": true,
+    "migrationOwnerIdFromOperationId": true,
+    "migrationGenerationOrder": "first-operation-revision"
   },
   "liveStateCompositionContract": {
     "productEnabled": false,
@@ -892,7 +947,12 @@
     ],
     "candidateExternalCancelWiring": true,
     "productExternalCancelWiring": false,
-    "directBrokerCancellationPersisted": false
+    "directBrokerCancellationPersisted": false,
+    "freshOwnerPerAdmission": true,
+    "initialExecutionFencingToken": 1,
+    "ownershipCheckedBeforeRuntimeBoundaries": true,
+    "staleOwnerCleanupAccepted": false,
+    "staleOwnerTerminalWriteAccepted": false
   },
   "durableCancellationContract": {
     "productEnabled": false,
@@ -924,6 +984,38 @@
     "serviceTransport": false,
     "runtimeSocket": false,
     "externalProcessHardExitTested": false,
-    "powerLossTested": false
+    "powerLossTested": false,
+    "ownershipTakeover": true,
+    "fencingTokenIncrement": 1,
+    "staleOwnerCleanupAccepted": false,
+    "staleOwnerTerminalWriteAccepted": false
+  },
+  "operationOwnershipContract": {
+    "productEnabled": false,
+    "acceptedRuntime": "mock",
+    "ownerIdType": "uuid",
+    "initialExecutionToken": 1,
+    "takeoverTokenIncrement": 1,
+    "takeoverStates": [
+      "cancelling",
+      "cleaning"
+    ],
+    "stablePublicCode": "operation-fenced",
+    "eventsPersistOwnerAndToken": true,
+    "appendEnforcesOwnership": true,
+    "verifyOwnershipImplemented": true,
+    "verifyOwnershipExpectedRevision": true,
+    "executionCancellationRecoveryCompetitionTested": true,
+    "cooperativeApplicationFence": true,
+    "staleOwnerAppendAccepted": false,
+    "staleOwnerRuntimeMutationAccepted": false,
+    "staleOwnerCleanupAccepted": false,
+    "staleOwnerTerminalAppendAccepted": false,
+    "runtimeEnforced": false,
+    "verificationAndRuntimeCallAtomic": false,
+    "inFlightCallRevocation": false,
+    "ownerLiveness": false,
+    "leaseExpiry": false,
+    "multiHost": false
   }
 }

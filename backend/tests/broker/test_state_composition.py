@@ -149,6 +149,12 @@ class TracingStateStore:
             raise StateStoreError(StateStoreErrorCode.STORE_UNAVAILABLE)
         return await self.delegate.append(event, expected_revision=expected_revision)
 
+    async def verify_ownership(self, ownership, *, expected_revision=None):
+        return await self.delegate.verify_ownership(
+            ownership,
+            expected_revision=expected_revision,
+        )
+
     async def scan_recoverable(self, *, after=None, limit=100):
         return await self.delegate.scan_recoverable(after=after, limit=limit)
 
@@ -284,21 +290,33 @@ class StateCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         positions = tuple(trace.index(item) for item in ordered)
         self.assertEqual(positions, tuple(sorted(positions)))
 
+        final = await store.delegate.load(JobIdentity(job_id))
         mapped = BrokerStateMapper().map_outcome(
             outcome,
-            StateMappingContext(operation_id, RuntimeKind.MOCK),
+            StateMappingContext(
+                operation_id,
+                RuntimeKind.MOCK,
+                final.ownership.owner_id,
+                final.ownership.fencing_token,
+            ),
         )
         with closing(sqlite3.connect(database)) as connection:
             rows = tuple(
                 connection.execute(
-                    "SELECT event_id, state, operation_sequence "
-                    "FROM job_events ORDER BY revision",
+                    "SELECT event_id, state, operation_sequence, "
+                    "owner_id, fencing_token FROM job_events ORDER BY revision",
                 ),
             )
         self.assertEqual(
             rows,
             tuple(
-                (event.event_id, event.state.value, event.operation_sequence)
+                (
+                    event.event_id,
+                    event.state.value,
+                    event.operation_sequence,
+                    event.owner_id,
+                    event.fencing_token,
+                )
                 for event in mapped.events
             ),
         )

@@ -12,7 +12,9 @@ from .models import BrokerError, BrokerEvent, BrokerState
 from .state import (
     DurableJobEvent,
     DurableJobStateStore,
+    DurableOperationOwnership,
     JobStateSnapshot,
+    OperationOwnershipError,
     StateStoreError,
     StateStoreErrorCode,
 )
@@ -97,6 +99,8 @@ class LiveStateSession:
         store: DurableJobStateStore,
         identity: JobIdentity,
         operation_id: str,
+        owner_id: str,
+        fencing_token: int,
         backend: RuntimeKind,
         *,
         expected_revision: int = 0,
@@ -119,8 +123,15 @@ class LiveStateSession:
             or expected_revision < 0
         ):
             raise TypeError("LiveStateSession expected revision is invalid.")
+        ownership = DurableOperationOwnership(
+            identity,
+            operation_id,
+            owner_id,
+            fencing_token,
+        )
         self._store = store
         self._identity = identity
+        self._ownership = ownership
         self._operation_id = operation_id
         self._operation_namespace = parsed
         self._backend = backend
@@ -136,6 +147,10 @@ class LiveStateSession:
     @property
     def backend(self) -> RuntimeKind:
         return self._backend
+
+    @property
+    def ownership(self) -> DurableOperationOwnership:
+        return self._ownership
 
     @property
     def failed(self) -> bool:
@@ -161,6 +176,8 @@ class LiveStateSession:
             ),
             operation_id=self._operation_id,
             operation_sequence=source.sequence,
+            owner_id=self._ownership.owner_id,
+            fencing_token=self._ownership.fencing_token,
             state=emission.state,
             phase=emission.phase,
             code=emission.error.code if emission.error is not None else None,
@@ -169,6 +186,23 @@ class LiveStateSession:
             classification=emission.classification,
             cleanup_complete=emission.cleanup_complete,
         )
+
+    async def assert_owned(self, phase: RuntimePhase) -> None:
+        if not isinstance(phase, RuntimePhase):
+            raise TypeError("LiveStateSession ownership check requires RuntimePhase.")
+        if self._last_snapshot is None:
+            raise OperationOwnershipError(
+                StateStoreErrorCode.OWNERSHIP_CONFLICT,
+                phase,
+            )
+        try:
+            await self._store.verify_ownership(
+                self._ownership,
+                expected_revision=self._revision,
+            )
+        except StateStoreError as error:
+            self._failed = True
+            raise OperationOwnershipError(error.code, phase) from None
 
     async def record(
         self,

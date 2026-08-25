@@ -38,6 +38,8 @@ def recovery_event(
         event_id=uuid_at(300_000 + event_number),
         operation_id=uuid_at(400_000 + job),
         operation_sequence=operation_sequence,
+        owner_id=uuid_at(500_000 + job),
+        fencing_token=1,
         state=state,
         phase=phase,
         backend=RuntimeKind.MOCK,
@@ -51,7 +53,12 @@ class ObjectReconciler:
         self.objects = objects
         self.failures = failures
 
-    async def reconcile(self, job_id: str | None = None) -> ReconciliationReport:
+    async def reconcile(
+        self,
+        job_id: str | None = None,
+        *,
+        ownership_guard=None,
+    ) -> ReconciliationReport:
         if job_id is None:
             raise TypeError("ObjectReconciler requires an exact job id.")
         found = self.objects.get(job_id, 0)
@@ -99,6 +106,12 @@ class BarrierScanStore:
 
     async def append(self, event, *, expected_revision):
         return await self.delegate.append(event, expected_revision=expected_revision)
+
+    async def verify_ownership(self, ownership, *, expected_revision=None):
+        return await self.delegate.verify_ownership(
+            ownership,
+            expected_revision=expected_revision,
+        )
 
     async def scan_recoverable(self, *, after=None, limit=100):
         page = await self.delegate.scan_recoverable(after=after, limit=limit)

@@ -33,6 +33,7 @@ class StateStoreErrorCode(StrEnum):
     EVENT_CONFLICT = "event-conflict"
     INVALID_TRANSITION = "invalid-transition"
     STORE_UNAVAILABLE = "store-unavailable"
+    OWNERSHIP_CONFLICT = "ownership-conflict"
 
 
 class StateStoreError(Exception):
@@ -62,6 +63,36 @@ def _require_uuid(value: str) -> None:
 
 
 @dataclass(frozen=True, slots=True)
+class DurableOperationOwnership:
+    """Durable owner attempt and its monotonically increasing fence."""
+
+    identity: JobIdentity
+    operation_id: str
+    owner_id: str
+    fencing_token: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.identity, JobIdentity):
+            _invalid_event()
+        _require_uuid(self.operation_id)
+        _require_uuid(self.owner_id)
+        if (
+            not isinstance(self.fencing_token, int)
+            or isinstance(self.fencing_token, bool)
+            or self.fencing_token < 1
+        ):
+            _invalid_event()
+
+    def as_dict(self) -> dict[str, str | int]:
+        return {
+            "job_id": self.identity.job_id,
+            "operation_id": self.operation_id,
+            "owner_id": self.owner_id,
+            "fencing_token": self.fencing_token,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class DurableJobEvent:
     """Redacted, idempotent event accepted by a durable state adapter."""
 
@@ -69,6 +100,8 @@ class DurableJobEvent:
     event_id: str
     operation_id: str
     operation_sequence: int
+    owner_id: str
+    fencing_token: int
     state: BrokerState
     phase: RuntimePhase
     code: ErrorCode | None = None
@@ -82,6 +115,13 @@ class DurableJobEvent:
             _invalid_event()
         _require_uuid(self.event_id)
         _require_uuid(self.operation_id)
+        _require_uuid(self.owner_id)
+        if (
+            not isinstance(self.fencing_token, int)
+            or isinstance(self.fencing_token, bool)
+            or self.fencing_token < 1
+        ):
+            _invalid_event()
         if (
             not isinstance(self.operation_sequence, int)
             or isinstance(self.operation_sequence, bool)
@@ -139,12 +179,23 @@ class DurableJobEvent:
         if self.cleanup_complete != (self.state in TERMINAL_STATES):
             _invalid_event()
 
+    @property
+    def ownership(self) -> DurableOperationOwnership:
+        return DurableOperationOwnership(
+            self.identity,
+            self.operation_id,
+            self.owner_id,
+            self.fencing_token,
+        )
+
     def as_dict(self) -> dict[str, str | int | bool | None]:
         return {
             "job_id": self.identity.job_id,
             "event_id": self.event_id,
             "operation_id": self.operation_id,
             "operation_sequence": self.operation_sequence,
+            "owner_id": self.owner_id,
+            "fencing_token": self.fencing_token,
             "state": self.state.value,
             "phase": self.phase.value,
             "code": self.code.value if self.code is not None else None,
@@ -180,6 +231,10 @@ class JobStateSnapshot:
     @property
     def state(self) -> BrokerState:
         return self.last_event.state
+
+    @property
+    def ownership(self) -> DurableOperationOwnership:
+        return self.last_event.ownership
 
     @property
     def recoverable(self) -> bool:
@@ -224,12 +279,107 @@ class DurableJobStateStore(Protocol):
         expected_revision: int,
     ) -> JobStateSnapshot: ...
 
+    async def verify_ownership(
+        self,
+        ownership: DurableOperationOwnership,
+        *,
+        expected_revision: int | None = None,
+    ) -> JobStateSnapshot: ...
+
     async def scan_recoverable(
         self,
         *,
         after: str | None = None,
         limit: int = 100,
     ) -> RecoverableStatePage: ...
+
+
+class OperationOwnershipError(Exception):
+    """Stable cooperative-fencing failure with no adapter detail."""
+
+    def __init__(self, code: StateStoreErrorCode, phase: RuntimePhase) -> None:
+        if not isinstance(code, StateStoreErrorCode):
+            raise TypeError("OperationOwnershipError requires StateStoreErrorCode.")
+        if not isinstance(phase, RuntimePhase):
+            raise TypeError("OperationOwnershipError requires RuntimePhase.")
+        self.code = code
+        self.phase = phase
+        super().__init__(code.value)
+
+
+@runtime_checkable
+class OperationOwnershipGuard(Protocol):
+    async def assert_owned(self, phase: RuntimePhase) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class DurableOperationGuard:
+    store: DurableJobStateStore
+    ownership: DurableOperationOwnership
+    expected_revision: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.store, DurableJobStateStore):
+            raise TypeError("DurableOperationGuard requires DurableJobStateStore.")
+        if not isinstance(self.ownership, DurableOperationOwnership):
+            raise TypeError("DurableOperationGuard requires ownership.")
+        if (
+            not isinstance(self.expected_revision, int)
+            or isinstance(self.expected_revision, bool)
+            or self.expected_revision < 1
+        ):
+            raise TypeError("DurableOperationGuard expected revision is invalid.")
+
+    async def assert_owned(self, phase: RuntimePhase) -> None:
+        if not isinstance(phase, RuntimePhase):
+            raise TypeError("DurableOperationGuard requires RuntimePhase.")
+        try:
+            await self.store.verify_ownership(
+                self.ownership,
+                expected_revision=self.expected_revision,
+            )
+        except StateStoreError as error:
+            raise OperationOwnershipError(error.code, phase) from None
+
+
+def validate_operation_ownership(
+    current: JobStateSnapshot | None,
+    event: DurableJobEvent,
+) -> None:
+    """Require a continuing owner or an explicit cancelling/cleaning takeover."""
+
+    if current is None:
+        if event.fencing_token != 1:
+            raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+        return
+
+    previous = current.ownership
+    if event.owner_id == previous.owner_id:
+        if (
+            event.operation_id != previous.operation_id
+            or event.fencing_token != previous.fencing_token
+        ):
+            raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+        return
+
+    cancellation_takeover = (
+        event.state is BrokerState.CANCELLING
+        and current.state
+        in {
+            BrokerState.VALIDATING,
+            BrokerState.PREPARING,
+            BrokerState.RUNNING,
+            BrokerState.COLLECTING,
+        }
+    )
+    recovery_takeover = (
+        event.state is BrokerState.CLEANING and current.state not in TERMINAL_STATES
+    )
+    if (
+        event.fencing_token != previous.fencing_token + 1
+        or not (cancellation_takeover or recovery_takeover)
+    ):
+        raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
 
 
 _TRANSITIONS: dict[BrokerState | None, frozenset[BrokerState]] = {
@@ -359,12 +509,40 @@ class InMemoryJobStateStore:
                 raise StateStoreError(StateStoreErrorCode.REVISION_CONFLICT)
             prior_state = current.state if current is not None else None
             validate_state_transition(prior_state, event.state)
+            validate_operation_ownership(current, event)
 
             snapshot = JobStateSnapshot(event.identity, revision + 1, event)
             self._backing._snapshots[event.identity.job_id] = snapshot
             self._backing._events[event.event_id] = (event, snapshot)
             self._backing._operation_slots[operation_slot] = (event, snapshot)
             return snapshot
+
+    async def verify_ownership(
+        self,
+        ownership: DurableOperationOwnership,
+        *,
+        expected_revision: int | None = None,
+    ) -> JobStateSnapshot:
+        if not isinstance(ownership, DurableOperationOwnership):
+            _invalid_event()
+        if expected_revision is not None and (
+            not isinstance(expected_revision, int)
+            or isinstance(expected_revision, bool)
+            or expected_revision < 1
+        ):
+            _invalid_event()
+        async with self._backing._lock:
+            current = self._backing._snapshots.get(ownership.identity.job_id)
+            if (
+                current is None
+                or current.ownership != ownership
+                or (
+                    expected_revision is not None
+                    and current.revision != expected_revision
+                )
+            ):
+                raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+            return current
 
     async def scan_recoverable(
         self,

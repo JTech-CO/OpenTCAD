@@ -41,7 +41,7 @@ Signal identity는 request의 `JobIdentity`와 정확히 같아야 하며 판정
 5. 정확한 job을 다시 조회해 managed object가 0일 때만 성공 보고
 6. 마지막 대기자가 끝나면 lease를 해제하고 registry에서 제거
 
-따라서 동시 reconcile 호출에서는 첫 호출만 object를 제거해도 모든 report가 complete 상태가 됩니다. Typed cancellation과 reconcile이 동시에 실행돼도 object 0으로 수렴합니다. 이는 in-process idempotence 계약입니다. Durable distributed lease, ownership epoch, cross-process cancellation arbitration은 아직 구현하지 않았습니다.
+따라서 동시 reconcile 호출에서는 첫 호출만 object를 제거해도 모든 report가 complete 상태가 됩니다. Typed cancellation과 reconcile이 동시에 실행돼도 object 0으로 수렴합니다. 이는 계속 in-process idempotence 계약입니다. Mock 전용 durable composition은 owner generation을 추가로 부여하고 cleanup 및 reconciliation 변경 전에 fencing token을 검사하므로 감지된 stale owner가 새 owner를 대신해 cleanup할 수 없습니다. 이는 owner-liveness detection, distributed cleanup lease, runtime 강제형 fence가 아닙니다.
 
 ## Durable state interface
 
@@ -55,10 +55,10 @@ Signal identity는 request의 `JobIdentity`와 정확히 같아야 하며 판정
 
 Revision은 1부터 시작해 1씩 증가합니다. Event UUID는 idempotency key이며 각 `(job_id, operation_id, operation_sequence)` slot은 고유합니다. 같은 event를 다시 보내면 원래 snapshot을 반환하고 어느 identity든 다른 내용으로 재사용하면 `event-conflict`로 실패합니다. 같은 expected revision에 대한 경쟁 write는 정확히 하나만 성공하고 나머지는 `revision-conflict`를 반환합니다. Transition 표는 명시적인 lifecycle 진행만 허용하고 `succeeded`, `cancelled`, `failed` 뒤의 변경을 거부합니다. Terminal event는 cleanup 완료 상태에서만 유효하므로 미완료 job은 recovery scan에 계속 나타납니다.
 
-`InMemoryJobStateStore`는 non-durable contract double로 남습니다. `SQLiteJobStateStore`는 같은 conformance suite를 실행하고 schema v1, migration 거부, append-only retention, lock redaction, 별도 process hard-exit test를 추가한 비활성 file-backed 후보입니다. 명시적인 mock 전용 composition은 startup recovery 뒤 execution과 외부 cancellation phase event를 저장하지만 broker 직접 execution과 cancellation은 저장하지 않습니다. PostgreSQL, 자동 compaction, backup 및 restore, distributed lease, power-loss 자격 검증, 제품 활성화는 구현하거나 주장하지 않습니다.
+`InMemoryJobStateStore`는 non-durable contract double로 남습니다. `SQLiteJobStateStore`는 공통 conformance case 7개를 실행하고 transaction 기반 schema-v1 migration, append-only retention, lock redaction, owner 검사, 별도 process hard-exit test를 추가한 비활성 file-backed schema-v2 후보입니다. 명시적인 mock 전용 composition은 startup recovery 뒤 execution, 외부 cancellation, recovery owner generation을 저장하지만 broker 직접 execution과 cancellation은 저장하지 않습니다. PostgreSQL, 자동 compaction, backup 및 restore, owner liveness 및 lease expiry, distributed lease, power-loss 자격 검증, 제품 활성화는 구현하거나 주장하지 않습니다.
 
 ## 검증과 남은 게이트
 
-Python 3.12부터 3.14까지의 suite는 test 94개를 포함합니다. Case는 execution cancellation checkpoint 11곳 전체, durable intent-before-query 순서, 독립 호출자 CAS 중재, cancellation restart checkpoint 5곳, 잘못된 identity 및 boolean이 아닌 signal, concurrent reconciliation, 이미 사라진 object 수렴, 단조 증가 revision, replay 및 충돌, transition 거부, terminal 불변성, recovery pagination, redaction, startup admission, phase-time 순서, 부분 write cleanup을 검사합니다.
+Python 3.12부터 3.14까지의 suite는 test 102개를 포함합니다. Case는 execution cancellation checkpoint 11곳 전체, durable intent-before-query 순서, 독립 호출자 CAS 중재, cancellation restart checkpoint 5곳, operation 사이 ownership 경쟁 5곳, 잘못된 identity 및 boolean이 아닌 signal, concurrent reconciliation, 이미 사라진 object 수렴, 단조 증가 revision 및 fencing token, replay 및 충돌, transition 거부, terminal 불변성, recovery pagination, redaction, startup admission, phase-time 순서, 부분 write cleanup, schema-v1 migration을 검사합니다.
 
-제품 Docker 및 Podman adapter, runtime socket, broker service transport, durable operation ownership fencing, distributed cleanup ownership, power-loss durability, 외부 cancellation transport, solver 실행은 기존 게이트에 따라 계속 차단 또는 대기 상태입니다. Mock 전용 저장 cancellation 계약은 [durable external cancellation 중재](durable-cancellation-arbitration.md)를 참고합니다.
+제품 Docker 및 Podman adapter, runtime socket, broker service transport, runtime 강제형 fencing, owner liveness 및 lease expiry, distributed cleanup ownership, power-loss durability, 외부 cancellation transport, solver 실행은 기존 게이트에 따라 계속 차단 또는 대기 상태입니다. [Durable external cancellation 중재](durable-cancellation-arbitration.md)와 [durable operation ownership 및 fencing](durable-operation-ownership.md)을 참고합니다.

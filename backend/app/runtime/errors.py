@@ -28,6 +28,7 @@ class ErrorCode(StrEnum):
     INPUT_ARCHIVE_REJECTED = "input-archive-rejected"
     OUTPUT_ARCHIVE_REJECTED = "output-archive-rejected"
     ARTIFACT_REJECTED = "artifact-rejected"
+    OPERATION_FENCED = "operation-fenced"
 
 
 class RuntimePhase(StrEnum):

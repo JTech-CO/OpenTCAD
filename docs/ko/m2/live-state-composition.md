@@ -24,7 +24,7 @@
 5. Recoverable item 하나를 찾는 최종 scan을 수행합니다.
 6. 최종 scan이 비어 있을 때만 ready 상태를 공개합니다.
 
-Reconciliation이 미완료이면 job은 `cleaning`에 남고 admission gate도 닫힌 상태를 유지합니다. Store 실패는 공개 세부 정보가 없는 stable `store-unavailable` composition error가 됩니다. Ready 상태 뒤의 반복 startup 호출은 처음 완료된 report를 반환합니다. 이는 단일 process startup gate이며 distributed ownership lease 또는 fencing protocol이 아닙니다.
+Reconciliation이 미완료이면 job은 `cleaning`에 남고 admission gate도 닫힌 상태를 유지합니다. Store 실패는 공개 세부 정보가 없는 stable `store-unavailable` composition error가 됩니다. Ready 상태 뒤의 반복 startup 호출은 처음 완료된 report를 반환합니다. Gate는 계속 단일 process이고 durable store가 별도로 협력형 owner generation을 강제합니다. 어느 쪽도 distributed lease, liveness protocol, runtime 강제형 fence가 아닙니다.
 
 ## Phase-time 순서
 
@@ -59,6 +59,6 @@ Runtime cleanup 자체가 미완료이면 공개 마지막 event는 `failed`일 
 
 ## 증거와 남은 게이트
 
-Execution composition test 9개는 startup admission 순서, SQLite phase 순서 및 mapper 동등성, write 실패, restart 수렴, 기존 job 거부, stale object reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. Durable cancellation test 8개는 CAS 단일 승자, intent-before-query 순서, 이미 사라진 object 수렴, write 실패, restart checkpoint 5곳을 추가로 검사합니다. 전체 dependency-free Python suite는 test 94개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
+Execution composition test 9개는 startup admission 순서, SQLite phase 순서 및 owner-aware mapper 동등성, write 실패, restart 수렴, 기존 job 거부, stale object reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. Durable cancellation test 8개는 CAS 단일 승자, intent-before-query 순서, 이미 사라진 object 수렴, write 실패, restart checkpoint 5곳을 검사합니다. Ownership test 5개는 execution, cancellation, recovery takeover 경쟁을 추가합니다. 전체 dependency-free Python suite는 test 102개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
 
-다음 state 경계는 execution, cancellation, recovery 사이의 durable operation ownership 및 fencing입니다. 제품 service transport, worker integration, multi-host coordination, retention compaction, backup 및 restore, host 전원 손실 자격 검증, 제품 runtime adapter, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
+구현된 ownership 경계는 [durable operation ownership 및 fencing](durable-operation-ownership.md)에 설명합니다. Owner liveness, lease expiry, runtime 강제형 token 전달, 제품 service transport, worker integration, multi-host coordination, retention compaction, backup 및 restore, host 전원 손실 자격 검증, 제품 runtime adapter, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
