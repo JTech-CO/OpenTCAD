@@ -2,7 +2,7 @@
 
 ## English
 
-The current backend is an engine-independent M2 runtime and mock broker foundation. It includes inactive file-backed SQLite candidates for durable state and cross-process runtime fence authority, plus an explicit mock-only phase-time composition with startup recovery admission, durable external-cancellation arbitration, bounded owner leases, heartbeat renewal, owner generations, double-checked store-to-runtime activation, native-object label enforcement, and strict mock-runtime fencing tokens. It has no external cancellation transport, web service, worker integration, broker service transport, product Docker or Podman adapter, runtime detection, socket access, or solver invocation.
+The current backend is an engine-independent M2 runtime and mock broker foundation. It includes inactive file-backed SQLite candidates for durable state and cross-process runtime fence authority, a coordinated offline pair snapshot and fresh-target restore manager, plus an explicit mock-only phase-time composition with startup recovery admission, durable external-cancellation arbitration, bounded owner leases, heartbeat renewal, owner generations, double-checked store-to-runtime activation, native-object label enforcement, and strict mock-runtime fencing tokens. It has no external cancellation transport, web service, worker integration, broker service transport, product Docker or Podman adapter, runtime detection, socket access, or solver invocation.
 
 | Path | Responsibility |
 |---|---|
@@ -23,6 +23,7 @@ The current backend is an engine-independent M2 runtime and mock broker foundati
 | `backend/app/broker/state.py` | Durable state protocol, owner-generation, lease, renewal, cancellation-preemption, and fencing rules, heartbeat guard, revision/transition and operation-slot rules, and non-durable shared-backing test double |
 | `backend/app/broker/lease.py` | Bounded lease policy, system clock, and injectable deterministic clock boundary |
 | `backend/app/broker/sqlite_state.py` | Inactive file-backed SQLite candidate, schema v3 with transactional v1 and v2 migration, append-only events plus mutable lease control, CAS ownership enforcement, redacted failures, and bounded recovery scan |
+| `backend/app/broker/sqlite_snapshot.py` | Product-disabled state-authority lock ordering, SQLite backup payloads, canonical manifest and hash validation, coherence checks, rollback floor, and fresh-directory restore publication |
 | `backend/app/broker/runtime_fence_activation.py` | Exact ownership verification, monotonic authority activation, and post-activation store and authority recheck before runtime contact |
 | `backend/app/broker/state_mapping.py` | Deterministic redacted outcome mapping and CAS batch recorder |
 | `backend/app/broker/live_state.py` | Phase-time durable emissions, exact owner/revision verification, and fail-safe write-session contract |
@@ -31,7 +32,7 @@ The current backend is an engine-independent M2 runtime and mock broker foundati
 | `backend/app/broker/diagnostics.py` | Repr-hidden internal raw diagnostics separated from public errors |
 | `backend/app/broker/orchestrator.py` | Mock-only typed execution and cancellation with ownership guards, redacted outcomes, idempotent cleanup, and guarded reconciliation |
 | `backend/tests/runtime/` | Policy, identity, lifecycle, fault mapping, cleanup, five-case reusable runtime-object fence conformance, four-case reusable authority conformance, SQLite reopen and hard-exit durability, and focused post-mutation tests |
-| `backend/tests/broker/` | Archive attacks, cancellation, ownership competition, lease heartbeat and expiry, durable activation bridging, state-ahead-of-authority restart recovery, strict runtime fencing, redaction, cleanup concurrency, event mapping, ten-case state-adapter conformance, live-state composition, CAS arbitration, reconciliation, v1/v2 migration, and crash/restart tests |
+| `backend/tests/broker/` | Archive attacks, cancellation, ownership competition, lease heartbeat and expiry, durable activation bridging, state-ahead-of-authority restart recovery, strict runtime fencing, redaction, cleanup concurrency, event mapping, ten-case state-adapter conformance, live-state composition, CAS arbitration, reconciliation, v1/v2 migration, coordinated offline snapshot/restore, torn and mixed bundle rejection, publication hard exits, and crash/restart tests |
 | `validation/manifests/m2-runtime-foundation.json` | Machine-readable gate state and frozen source evidence |
 | `tools/check-m2.mjs` | Drift, gate, scope, and hash verifier |
 
@@ -39,7 +40,7 @@ The allowed execution dependency direction is domain worker -> SandboxSpec -> Sa
 
 ## 한국어
 
-현재 백엔드는 엔진 독립 M2 runtime 및 mock broker 기반입니다. Durable state와 process 간 runtime fence authority를 위한 비활성 file-backed SQLite 후보, startup recovery admission, durable external cancellation 중재, 제한된 owner lease, heartbeat renewal, owner generation, 이중 확인형 store와 runtime 활성화, native object label 강제, strict mock runtime fencing token을 갖춘 명시적인 mock 전용 phase-time composition을 포함합니다. 외부 cancellation transport, web service, worker 통합, broker service transport, 제품 Docker 또는 Podman adapter, runtime detection, socket 접근, solver 호출은 없습니다.
+현재 백엔드는 엔진 독립 M2 runtime 및 mock broker 기반입니다. Durable state와 process 간 runtime fence authority를 위한 비활성 file-backed SQLite 후보, 조정된 offline pair snapshot 및 신규 target restore manager, startup recovery admission, durable external cancellation 중재, 제한된 owner lease, heartbeat renewal, owner generation, 이중 확인형 store와 runtime 활성화, native object label 강제, strict mock runtime fencing token을 갖춘 명시적인 mock 전용 phase-time composition을 포함합니다. 외부 cancellation transport, web service, worker 통합, broker service transport, 제품 Docker 또는 Podman adapter, runtime detection, socket 접근, solver 호출은 없습니다.
 
 | 경로 | 책임 |
 |---|---|
@@ -60,6 +61,7 @@ The allowed execution dependency direction is domain worker -> SandboxSpec -> Sa
 | `backend/app/broker/state.py` | Durable state protocol, owner generation, lease, renewal, cancellation 선점, fencing 규칙, heartbeat guard, revision, transition 및 operation slot 규칙, non-durable shared-backing test double |
 | `backend/app/broker/lease.py` | 제한된 lease policy, system clock, 주입 가능한 결정론적 clock 경계 |
 | `backend/app/broker/sqlite_state.py` | 비활성 file-backed SQLite 후보, transaction 기반 v1 및 v2 migration을 갖춘 schema v3, append-only event와 mutable lease control, CAS ownership 강제, redacted failure, bounded recovery scan |
+| `backend/app/broker/sqlite_snapshot.py` | 제품 비활성 state-authority lock 순서, SQLite backup payload, canonical manifest 및 hash 검사, 일관성 검사, rollback floor, 신규 directory restore 공개 |
 | `backend/app/broker/runtime_fence_activation.py` | Runtime 접촉 전 정확한 ownership 검사, 단조 authority 활성화, 활성화 뒤 store 및 authority 재검사 |
 | `backend/app/broker/state_mapping.py` | 결정론적 redacted outcome mapping 및 CAS batch recorder |
 | `backend/app/broker/live_state.py` | Phase-time durable emission, 정확한 owner 및 revision 검사, fail-safe write session 계약 |
@@ -68,7 +70,7 @@ The allowed execution dependency direction is domain worker -> SandboxSpec -> Sa
 | `backend/app/broker/diagnostics.py` | 공개 error와 분리하고 repr에서 숨긴 내부 raw diagnostic |
 | `backend/app/broker/orchestrator.py` | Ownership guard를 적용한 mock 전용 typed execution 및 cancellation, redacted outcome, idempotent cleanup, guarded reconciliation |
 | `backend/tests/runtime/` | 정책, identity, lifecycle, 장애 mapping, cleanup, 재사용 가능한 runtime object fence case 5개, 재사용 가능한 authority case 4개, SQLite reopen 및 hard-exit durability, post-mutation 집중 test |
-| `backend/tests/broker/` | Archive 공격, cancellation, ownership 경쟁, lease heartbeat 및 expiry, durable 활성화 bridge, state가 authority보다 앞선 restart recovery, strict runtime fencing, redaction, cleanup concurrency, event mapping, state adapter 공통 conformance case 10개, live-state composition, CAS 중재, reconciliation, v1 및 v2 migration, crash/restart test |
+| `backend/tests/broker/` | Archive 공격, cancellation, ownership 경쟁, lease heartbeat 및 expiry, durable 활성화 bridge, state가 authority보다 앞선 restart recovery, strict runtime fencing, redaction, cleanup concurrency, event mapping, state adapter 공통 conformance case 10개, live-state composition, CAS 중재, reconciliation, v1 및 v2 migration, 조정된 offline snapshot 및 restore, torn 및 mixed bundle 거부, 공개 hard exit, crash/restart test |
 | `validation/manifests/m2-runtime-foundation.json` | 기계 판독 게이트 상태와 고정 source 증거 |
 | `tools/check-m2.mjs` | drift, gate, 범위, hash 검증기 |
 

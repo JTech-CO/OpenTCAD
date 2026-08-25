@@ -34,7 +34,7 @@ The SQLite candidate runs the unchanged ten-case adapter conformance suite. It p
 
 A separate Python process opens the file, lets `CrashRecoveryCoordinator` commit a token-2 `cleaning` claim at revision 4, and calls `os._exit(91)` at the `after-claim` checkpoint. A fresh parent-process adapter observes that committed revision. After the deliberately short child lease expires, a new recovery owner takes over with token 3 at revision 5, reconciles the exact job, and closes the job at revision 6 as `failed:stale-state` without synthesizing success.
 
-This is process hard-exit, persisted lease-expiry, and reopened-store ownership-transfer evidence. It is not a claim of host power-loss tolerance, filesystem-corruption recovery, backup and restore correctness, native product-runtime fencing, bounded clock skew, or multi-host operation.
+This is process hard-exit, persisted lease-expiry, and reopened-store ownership-transfer evidence. The separate [coordinated offline snapshot contract](sqlite-offline-snapshot-restore.md) now proves candidate pair backup, fresh-target restore, and recovery continuation. Neither contract claims host power-loss tolerance, filesystem-corruption repair, product backup operation, native product-runtime fencing, bounded clock skew, or multi-host operation.
 
 ## Retention and recovery policy
 
@@ -44,4 +44,4 @@ The database remains a candidate test artifact. An explicit mock-only compositio
 
 ## Next gate
 
-The implemented store ownership rules are detailed in [durable operation ownership and fencing](durable-operation-ownership.md) and [owner lease, liveness, and runtime fencing](owner-lease-runtime-fencing.md). Native product-runtime token persistence and enforcement, distributed coordination, clock-skew policy, backup and restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.
+The implemented store ownership rules are detailed in [durable operation ownership and fencing](durable-operation-ownership.md) and [owner lease, liveness, and runtime fencing](owner-lease-runtime-fencing.md). Native product-runtime token persistence and enforcement, distributed coordination, clock-skew policy, product backup scheduling and authenticated restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.

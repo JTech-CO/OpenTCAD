@@ -34,7 +34,7 @@ SQLite 후보는 변경하지 않은 공통 adapter conformance case 10개를 �
 
 별도 Python process가 file을 열고 `CrashRecoveryCoordinator`로 token 2의 `cleaning` claim을 revision 4에 commit한 뒤 `after-claim` checkpoint에서 `os._exit(91)`을 호출합니다. Parent process의 새 adapter가 commit된 revision을 확인합니다. 의도적으로 짧게 설정한 child lease가 만료된 뒤 새로운 recovery owner는 token 3으로 revision 5에서 takeover하고 정확한 job을 reconcile한 뒤 성공을 만들어 내지 않고 revision 6에서 `failed:stale-state`로 닫습니다.
 
-이는 process hard-exit, 저장된 lease expiry, store 재개방 뒤 ownership 이전 증거입니다. Host 전원 손실 내성, filesystem 손상 복구, backup 및 restore 정확성, 제품 runtime의 native fencing, bounded clock skew, multi-host operation을 검증했다는 의미는 아닙니다.
+이는 process hard-exit, 저장된 lease expiry, store 재개방 뒤 ownership 이전 증거입니다. 별도 [조정된 offline snapshot 계약](sqlite-offline-snapshot-restore.md)은 후보 pair backup, 신규 target restore, recovery 재개를 검증합니다. 두 계약 모두 host 전원 손실 내성, filesystem 손상 repair, 제품 backup operation, 제품 runtime의 native fencing, bounded clock skew, multi-host operation을 주장하지 않습니다.
 
 ## Retention 및 recovery 정책
 
@@ -44,4 +44,4 @@ Database는 후보 test artifact로 남습니다. 명시적인 mock 전용 compo
 
 ## 다음 게이트
 
-구현된 store ownership 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 runtime의 native token 저장과 강제, distributed coordination, clock-skew policy, backup 및 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.
+구현된 store ownership 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 runtime의 native token 저장과 강제, distributed coordination, clock-skew policy, 제품 backup scheduling 및 인증된 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.

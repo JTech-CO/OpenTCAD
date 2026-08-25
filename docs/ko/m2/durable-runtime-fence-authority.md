@@ -45,8 +45,8 @@ Authority는 전용 local file, schema version 1, WAL, `synchronous=FULL`, 정�
 
 `RuntimeFenceAuthorityConformanceMixin`은 정확한 replay, 단조 증가 대체, 같은 token의 owner 불일치, concurrent generation 직렬화를 위한 공통 case 4개를 제공합니다. SQLite concrete suite는 정확한 WAL 및 FULL schema 검사, reopen durability, redacted lock 및 schema 실패, 별도 process hard-exit persistence를 추가합니다. Bridge test 4개는 정확한 commit ownership, 활성화 경계에 삽입된 takeover, composition execution 연결, state가 authority보다 앞선 restart gap을 검사합니다.
 
-전체 runtime 및 broker suite는 test 133개를 포함합니다. Runtime socket을 열거나 solver를 시작하지 않으며 격리된 임시 SQLite file만 사용합니다.
+전체 runtime 및 broker suite는 test 140개를 포함합니다. Runtime socket을 열거나 solver를 시작하지 않으며 격리된 임시 SQLite file만 사용합니다.
 
 ## 제품 게이트
 
-이 후보는 local host 증거만 제공합니다. Retention, backup, restore, corruption repair, multi-host consensus, 제한된 clock skew 증거, filesystem power-loss 자격 검증, 제품 service 연결이 없습니다. 이미 제출된 native 호출도 취소하지 않습니다. 제품 Docker 또는 Podman adapter는 native object에 같은 generation을 저장하고 강제해야 하며 composition에 노출한 동일 authority instance를 사용해야 합니다. 또한 재사용 가능한 두 conformance suite를 변경 없이 통과하고 native crash, power-loss, 안전한 in-flight 수렴 증거를 제공한 뒤에만 활성화할 수 있습니다.
+이 authority adapter는 local host 증거만 제공합니다. 별도 [조정된 offline snapshot 계약](sqlite-offline-snapshot-restore.md)은 후보 pair backup 및 신규 target restore를 다루지만 authority에는 통합 retention, 제품 backup service, 인증된 restore, durable rollback floor, corruption repair, multi-host consensus, 제한된 clock skew 증거, filesystem power-loss 자격 검증이 없습니다. 이미 제출된 native 호출도 취소하지 않습니다. 제품 Docker 또는 Podman adapter는 native object에 같은 generation을 저장하고 강제해야 하며 composition에 노출한 동일 authority instance를 사용해야 합니다. 또한 재사용 가능한 두 conformance suite를 변경 없이 통과하고 native crash, power-loss, 안전한 in-flight 수렴 증거를 제공한 뒤에만 활성화할 수 있습니다.
