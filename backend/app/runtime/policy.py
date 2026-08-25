@@ -39,6 +39,7 @@ REQUIRED_EXECUTION_CAPABILITIES = (
     "labels",
     "orphan_query",
     "validated_artifact_transfer",
+    "runtime_fencing",
 )
 
 

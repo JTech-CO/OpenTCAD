@@ -15,6 +15,7 @@ from backend.app.runtime.errors import (
 )
 from backend.app.runtime.models import JobIdentity, RuntimeKind, TerminalClassification
 
+from .lease import OwnerLeasePolicy
 from .models import BrokerError, BrokerState, ReconciliationReport
 from .state import (
     DurableJobEvent,
@@ -41,6 +42,7 @@ class RecoveryStatus(StrEnum):
     CLEANUP_PENDING = "cleanup-pending"
     REVISION_CONFLICT = "revision-conflict"
     OWNERSHIP_CONFLICT = "ownership-conflict"
+    OWNER_ACTIVE = "owner-active"
 
 
 class RecoveryInterrupted(Exception):
@@ -183,6 +185,7 @@ class CrashRecoveryCoordinator:
         store: DurableJobStateStore,
         reconciler: RecoveryReconciler,
         backend: RuntimeKind,
+        lease_policy: OwnerLeasePolicy = OwnerLeasePolicy(),
     ) -> None:
         if not isinstance(store, DurableJobStateStore):
             raise TypeError("CrashRecoveryCoordinator requires DurableJobStateStore.")
@@ -190,9 +193,12 @@ class CrashRecoveryCoordinator:
             raise TypeError("CrashRecoveryCoordinator requires RecoveryReconciler.")
         if not isinstance(backend, RuntimeKind):
             raise TypeError("CrashRecoveryCoordinator requires RuntimeKind.")
+        if not isinstance(lease_policy, OwnerLeasePolicy):
+            raise TypeError("CrashRecoveryCoordinator requires OwnerLeasePolicy.")
         self._store = store
         self._reconciler = reconciler
         self._backend = backend
+        self._lease_policy = lease_policy
 
     @staticmethod
     def _checkpoint(
@@ -234,6 +240,7 @@ class CrashRecoveryCoordinator:
                 if snapshot.state is BrokerState.CANCELLING
                 else snapshot.last_event.classification
             ),
+            lease_duration_ms=self._lease_policy.duration_ms,
         )
 
     def _result_event(
@@ -261,6 +268,7 @@ class CrashRecoveryCoordinator:
                 retry=cleanup_error.retry,
                 backend=self._backend,
                 classification=claimed.last_event.classification,
+            lease_duration_ms=self._lease_policy.duration_ms,
             )
         if cancellation_intent:
             return DurableJobEvent(
@@ -279,6 +287,7 @@ class CrashRecoveryCoordinator:
                 backend=self._backend,
                 classification=TerminalClassification.CANCELLED,
                 cleanup_complete=True,
+            lease_duration_ms=self._lease_policy.duration_ms,
             )
         return DurableJobEvent(
             identity=claimed.identity,
@@ -298,6 +307,7 @@ class CrashRecoveryCoordinator:
             backend=self._backend,
             classification=claimed.last_event.classification,
             cleanup_complete=True,
+        lease_duration_ms=self._lease_policy.duration_ms,
         )
 
     async def recover(
@@ -331,6 +341,15 @@ class CrashRecoveryCoordinator:
                     expected_revision=snapshot.revision,
                 )
             except StateStoreError as error:
+                if error.code is StateStoreErrorCode.LEASE_ACTIVE:
+                    recovered.append(
+                        RecoveryItem(
+                            identity,
+                            RecoveryStatus.OWNER_ACTIVE,
+                            snapshot.revision,
+                        ),
+                    )
+                    continue
                 if error.code is not StateStoreErrorCode.REVISION_CONFLICT:
                     raise
                 recovered.append(
@@ -353,6 +372,7 @@ class CrashRecoveryCoordinator:
                 self._store,
                 claimed.ownership,
                 claimed.revision,
+                self._lease_policy,
             )
             try:
                 await guard.assert_owned(RuntimePhase.QUERY)
@@ -375,6 +395,7 @@ class CrashRecoveryCoordinator:
                     StateStoreErrorCode.OWNERSHIP_CONFLICT,
                     StateStoreErrorCode.REVISION_CONFLICT,
                     StateStoreErrorCode.EVENT_CONFLICT,
+                    StateStoreErrorCode.LEASE_EXPIRED,
                 }:
                     raise StateStoreError(error.code) from None
                 recovered.append(
@@ -387,6 +408,16 @@ class CrashRecoveryCoordinator:
                 )
                 continue
             except RuntimeBackendError as error:
+                if error.code is ErrorCode.OPERATION_FENCED:
+                    recovered.append(
+                        RecoveryItem(
+                            identity,
+                            RecoveryStatus.OWNERSHIP_CONFLICT,
+                            claimed.revision,
+                            ErrorCode.OPERATION_FENCED,
+                        ),
+                    )
+                    continue
                 cleanup_error = BrokerError.from_exception(error)
 
             self._checkpoint(
@@ -408,11 +439,13 @@ class CrashRecoveryCoordinator:
                 if error.code not in {
                     StateStoreErrorCode.REVISION_CONFLICT,
                     StateStoreErrorCode.OWNERSHIP_CONFLICT,
+                    StateStoreErrorCode.LEASE_EXPIRED,
                 }:
                     raise
-                ownership_conflict = (
-                    error.code is StateStoreErrorCode.OWNERSHIP_CONFLICT
-                )
+                ownership_conflict = error.code in {
+                    StateStoreErrorCode.OWNERSHIP_CONFLICT,
+                    StateStoreErrorCode.LEASE_EXPIRED,
+                }
                 recovered.append(
                     RecoveryItem(
                         identity,

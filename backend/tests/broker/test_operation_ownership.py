@@ -35,6 +35,7 @@ from backend.app.runtime.models import (
     TerminalClassification,
     TerminationReason,
 )
+from backend.tests.broker.lease_support import ManualLeaseClock
 from backend.tests.broker.state_store_conformance import conformance_event
 from backend.tests.runtime.support import (
     ARCHIVE,
@@ -73,6 +74,19 @@ class BarrierLoadStore:
     async def append(self, event: DurableJobEvent, *, expected_revision: int):
         return await self.delegate.append(event, expected_revision=expected_revision)
 
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
+
     async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
             ownership,
@@ -99,11 +113,24 @@ class BlockingVerifyStore:
     async def append(self, event: DurableJobEvent, *, expected_revision: int):
         return await self.delegate.append(event, expected_revision=expected_revision)
 
-    async def verify_ownership(self, ownership, *, expected_revision=None):
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
         if self.enabled and not self.blocked:
             self.blocked = True
             self.entered.set()
             await self.release.wait()
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
+
+    async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
             ownership,
             expected_revision=expected_revision,
@@ -142,6 +169,19 @@ class TakeoverOnRunningStore:
                 expected_revision=snapshot.revision,
             )
         return snapshot
+
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
 
     async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
@@ -372,7 +412,8 @@ class DurableOperationOwnershipTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_recovery_takeover_fences_cancellation_before_runtime_query(self) -> None:
         backend = KillTrackingBackend()
-        delegate = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        delegate = InMemoryJobStateStore(clock=clock)
         store = BlockingVerifyStore(delegate)
         cancellation = await self.composition(backend, store, 70_020)
         seeded = await self.seed_running(delegate, 520)
@@ -386,11 +427,18 @@ class DurableOperationOwnershipTests(unittest.IsolatedAsyncioTestCase):
         )
         await asyncio.wait_for(store.entered.wait(), timeout=2)
         try:
-            recovered = await CrashRecoveryCoordinator(
+            live_owner = await CrashRecoveryCoordinator(
                 delegate,
                 self.broker(backend),
                 RuntimeKind.MOCK,
             ).recover(RecoveryRequest(uuid_at(90_020), limit=1))
+            self.assertEqual(live_owner.items[0].status, RecoveryStatus.OWNER_ACTIVE)
+            clock.advance(30_001)
+            recovered = await CrashRecoveryCoordinator(
+                delegate,
+                self.broker(backend),
+                RuntimeKind.MOCK,
+            ).recover(RecoveryRequest(uuid_at(90_021), limit=1))
         finally:
             store.release.set()
         stale_cancellation = await asyncio.wait_for(cancellation_task, timeout=2)
@@ -415,8 +463,10 @@ class DurableOperationOwnershipTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_newer_recovery_fences_older_reconciler_before_mutation(self) -> None:
         backend = FirstQueryBarrierBackend()
-        store = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        store = InMemoryJobStateStore(clock=clock)
         seeded = await self.seed_running(store, 530)
+        clock.advance(30_001)
         await self.create_running_objects(backend, seeded.identity)
         backend.enabled = True
         first_task = asyncio.create_task(
@@ -428,6 +478,7 @@ class DurableOperationOwnershipTests(unittest.IsolatedAsyncioTestCase):
         )
         await asyncio.wait_for(backend.query_entered.wait(), timeout=2)
         try:
+            clock.advance(30_001)
             newer = await CrashRecoveryCoordinator(
                 store,
                 self.broker(backend),

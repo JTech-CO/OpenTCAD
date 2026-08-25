@@ -20,7 +20,8 @@ This contract defines how a completed redacted broker operation becomes durable 
 | --- | --- |
 | Exact job identity | `job_id` and the complete `JobIdentity` |
 | Operation UUID | `operation_id` and UUID v5 namespace |
-| Owner generation | `owner_id` and positive `fencing_token` on every event |
+| Owner generation | `owner_id`, positive `fencing_token`, and bounded `lease_duration_ms` on every event |
+| Current owner liveness | Mutable absolute lease expiry, renewed without changing the job revision |
 | `BrokerEvent.sequence` | Positive `operation_sequence` |
 | Job ID plus source sequence | Deterministic UUID v5 `event_id` |
 | Broker state and phase | `state` and `phase` |
@@ -44,17 +45,20 @@ This mapper continues to consume complete outcomes. `LiveStateSession` reuses it
 3. identical replay after reopen;
 4. event UUID and operation-slot conflict rejection;
 5. exactly one compare-and-swap winner from one revision;
-6. bounded, sorted recovery pagination that excludes terminal jobs; and
-7. owner takeover after reopen followed by rejection of the stale token.
+6. owner takeover after reopen followed by rejection of the stale token;
+7. live lease renewal that remains revision-neutral and visible after reopen;
+8. rejection of verify, renew, and append after owner expiry;
+9. recovery refusal while a lease is live, with cancellation preemption and recovery takeover after expiry; and
+10. bounded, sorted recovery pagination that excludes terminal jobs.
 
-The seven-case suite now runs unchanged against two concrete adapters. `InMemoryStateStoreBacking` still proves process-local handle semantics only. `SQLiteJobStateStore` proves file-backed commit visibility, transactional CAS and ownership transfer, stale-token rejection after reopen, schema fail-closed behavior, database-lock redaction, and recovery pagination through fresh handles. The [SQLite durable-state candidate contract](sqlite-durable-state.md) records the distinct migration, retention, and durability limits.
+The ten-case suite now runs unchanged against two concrete adapters. `InMemoryStateStoreBacking` still proves process-local handle semantics only. `SQLiteJobStateStore` proves file-backed commit visibility, transactional CAS and ownership transfer, stale-token rejection after reopen, schema fail-closed behavior, database-lock redaction, and recovery pagination through fresh handles. The [SQLite durable-state candidate contract](sqlite-durable-state.md) records the distinct migration, retention, and durability limits.
 
 ## Crash and restart recovery contract
 
 `CrashRecoveryCoordinator` processes one bounded recovery page:
 
 1. scan nonterminal snapshots;
-2. append a `cleaning` claim with a fresh owner UUID, the next fencing token, and compare-and-swap;
+2. refuse takeover with `owner-active` while the current lease is live, otherwise append a `cleaning` claim with a fresh owner UUID, the next fencing token, a fresh bounded lease, and compare-and-swap;
 3. reconcile runtime objects for the exact job identity;
 4. leave a coded `cleaning` event when reconciliation is incomplete; or
 5. append `cancelled` when cancellation intent survived, otherwise append fail-safe `failed` with `stale-state`.
@@ -70,12 +74,12 @@ The deterministic crash surrogate covers four boundaries:
 | After reconcile | `cleaning` claim committed | Zero after a complete reconciliation | New owner generation takes over, verifies, closes |
 | After terminal append | Terminal revision committed | Zero | Recovery scan excludes the job |
 
-The deterministic tests reopen a fresh state-store handle over the same fixture after every injected interruption. `recovery_id` remains report correlation, while each recovery pass uses a fresh owner attempt. A restart takes over the last nonterminal generation by incrementing its token; incomplete cleanup remains recoverable for another owner attempt. In addition, a child process commits SQLite revision 4 at `after-claim` and terminates with `os._exit(91)`. The parent reopens the file, commits a fresh recovery owner at revision 5, and converges to terminal revision 6.
+The deterministic tests reopen a fresh state-store handle over the same fixture after every injected interruption. `recovery_id` remains report correlation, while each recovery pass uses a fresh owner attempt. A restart waits while the last nonterminal generation has a live lease and takes over only after expiry by incrementing its token; incomplete cleanup remains recoverable for another owner attempt. In addition, a child process commits SQLite revision 4 at `after-claim` with a deliberately short lease and terminates with `os._exit(91)`. After expiry, the parent reopens the file, commits a fresh recovery owner at revision 5, and converges to terminal revision 6.
 
-Compare-and-swap permits exactly one claimant when concurrent coordinators read the same revision. A later recovery may take over a nonterminal `cleaning` owner only with the next fencing token, and the previous reconciler is rejected at its next guard. This is cooperative durable ownership, not a distributed lease or runtime-enforced fence: owner liveness, lease expiry, multi-host coordination, and atomic coupling between verification and runtime mutation remain unimplemented.
+Compare-and-swap permits exactly one claimant when concurrent coordinators read the same revision. A later recovery may take over a nonterminal `cleaning` owner only after its lease expires and only with the next fencing token. Guarded awaits heartbeat the current generation; ownership loss cancels the Python awaitable, and the strict bound mock runtime independently rejects stale or ambiguous contexts. This is local durable liveness and mock-runtime fencing, not a distributed lease: multi-host coordination, bounded clock skew, native in-flight revocation, and atomic coupling between store commit and runtime token activation remain unimplemented.
 
 ## Evidence and remaining gate
 
-The dependency-free Python suite now contains 102 tests. It covers the seven-case common suite on memory and SQLite adapters, owner-aware outcome and phase-time mapping, partial replay, startup admission, partial-write cleanup, four recovery crash boundaries, five cancellation crash boundaries, five execution/cancellation/recovery ownership competitions, cancellation recovery, competing claims, cleanup retry convergence, schema-v1 migration, lock behavior, and the separate-process hard exit. Tests open isolated SQLite files only; no test opens a runtime socket, network connection, product runtime, or solver.
+The dependency-free Python suite now contains 113 tests. It covers the ten-case common suite on memory and SQLite adapters, four focused owner-lease/runtime-fencing cases, owner-aware outcome and phase-time mapping, partial replay, startup admission, partial-write cleanup, four recovery crash boundaries, five cancellation crash boundaries, five execution/cancellation/recovery ownership competitions, cancellation recovery, competing claims, cleanup retry convergence, schema-v1 and schema-v2 migration, lease renewal and expiry, lock behavior, and the separate-process hard exit. Tests open isolated SQLite files only; no test opens a runtime socket, network connection, product runtime, or solver.
 
-The implemented ownership contract is detailed in [durable operation ownership and fencing](durable-operation-ownership.md). Durable owner liveness, lease expiry, runtime-enforced token propagation, backup and restore, power-loss qualification, multi-host coordination, product activation, and product Docker and Podman adapters remain gated.
+The implemented ownership contract is detailed in [durable operation ownership and fencing](durable-operation-ownership.md) and [owner lease, liveness, and runtime fencing](owner-lease-runtime-fencing.md). Native product-runtime token persistence and enforcement, native in-flight revocation, backup and restore, power-loss qualification, bounded clock skew, multi-host coordination, product activation, and product Docker and Podman adapters remain gated.

@@ -260,6 +260,7 @@ CAPABILITY_FIELDS = (
     "labels",
     "orphan_query",
     "validated_artifact_transfer",
+    "runtime_fencing",
 )
 
 
@@ -290,6 +291,7 @@ class RuntimeCapabilities:
     labels: bool
     orphan_query: bool
     validated_artifact_transfer: bool
+    runtime_fencing: bool
 
     def __post_init__(self) -> None:
         if not isinstance(self.backend, RuntimeKind):

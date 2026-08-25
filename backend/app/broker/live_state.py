@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID, uuid5
 
 from backend.app.runtime.errors import RuntimePhase
+from backend.app.runtime.fencing import RuntimeFencingContext
 from backend.app.runtime.models import JobIdentity, RuntimeKind, TerminalClassification
 
+from .lease import OwnerLeasePolicy
 from .models import BrokerError, BrokerEvent, BrokerState
 from .state import (
     DurableJobEvent,
@@ -17,6 +21,7 @@ from .state import (
     OperationOwnershipError,
     StateStoreError,
     StateStoreErrorCode,
+    run_with_lease_heartbeat,
 )
 
 
@@ -104,6 +109,7 @@ class LiveStateSession:
         backend: RuntimeKind,
         *,
         expected_revision: int = 0,
+        lease_policy: OwnerLeasePolicy = OwnerLeasePolicy(),
     ) -> None:
         if not isinstance(store, DurableJobStateStore):
             raise TypeError("LiveStateSession requires DurableJobStateStore.")
@@ -117,6 +123,8 @@ class LiveStateSession:
             raise TypeError("LiveStateSession operation ID must be canonical.")
         if not isinstance(backend, RuntimeKind):
             raise TypeError("LiveStateSession requires RuntimeKind.")
+        if not isinstance(lease_policy, OwnerLeasePolicy):
+            raise TypeError("LiveStateSession requires OwnerLeasePolicy.")
         if (
             not isinstance(expected_revision, int)
             or isinstance(expected_revision, bool)
@@ -135,6 +143,7 @@ class LiveStateSession:
         self._operation_id = operation_id
         self._operation_namespace = parsed
         self._backend = backend
+        self._lease_policy = lease_policy
         self._revision = expected_revision
         self._next_sequence = 1
         self._failed = False
@@ -151,6 +160,14 @@ class LiveStateSession:
     @property
     def ownership(self) -> DurableOperationOwnership:
         return self._ownership
+
+    @property
+    def runtime_fence(self) -> RuntimeFencingContext:
+        return RuntimeFencingContext(
+            self._identity,
+            self._ownership.owner_id,
+            self._ownership.fencing_token,
+        )
 
     @property
     def failed(self) -> bool:
@@ -185,6 +202,7 @@ class LiveStateSession:
             backend=self._backend,
             classification=emission.classification,
             cleanup_complete=emission.cleanup_complete,
+            lease_duration_ms=self._lease_policy.duration_ms,
         )
 
     async def assert_owned(self, phase: RuntimePhase) -> None:
@@ -196,13 +214,27 @@ class LiveStateSession:
                 phase,
             )
         try:
-            await self._store.verify_ownership(
+            renewed = await self._store.renew_ownership(
                 self._ownership,
                 expected_revision=self._revision,
+                lease_duration_ms=self._lease_policy.duration_ms,
             )
+            self._last_snapshot = renewed
         except StateStoreError as error:
             self._failed = True
             raise OperationOwnershipError(error.code, phase) from None
+
+    async def run_owned(
+        self,
+        phase: RuntimePhase,
+        operation: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        return await run_with_lease_heartbeat(
+            self,
+            phase,
+            self._lease_policy.heartbeat_interval_ms,
+            operation,
+        )
 
     async def record(
         self,

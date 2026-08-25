@@ -43,6 +43,7 @@ from backend.app.runtime.models import (
     TerminationReason,
     VolumeHandle,
 )
+from backend.tests.broker.lease_support import ManualLeaseClock
 from backend.tests.broker.state_store_conformance import conformance_event, uuid_at
 from backend.tests.runtime.support import ARCHIVE, ARCHIVE_LIMITS, IMAGE, POLICY, make_spec
 
@@ -95,6 +96,19 @@ class CancellationTracingStore:
             raise StateStoreError(StateStoreErrorCode.STORE_UNAVAILABLE)
         return await self.delegate.append(event, expected_revision=expected_revision)
 
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
+
     async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
             ownership,
@@ -126,6 +140,19 @@ class BarrierLoadStore:
 
     async def append(self, event: DurableJobEvent, *, expected_revision: int):
         return await self.delegate.append(event, expected_revision=expected_revision)
+
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
 
     async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
@@ -220,7 +247,8 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_admission_rejects_unready_missing_terminal_and_active_intent(self) -> None:
         trace: list[str] = []
         backend = CancellationTracingBackend(trace)
-        store = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        store = InMemoryJobStateStore(clock=clock)
         composition = DurableBrokerComposition(self.broker(backend), store)
         missing_identity = JobIdentity(uuid_at(10_401))
 
@@ -248,6 +276,7 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
         )
 
         terminal = await self.seed_running(store, 402)
+        clock.advance(30_001)
         await self.append_state(
             store,
             job=402,
@@ -287,6 +316,7 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
             phase=RuntimePhase.QUERY,
         )
         cleaning = await self.seed_running(store, 404)
+        clock.advance(30_001)
         await self.append_state(
             store,
             job=404,
@@ -489,7 +519,8 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_phase_write_failure_cleans_and_restart_closes_cancelled(self) -> None:
         trace: list[str] = []
         backend = CancellationTracingBackend(trace)
-        delegate = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        delegate = InMemoryJobStateStore(clock=clock)
         store = CancellationTracingStore(delegate, trace)
         composition = await self.open_composition(backend, store, 50_411)
         seeded = await self.seed_running(delegate, 411)
@@ -513,6 +544,7 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
         managed = await backend.list_managed(seeded.identity.job_id)
         self.assertEqual((managed.containers, managed.volumes), ((), ()))
 
+        clock.advance(30_001)
         restarted = await self.open_composition(backend, delegate, 50_412)
         final = await delegate.load(seeded.identity)
         self.assertTrue(restarted.ready)
@@ -525,7 +557,8 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_terminal_write_failure_is_public_failure_until_restart(self) -> None:
         trace: list[str] = []
         backend = CancellationTracingBackend(trace)
-        delegate = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        delegate = InMemoryJobStateStore(clock=clock)
         store = CancellationTracingStore(delegate, trace)
         composition = await self.open_composition(backend, store, 50_413)
         seeded = await self.seed_running(delegate, 413)
@@ -552,6 +585,7 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
             TerminalClassification.CANCELLED,
         )
 
+        clock.advance(30_001)
         restarted = await self.open_composition(backend, delegate, 50_414)
         final = await delegate.load(seeded.identity)
         self.assertTrue(restarted.ready)
@@ -601,7 +635,8 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
                     Path(self._temporary.name) / f"crash-{checkpoint.value}.sqlite3"
                 )
                 backend = CancellationTracingBackend([])
-                store = SQLiteJobStateStore(database)
+                clock = ManualLeaseClock()
+                store = SQLiteJobStateStore(database, clock=clock)
                 composition = await self.open_composition(
                     backend,
                     store,
@@ -627,7 +662,8 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(managed.containers), remaining)
                 self.assertEqual(len(managed.volumes), remaining)
 
-                reopened = SQLiteJobStateStore(database)
+                clock.advance(30_001)
+                reopened = SQLiteJobStateStore(database, clock=clock)
                 restarted = DurableBrokerComposition(self.broker(backend), reopened)
                 restart_report = await restarted.startup(
                     BrokerStartupRequest(uuid_at(50_430 + offset), page_limit=2),

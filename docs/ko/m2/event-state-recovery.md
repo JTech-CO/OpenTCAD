@@ -20,7 +20,8 @@
 | --- | --- |
 | 정확한 job identity | `job_id`와 전체 `JobIdentity` |
 | Operation UUID | `operation_id`와 UUID v5 namespace |
-| Owner generation | 모든 event의 `owner_id`와 양의 `fencing_token` |
+| Owner generation | 모든 event의 `owner_id`, 양의 `fencing_token`, 제한된 `lease_duration_ms` |
+| Current owner liveness | Job revision을 바꾸지 않고 갱신하는 mutable absolute lease expiry |
 | `BrokerEvent.sequence` | 양의 `operation_sequence` |
 | Job ID와 source sequence | 결정론적 UUID v5 `event_id` |
 | Broker state와 phase | `state`와 `phase` |
@@ -44,17 +45,20 @@ Cleanup이 끝나지 않은 outcome은 terminal로 저장하지 않습니다. �
 3. 재개방 뒤 동일 event replay
 4. Event UUID 및 operation slot 충돌 거부
 5. 같은 revision에서 compare-and-swap winner가 정확히 하나인지 여부
-6. Terminal job을 제외하는 bounded 및 sorted recovery pagination
-7. Adapter 재개방 뒤 owner takeover와 stale token 거부
+6. Adapter 재개방 뒤 owner takeover와 stale token 거부
+7. Revision을 바꾸지 않고 재개방 뒤에도 보이는 live lease renewal
+8. Owner expiry 뒤 verify, renew, append 거부
+9. Live lease 동안 recovery 거부, cancellation 선점, expiry 뒤 recovery takeover
+10. Terminal job을 제외하는 bounded 및 sorted recovery pagination
 
-공통 conformance case 7개는 concrete adapter 두 개에서 변경 없이 실행됩니다. `InMemoryStateStoreBacking`은 process-local handle semantics만 증명합니다. `SQLiteJobStateStore`는 file-backed commit 가시성, transactional CAS 및 ownership 이전, 재개방 뒤 stale token 거부, schema fail-closed 동작, database lock redaction, fresh handle recovery pagination을 증명합니다. 별도의 [SQLite durable-state 후보 계약](sqlite-durable-state.md)은 migration, retention, durability 한계를 구분해 기록합니다.
+공통 conformance case 10개는 concrete adapter 두 개에서 변경 없이 실행됩니다. `InMemoryStateStoreBacking`은 process-local handle semantics만 증명합니다. `SQLiteJobStateStore`는 file-backed commit 가시성, transactional CAS 및 ownership 이전, 재개방 뒤 stale token 거부, schema fail-closed 동작, database lock redaction, fresh handle recovery pagination을 증명합니다. 별도의 [SQLite durable-state 후보 계약](sqlite-durable-state.md)은 migration, retention, durability 한계를 구분해 기록합니다.
 
 ## Crash 및 restart recovery 계약
 
 `CrashRecoveryCoordinator`는 bounded recovery page 하나를 처리합니다.
 
 1. Nonterminal snapshot을 scan합니다.
-2. 새로운 owner UUID와 다음 fencing token을 사용해 compare-and-swap으로 `cleaning` claim을 append합니다.
+2. Current lease가 live이면 `owner-active`로 takeover를 거부하고, 그렇지 않으면 새로운 owner UUID, 다음 fencing token, 새로운 bounded lease를 사용해 compare-and-swap으로 `cleaning` claim을 append합니다.
 3. 정확한 job identity의 runtime object를 reconcile합니다.
 4. Reconciliation이 미완료이면 code가 있는 `cleaning` event를 남깁니다.
 5. Cancellation intent가 남아 있으면 `cancelled`, 그 외에는 `stale-state`가 있는 fail-safe `failed`를 append합니다.
@@ -70,12 +74,12 @@ Restart된 job을 `succeeded`로 복원하지 않습니다. Success는 정상 br
 | Reconcile 후 | `cleaning` claim commit | 완전한 reconciliation 뒤 0 | 새 owner generation이 takeover한 뒤 verify 및 close |
 | Terminal append 후 | Terminal revision commit | 0 | Recovery scan에서 job 제외 |
 
-결정론적 test는 모든 주입 중단 뒤 같은 fixture에 대한 새 state-store handle을 재개방합니다. `recovery_id`는 report 상관관계를 유지하지만 각 recovery pass는 새로운 owner 시도를 사용합니다. Restart는 마지막 nonterminal generation의 token을 증가시켜 takeover하며 cleanup 미완료 상태는 다른 owner 시도를 위해 recoverable 상태로 남습니다. 추가로 child process가 SQLite `after-claim` revision 4를 commit하고 `os._exit(91)`로 종료합니다. Parent process는 file을 다시 열고 revision 5에 새로운 recovery owner를 commit한 뒤 terminal revision 6으로 수렴합니다.
+결정론적 test는 모든 주입 중단 뒤 같은 fixture에 대한 새 state-store handle을 재개방합니다. `recovery_id`는 report 상관관계를 유지하지만 각 recovery pass는 새로운 owner 시도를 사용합니다. Restart는 마지막 nonterminal generation의 lease가 live인 동안 기다리고 expiry 뒤에만 token을 증가시켜 takeover하며 cleanup 미완료 상태는 다른 owner 시도를 위해 recoverable 상태로 남습니다. 추가로 child process가 의도적으로 짧은 lease와 함께 SQLite `after-claim` revision 4를 commit하고 `os._exit(91)`로 종료합니다. Expiry 뒤 parent process는 file을 다시 열고 revision 5에 새로운 recovery owner를 commit한 뒤 terminal revision 6으로 수렴합니다.
 
-Concurrent coordinator가 같은 revision을 읽은 경우 compare-and-swap으로 claimant 하나만 성공합니다. 이후 recovery는 바로 다음 fencing token으로만 nonterminal `cleaning` owner를 takeover할 수 있고 이전 reconciler는 다음 guard에서 거부됩니다. 이는 협력형 durable ownership이며 distributed lease 또는 runtime 강제형 fence가 아닙니다. Owner liveness, lease expiry, multi-host coordination, ownership 검사와 runtime 변경 사이의 원자적 결합은 구현하지 않았습니다.
+Concurrent coordinator가 같은 revision을 읽은 경우 compare-and-swap으로 claimant 하나만 성공합니다. 이후 recovery는 nonterminal `cleaning` owner의 lease가 만료된 뒤 바로 다음 fencing token으로만 takeover할 수 있습니다. Guard가 적용된 await는 현재 generation을 heartbeat 처리하고 ownership을 잃으면 Python awaitable을 취소하며 strict bound mock runtime은 stale 또는 ambiguous context를 독립적으로 거부합니다. 이는 local durable liveness와 mock runtime fencing이며 distributed lease는 아닙니다. Multi-host coordination, bounded clock skew, native in-flight 취소, store commit과 runtime token 활성화 사이의 원자적 결합은 구현하지 않았습니다.
 
 ## 증거와 남은 gate
 
-Dependency-free Python suite는 현재 test 102개를 포함합니다. Memory 및 SQLite adapter 공통 conformance case 7개, owner-aware outcome 및 phase-time mapping, partial replay, startup admission, 부분 write cleanup, recovery crash 경계 4곳, cancellation crash 경계 5곳, execution, cancellation, recovery ownership 경쟁 case 5개, cancellation recovery, 경쟁 claim, cleanup retry 수렴, schema v1 migration, lock 동작, 별도 process hard exit를 검사합니다. Test는 격리된 SQLite file만 열며 runtime socket, network connection, 제품 runtime, solver는 열지 않습니다.
+Dependency-free Python suite는 현재 test 113개를 포함합니다. Memory 및 SQLite adapter 공통 conformance case 10개, owner lease 및 runtime fencing 집중 case 4개, owner-aware outcome 및 phase-time mapping, partial replay, startup admission, 부분 write cleanup, recovery crash 경계 4곳, cancellation crash 경계 5곳, execution, cancellation, recovery ownership 경쟁 case 5개, cancellation recovery, 경쟁 claim, cleanup retry 수렴, schema v1 및 schema v2 migration, lease renewal 및 expiry, lock 동작, 별도 process hard exit를 검사합니다. Test는 격리된 SQLite file만 열며 runtime socket, network connection, 제품 runtime, solver는 열지 않습니다.
 
-구현된 ownership 계약은 [durable operation ownership 및 fencing](durable-operation-ownership.md)에 설명합니다. Durable owner liveness, lease expiry, runtime 강제형 token 전달, backup 및 restore, power-loss 자격 검증, multi-host coordination, 제품 활성화, 제품 Docker 및 Podman adapter는 계속 gate 상태입니다.
+구현된 ownership 계약은 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 runtime의 native token 저장과 강제, native in-flight 취소, backup 및 restore, power-loss 자격 검증, bounded clock skew, multi-host coordination, 제품 활성화, 제품 Docker 및 Podman adapter는 계속 gate 상태입니다.

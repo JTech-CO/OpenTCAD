@@ -14,7 +14,7 @@ M1 numerical and rights gates remain open. This ADR therefore freezes an engine-
 
 ## Proposed decision
 
-1. `RuntimeBackend` is an asynchronous Python protocol owned by the future sandbox broker.
+1. `RuntimeBackend` is a Python protocol owned by the future sandbox broker. Global probe and image operations remain on that surface; every job lifecycle operation is available only through `bind_job(RuntimeFencingContext)` and `RuntimeJobBackend`.
 2. Workers submit only `SandboxSpec`; they cannot submit raw runtime operations.
 3. `SandboxPolicy` converts a spec to `ValidatedSandboxSpec` only after profile, image, input, output, limit, and capability checks pass.
 4. Backend-specific option mapping stays inside separate Docker and Podman modules.
@@ -27,16 +27,17 @@ M1 numerical and rights gates remain open. This ADR therefore freezes an engine-
 
 | Area | Operations | Boundary |
 |---|---|---|
-| Runtime | `probe` | Normalized health, version, OS, architecture, rootless state, capabilities |
-| Image | `inspect_image`, `ensure_image` | Digest-pinned `ImageIdentity` only |
-| Volume | `create_volume`, `stage_inputs`, `remove_volume` | Server UUID and validated spec; no host path |
-| Container | `create_container`, `start`, `wait`, `kill`, `remove_container` | Validated spec and opaque handles only |
-| Artifact | `collect_artifacts` | Expected names, hashes, counts, and byte limits |
-| Repair | `list_managed` | Label-scoped managed objects for exact cleanup |
+| Runtime global | `probe` | Normalized health, version, OS, architecture, rootless state, capabilities |
+| Image global | `inspect_image`, `ensure_image` | Digest-pinned `ImageIdentity` only |
+| Job binding | `bind_job` | Canonical job UUID, owner UUID, and positive fencing token; returns only a job-bound lifecycle |
+| Volume job lifecycle | `create_volume`, `stage_inputs`, `remove_volume` | Bound job context and validated spec; no host path |
+| Container job lifecycle | `create_container`, `start`, `wait`, `kill`, `remove_container` | Bound context, validated spec, and opaque handles only |
+| Artifact job lifecycle | `collect_artifacts` | Bound context plus expected names, hashes, counts, and byte limits |
+| Repair | global and bound `list_managed` | Global startup discovery or exact bound-job cleanup |
 
 ## Mandatory execution capabilities
 
-Image inspect and digest verification, managed volumes, validated input and artifact transfer, container lifecycle, bounded output, CPU/memory/PID/time limits, network none, all capabilities dropped, no-new-privileges, read-only root, writable tmpfs control, fixed non-root user, labels, and orphan query are mandatory.
+Image inspect and digest verification, managed volumes, validated input and artifact transfer, container lifecycle, bounded output, CPU/memory/PID/time limits, network none, all capabilities dropped, no-new-privileges, read-only root, writable tmpfs control, fixed non-root user, labels, orphan query, and runtime fencing enforcement are mandatory.
 
 Image pull is reported separately. A missing pull capability does not weaken an execution if an approved image is already present; an image that cannot be inspected and matched is rejected.
 
@@ -53,7 +54,7 @@ Runtime auto-detection is deferred to RUN-006. The eventual decision must use de
 - The broker can be tested with a strict in-memory backend before any socket is introduced.
 - Product adapters will share lifecycle and error tests but retain separate argument or API mapping.
 - New capability fields require contract and policy review.
-- Canonical input/output archive validation, fixed job identity, phase-addressable cancellation, process-local cleanup serialization, public/internal diagnostic separation, owner-aware outcome and phase-time mapping, the seven-case adapter conformance suite, the durable-state interface, an inactive SQLite schema-v2 candidate with transactional v1 migration, startup recovery admission, partial-write cleanup, durable external-cancellation CAS takeover, five cancellation restart seams, store-enforced owner generations and cooperative fencing tokens, and separate-process hard-exit takeover are implemented in the broker foundation; product runtime transfer and token enforcement, owner liveness and lease expiry, external cancellation transport, backup, and power-loss qualification remain separate gated responsibilities.
+- Canonical input/output archive validation, fixed job identity, phase-addressable cancellation, process-local cleanup serialization, public/internal diagnostic separation, owner-aware outcome and phase-time mapping, the ten-case adapter conformance suite, the durable-state interface, an inactive SQLite schema-v3 candidate with transactional v1 and v2 migration, startup recovery admission, partial-write cleanup, durable external-cancellation CAS takeover, five cancellation restart seams, bounded owner leases with heartbeat renewal, strict mock-runtime fencing-context enforcement, and separate-process hard-exit takeover are implemented in the broker foundation; product runtime transfer and native token enforcement, native in-flight revocation, external cancellation transport, clock-skew policy, backup, and power-loss qualification remain separate gated responsibilities.
 - This proposal cannot be marked accepted until the required review and M2 entry evidence exist.
 
 ## Rollback

@@ -19,7 +19,7 @@ Cancellation은 다음 순서를 따릅니다.
 5. Session은 compare-and-swap으로 `cancelling/query`를 append합니다. Commit된 이 event가 durable cancellation intent이자 ownership takeover입니다.
 6. CAS 승자만 runtime object를 조회하거나 변경할 수 있습니다. 경쟁 operation ID는 `cancellation-conflict`를 받고 runtime을 호출하지 않습니다.
 
-Process-local job lease는 broker 하나 안에서 중복 작업을 피합니다. 서로 독립적인 broker instance 사이의 정확성은 lease가 아니라 store CAS와 commit된 owner generation이 보장합니다. 현재 계약은 협력형 ownership epoch를 제공하지만 owner liveness, lease expiry, distributed lease, runtime 강제형 fencing, multi-host fencing은 주장하지 않습니다.
+Process-local cleanup coordinator는 broker 하나 안에서 중복 변경을 피합니다. 서로 독립적인 broker instance 사이의 정확성은 store CAS, commit된 owner generation, 제한된 durable lease가 보장합니다. Heartbeat는 job revision을 증가시키지 않고 정확한 generation을 갱신합니다. Cancellation만 live lease를 선점할 수 있으며 runtime 접촉 전에 다음 token을 commit합니다. Recovery는 이전 lease가 만료될 때까지 `owner-active`를 보고해야 합니다. 이는 단일 장비 후보이며 distributed 또는 multi-host lease가 아닙니다.
 
 ## 저장 lifecycle
 
@@ -61,6 +61,6 @@ Checkpoint exception은 계약 test를 위한 결정론적 동일 process crash 
 
 ## 검증과 남은 게이트
 
-Cancellation 집중 test 8개는 admission 거부, SQLite 순서 및 owner-aware mapper 동등성, 이미 사라진 object 수렴, 독립 broker 호출자 2개의 CAS 단일 승자, intent write 실패, 이후 phase write 실패, terminal write 실패, restart checkpoint 5곳을 검사합니다. Ownership 경쟁 test 5개는 cancellation takeover와 stale owner fencing을 추가로 검사합니다. 전체 dependency-free Python suite는 test 102개를 포함하며 제품 runtime socket, network connection, solver를 열지 않습니다.
+Cancellation 집중 test 8개는 admission 거부, SQLite 순서 및 owner-aware mapper 동등성, 이미 사라진 object 수렴, 독립 broker 호출자 2개의 CAS 단일 승자, intent write 실패, 이후 phase write 실패, terminal write 실패, restart checkpoint 5곳을 검사합니다. Ownership 경쟁 test 5개는 cancellation takeover와 stale owner fencing을 추가로 검사합니다. Owner lease 및 runtime fencing test 4개는 revision-neutral heartbeat renewal, expiry cancellation, stale 및 ambiguous token 거부, cross-job context 거부를 추가로 검사합니다. 전체 dependency-free Python suite는 test 113개를 포함하며 제품 runtime socket, network connection, solver를 열지 않습니다.
 
-구현된 takeover 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)에 설명합니다. Owner liveness, lease expiry, runtime 강제형 token 전달, 제품 service transport, worker integration, Docker 및 Podman adapter, runtime detection, backup 및 restore, 전원 손실 자격 검증, multi-host coordination, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
+구현된 takeover 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 service transport, worker integration, native Docker 및 Podman token 저장과 강제, runtime detection, native in-flight 취소, backup 및 restore, 전원 손실 자격 검증, clock-skew policy, multi-host coordination, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
