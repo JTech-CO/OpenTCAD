@@ -38,8 +38,8 @@ This is process hard-exit evidence. It is not a claim of host power-loss toleran
 
 Version 1 performs no automatic deletion or compaction. Removing old rows would discard event-ID and operation-slot idempotency evidence as well as the audit sequence. A future retention design must preserve the latest snapshot, event-ID tombstones, operation-slot tombstones, revision monotonicity, backup and restore behavior, and recovery scan semantics before deletion can be enabled.
 
-The database remains a candidate test artifact. An explicit mock-only composition writes execution phase events to it after startup recovery, but direct broker execution, external cancellation, and services do not open it. No product runtime or solver operation depends on it.
+The database remains a candidate test artifact. An explicit mock-only composition writes execution and external-cancellation phase events to it after startup recovery, but direct broker calls and services do not open it. No product runtime or solver operation depends on it.
 
 ## Next gate
 
-The next state slice is durable external cancellation and restart-safe cancellation arbitration. Distributed fencing, backup and restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.
+The next state slice is durable operation ownership and fencing across execution, cancellation, and recovery. Distributed coordination, backup and restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.

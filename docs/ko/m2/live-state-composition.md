@@ -9,13 +9,13 @@
 - 제품 Docker 및 Podman runtime kind: constructor에서 거부
 - Service, worker, runtime socket, network, solver 권한: 없음
 - Phase-time execution persistence: 명시적으로 선택하는 composition을 통해 구현
-- 외부 `SandboxBroker.cancel()` persistence: 미구현
+- Durable 외부 cancellation: 명시적인 composition에서만 구현, `SandboxBroker.cancel()` 직접 호출은 non-persisted 유지
 
-`DurableBrokerComposition`은 기존 broker lifecycle과 `DurableJobStateStore`를 연결하지만 이를 제품 실행 경로로 만들지 않습니다. `SandboxBroker.execute()`를 직접 호출하면 기존의 memory event 동작을 유지합니다. Composition은 `RuntimeKind.MOCK`만 허용하므로 향후 제품 backend가 추가되어도 이 후보가 암묵적으로 활성화되지 않습니다.
+`DurableBrokerComposition`은 기존 broker lifecycle과 `DurableJobStateStore`를 연결하지만 이를 제품 실행 경로로 만들지 않습니다. `SandboxBroker.execute()`와 `SandboxBroker.cancel()`을 직접 호출하면 기존 memory event 동작을 유지합니다. Composition은 `RuntimeKind.MOCK`만 허용하므로 향후 제품 backend가 추가되어도 이 후보가 암묵적으로 활성화되지 않습니다.
 
 ## Admission 전 startup
 
-직렬화된 `startup()` 호출 하나가 완료되어야 `execute()`가 job을 받습니다.
+직렬화된 `startup()` 호출 하나가 완료되어야 `execute()` 또는 durable `cancel()`이 작업을 받습니다.
 
 1. Recoverable snapshot을 제한된 page 하나씩 scan합니다.
 2. 결정론적 page recovery UUID를 사용해 각 revision을 compare-and-swap으로 claim합니다.
@@ -40,7 +40,7 @@ Reconciliation이 미완료이면 job은 `cleaning`에 남고 admission gate도 
 | `cleaning` | Object cleanup |
 | Terminal state | 최종 outcome 반환 |
 
-Composition은 session을 만들기 전에 job을 load합니다. Terminal 또는 recoverable 상태와 관계없이 기존 snapshot이 있으면 runtime probe 전에 거부합니다. 동시에 시작한 첫 writer도 revision CAS로 보호합니다. Phase-time record에는 정규화된 state, phase, code, retry, backend, classification, cleanup 완료 field만 포함합니다.
+Composition은 session을 만들기 전에 state를 load합니다. Execution은 기존 snapshot이 있으면 runtime probe 전에 거부합니다. Durable cancellation은 기존 nonterminal state를 요구하고 cancellation 또는 cleanup intent가 이미 있으면 거부하며 runtime query 전에 `cancelling/query`를 commit합니다. 경쟁 operation ID는 revision CAS로 보호합니다. Phase-time record에는 정규화된 state, phase, code, retry, backend, classification, cleanup 완료 field만 포함합니다.
 
 ## 부분 write 동작
 
@@ -59,6 +59,6 @@ Runtime cleanup 자체가 미완료이면 공개 마지막 event는 `failed`일 
 
 ## 증거와 남은 게이트
 
-집중 test 9개는 startup admission 순서, SQLite phase 순서 및 mapper 동등성, 할당 전과 할당 후 write 실패, terminal write 실패 강등 및 restart 수렴, 기존 job 거부, stale object startup reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. 전체 dependency-free Python suite는 test 86개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
+Execution composition test 9개는 startup admission 순서, SQLite phase 순서 및 mapper 동등성, write 실패, restart 수렴, 기존 job 거부, stale object reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. Durable cancellation test 8개는 CAS 단일 승자, intent-before-query 순서, 이미 사라진 object 수렴, write 실패, restart checkpoint 5곳을 추가로 검사합니다. 전체 dependency-free Python suite는 test 94개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
 
-다음 state 경계는 durable external cancellation과 restart-safe cancellation arbitration입니다. 제품 service transport, worker integration, distributed ownership 및 fencing, retention compaction, backup 및 restore, host 전원 손실 자격 검증, 제품 runtime adapter, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
+다음 state 경계는 execution, cancellation, recovery 사이의 durable operation ownership 및 fencing입니다. 제품 service transport, worker integration, multi-host coordination, retention compaction, backup 및 restore, host 전원 손실 자격 검증, 제품 runtime adapter, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.

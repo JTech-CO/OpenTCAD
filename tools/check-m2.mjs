@@ -80,6 +80,7 @@ const expectedSourceFiles = [
   "backend/app/broker/__init__.py",
   "backend/app/broker/archive.py",
   "backend/app/broker/cancellation.py",
+  "backend/app/broker/cancellation_arbitration.py",
   "backend/app/broker/cleanup.py",
   "backend/app/broker/diagnostics.py",
   "backend/app/broker/lifecycle.py",
@@ -101,6 +102,7 @@ const expectedSourceFiles = [
   "backend/tests/broker/test_archive.py",
   "backend/tests/broker/test_cancellation_redaction.py",
   "backend/tests/broker/test_cleanup_concurrency.py",
+  "backend/tests/broker/test_durable_cancellation.py",
   "backend/tests/broker/test_lifecycle_control.py",
   "backend/tests/broker/test_orchestrator.py",
   "backend/tests/broker/test_output_archive.py",
@@ -123,6 +125,7 @@ const expectedSourceFiles = [
   "docs/en/m2/event-state-recovery.md",
   "docs/en/m2/sqlite-durable-state.md",
   "docs/en/m2/live-state-composition.md",
+  "docs/en/m2/durable-cancellation-arbitration.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -132,6 +135,7 @@ const expectedSourceFiles = [
   "docs/ko/m2/event-state-recovery.md",
   "docs/ko/m2/sqlite-durable-state.md",
   "docs/ko/m2/live-state-composition.md",
+  "docs/ko/m2/durable-cancellation-arbitration.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -229,7 +233,12 @@ requireValue(manifest.securityBoundary.externalProcessRestartContractTested === 
 requireValue(manifest.securityBoundary.candidateLiveBrokerStateCompositionImplemented === true, "The inactive live-state composition must be recorded.");
 requireValue(manifest.securityBoundary.candidateLiveBrokerStateCompositionProductEnabled === false, "The live-state composition must remain product-disabled.");
 requireValue(manifest.securityBoundary.liveExecuteStateWiringTested === true, "Candidate execution state wiring must be tested.");
-requireValue(manifest.securityBoundary.liveCancellationStateWiringImplemented === false, "External cancellation state wiring must remain absent.");
+requireValue(manifest.securityBoundary.candidateDurableExternalCancellationImplemented === true, "Candidate durable external cancellation must be recorded.");
+requireValue(manifest.securityBoundary.candidateDurableExternalCancellationProductEnabled === false, "Candidate durable cancellation must remain product-disabled.");
+requireValue(manifest.securityBoundary.cancellationIntentBeforeRuntimeQuery === true, "Cancellation intent must precede runtime query.");
+requireValue(manifest.securityBoundary.cancellationArbitrationCAS === true, "Cancellation arbitration must use CAS.");
+requireValue(manifest.securityBoundary.restartSafeCancellationTested === true, "Restart-safe cancellation must be tested.");
+requireValue(manifest.securityBoundary.productExternalCancellationWiring === false, "Product external cancellation wiring must remain absent.");
 requireValue(manifest.securityBoundary.startupRecoveryAdmissionGateImplemented === true, "Startup recovery admission must be recorded.");
 requireValue(manifest.securityBoundary.productRuntimeAcceptedByComposition === false, "The composition must reject product runtimes.");
 requireValue(manifest.securityBoundary.durableStateStoreImplemented === false, "A product durable state store must not be claimed.");
@@ -300,7 +309,7 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "candidate-live-state-startup-tested"],
+  ["RUN-007", "candidate-durable-cancellation-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
@@ -312,9 +321,9 @@ const expectedBrokerWorkItems = [
   ["BRK-001", "foundation-tested"],
   ["BRK-003", "mock-lifecycle-tested"],
   ["BRK-004", "canonical-input-output-archive-tested"],
-  ["BRK-006", "candidate-live-state-recovery-gate-tested"],
-  ["BRK-007", "mock-phase-cancellation-tested"],
-  ["BRK-008", "candidate-phase-time-state-tested"],
+  ["BRK-006", "candidate-restart-safe-cancellation-tested"],
+  ["BRK-007", "candidate-durable-cancellation-tested"],
+  ["BRK-008", "candidate-durable-cancellation-state-tested"],
 ];
 requireValue(brokerWorkItems.size === expectedBrokerWorkItems.length, "M2 broker work item set drifted.");
 for (const [id, status] of expectedBrokerWorkItems) {
@@ -340,7 +349,7 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 86, "Runtime and broker test count must be 86.");
+requireValue(manifest.testContract.testCount === 94, "Runtime and broker test count must be 94.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
 requireValue(manifest.testContract.brokerOrchestrationTests === 8, "Broker orchestration test count must be 8.");
@@ -359,6 +368,8 @@ requireValue(manifest.testContract.sqliteAdapterConformanceTests === 6, "SQLite 
 requireValue(manifest.testContract.sqliteSpecificContractTests === 4, "SQLite-specific contract test count must be 4.");
 requireValue(manifest.testContract.externalProcessHardExitTests === 1, "Hard-exit process test count must be 1.");
 requireValue(manifest.testContract.stateCompositionTests === 9, "Live-state composition test count must be 9.");
+requireValue(manifest.testContract.durableCancellationTests === 8, "Durable cancellation test count must be 8.");
+requireValue(manifest.testContract.durableCancellationCrashCheckpoints === 5, "Durable cancellation checkpoint count must be 5.");
 requireValue(manifest.testContract.usesMockBackend === true, "Composition tests must use the mock backend.");
 requireValue(manifest.testContract.usesProductRuntime === false, "Composition tests must not use a product runtime.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
@@ -408,6 +419,7 @@ for (const path of [
 const brokerArchive = await readFile(join(root, "backend/app/broker/archive.py"), "utf8");
 const brokerOutputArchive = await readFile(join(root, "backend/app/broker/output_archive.py"), "utf8");
 const brokerCancellation = await readFile(join(root, "backend/app/broker/cancellation.py"), "utf8");
+const brokerCancellationArbitration = await readFile(join(root, "backend/app/broker/cancellation_arbitration.py"), "utf8");
 const brokerCleanup = await readFile(join(root, "backend/app/broker/cleanup.py"), "utf8");
 const brokerDiagnostics = await readFile(join(root, "backend/app/broker/diagnostics.py"), "utf8");
 const brokerLifecycle = await readFile(join(root, "backend/app/broker/lifecycle.py"), "utf8");
@@ -428,6 +440,7 @@ const implementation = [
   brokerArchive,
   brokerOutputArchive,
   brokerCancellation,
+  brokerCancellationArbitration,
   brokerCleanup,
   brokerDiagnostics,
   brokerLifecycle,
@@ -522,7 +535,8 @@ for (const checkpoint of manifest.crashRestartRecoveryContract.checkpoints) {
   requireValue(brokerRecovery.includes(`= "${checkpoint}"`), `Recovery source is missing ${checkpoint}.`);
 }
 requireValue(manifest.eventStateMappingContract.candidateExecuteWiringImplemented === true, "Candidate execution wiring must be recorded.");
-requireValue(manifest.eventStateMappingContract.externalCancellationWiringImplemented === false, "External cancellation wiring must remain absent.");
+requireValue(manifest.eventStateMappingContract.candidateExternalCancellationWiringImplemented === true, "Candidate external cancellation mapping must be recorded.");
+requireValue(manifest.eventStateMappingContract.cancellationIntentClassificationPreserved === true, "Cancellation classification must survive cleanup mapping.");
 requireValue(manifest.eventStateMappingContract.productLiveBrokerWiringImplemented === false, "Product live broker wiring must remain absent.");
 requireValue(manifest.adapterConformanceContract.inMemoryBackingDurable === false, "Memory conformance backing must not be durable.");
 requireValue(manifest.durableStateContract.candidateDurableAdapterImplemented === true, "SQLite durable adapter candidate must be recorded.");
@@ -564,7 +578,9 @@ requireValue(manifest.liveStateCompositionContract.acceptedRuntime === "mock", "
 requireValue(manifest.liveStateCompositionContract.productRuntimeAccepted === false, "Product runtime kinds must remain rejected.");
 requireValue(manifest.liveStateCompositionContract.directBrokerExecutionPersisted === false, "Direct broker execution must remain non-persisted.");
 requireValue(manifest.liveStateCompositionContract.executeWiring === true, "Candidate execute wiring must be implemented.");
-requireValue(manifest.liveStateCompositionContract.externalCancelWiring === false, "External cancellation wiring must remain pending.");
+requireValue(manifest.liveStateCompositionContract.candidateExternalCancelWiring === true, "Candidate external cancellation wiring must be implemented.");
+requireValue(manifest.liveStateCompositionContract.productExternalCancelWiring === false, "Product external cancellation wiring must remain absent.");
+requireValue(manifest.liveStateCompositionContract.directBrokerCancellationPersisted === false, "Direct broker cancellation must remain non-persisted.");
 for (const key of [
   "firstDurableStateBeforeRuntimeProbe",
   "startupRecoveryBeforeAdmission",
@@ -588,6 +604,52 @@ for (const key of [
   requireValue(manifest.liveStateCompositionContract[key] === false, `${key} must remain false.`);
 }
 
+requireValue(manifest.durableCancellationContract.productEnabled === false, "Durable cancellation must remain product-disabled.");
+requireValue(manifest.durableCancellationContract.acceptedRuntime === "mock", "Durable cancellation must remain mock-only.");
+requireValue(manifest.durableCancellationContract.checkpoints.length === 5, "Durable cancellation must define five checkpoints.");
+for (const checkpoint of manifest.durableCancellationContract.checkpoints) {
+  requireValue(brokerCancellationArbitration.includes(`= "${checkpoint}"`), `Durable cancellation source is missing ${checkpoint}.`);
+}
+for (const key of [
+  "candidateCompositionWiring",
+  "intentWriteBeforeRuntimeQuery",
+  "compareAndSwapArbitration",
+  "processLocalLease",
+  "firstWriteFailureStopsRuntimeContact",
+  "laterWriteFailureStopsCancellationProgress",
+  "cleanupRunsAfterWriteFailure",
+  "cleanupIntentClassificationPreserved",
+  "alreadyAbsentConverges",
+  "volumeOnlyConverges",
+  "restartNeverSynthesizesSuccess",
+]) {
+  requireValue(manifest.durableCancellationContract[key] === true, `${key} must remain true.`);
+}
+for (const key of [
+  "directBrokerCancelPersisted",
+  "missingStateAccepted",
+  "terminalStateAccepted",
+  "cancellingOrCleaningReadmissionAccepted",
+  "terminalWriteFailureCanReportCancelled",
+  "distributedLease",
+  "serviceTransport",
+  "runtimeSocket",
+  "externalProcessHardExitTested",
+  "powerLossTested",
+]) {
+  requireValue(manifest.durableCancellationContract[key] === false, `${key} must remain false.`);
+}
+requireValue(brokerCancellation.includes("intent_persisted: bool = False"), "Cancellation outcome must expose persisted intent.");
+requireValue(brokerStateMapping.includes("isinstance(outcome, CancellationOutcome)"), "Cancellation outcomes must preserve cancellation intent in mapping.");
+requireValue(brokerStateComposition.includes("expected_revision=current.revision"), "Cancellation intent CAS must start from the loaded revision.");
+const cancellationIntentAppend = brokerStateComposition.indexOf("await session.record(");
+const cancellationRuntimeEntry = brokerStateComposition.indexOf("return await self._broker._cancel_with_state_session_locked(");
+requireValue(cancellationIntentAppend >= 0 && cancellationIntentAppend < cancellationRuntimeEntry, "Cancellation intent append must precede runtime entry.");
+requireValue(brokerOrchestrator.includes("intent_persisted=state_session is not None"), "Durable cancellation outcome must retain intent admission.");
+for (const code of manifest.liveStateCompositionContract.compositionErrorCodes) {
+  requireValue(brokerStateComposition.includes(`= "${code}"`), `Composition source is missing ${code}.`);
+}
+
 for (const path of [
   "docs/en/m2/README.md",
   "docs/en/m2/runtime-backend-adr.md",
@@ -598,6 +660,7 @@ for (const path of [
   "docs/en/m2/event-state-recovery.md",
   "docs/en/m2/sqlite-durable-state.md",
   "docs/en/m2/live-state-composition.md",
+  "docs/en/m2/durable-cancellation-arbitration.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -607,6 +670,7 @@ for (const path of [
   "docs/ko/m2/event-state-recovery.md",
   "docs/ko/m2/sqlite-durable-state.md",
   "docs/ko/m2/live-state-composition.md",
+  "docs/ko/m2/durable-cancellation-arbitration.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

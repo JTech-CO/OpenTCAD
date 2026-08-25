@@ -8,7 +8,7 @@
 - Runtime and solver access: none
 - SQLite durable-state candidate: tested and inactive
 - Phase-time execution wiring: implemented in an inactive mock-only composition
-- External cancellation wiring: not implemented
+- External cancellation wiring: implemented in the inactive mock-only composition, product disabled
 
 This contract defines how a completed redacted broker operation becomes durable events, how every state adapter is tested, and how recoverable state converges after restart. The original mapping and recovery seams remain engine-independent; the companion SQLite candidate adds only a standard-library local database and a test-only child process. It adds no service transport, runtime socket, product Docker or Podman adapter, worker integration, or solver execution.
 
@@ -32,7 +32,7 @@ The adapter rejects reuse of either an event UUID with different content or a `(
 
 An outcome with incomplete cleanup is never persisted as terminal. Its final source terminal event is mapped to another recoverable `cleaning` event with phase `cleanup` and the stable cleanup error. This prevents an orphaned runtime object from disappearing from the recovery scan merely because the broker had already selected `failed` for its public outcome.
 
-This mapper continues to consume complete outcomes. `LiveStateSession` reuses its deterministic identity rules while `DurableBrokerComposition` awaits each execution-phase append as work occurs. The explicit path is mock-only and product-disabled; direct broker execution and external cancellation are not persisted.
+This mapper continues to consume complete outcomes. `LiveStateSession` reuses its deterministic identity rules while `DurableBrokerComposition` awaits execution and external-cancellation appends as work occurs. External cancellation records `cancelling/query` before runtime query and retains cancelled classification through cleanup. The explicit path is mock-only and product-disabled; direct broker execution and cancellation are not persisted.
 
 ## Common adapter conformance suite
 
@@ -74,6 +74,6 @@ Compare-and-swap permits exactly one claimant when concurrent coordinators read 
 
 ## Evidence and remaining gate
 
-The dependency-free Python suite now contains 86 tests. Thirty-four tests cover the common suite on memory and SQLite adapters, outcome and phase-time mapping, partial replay, startup admission, partial-write cleanup, four deterministic crash boundaries, cancellation recovery, competing claims, cleanup retry convergence, schema and lock behavior, and the separate-process hard exit. Tests open isolated SQLite files only; no test opens a runtime socket, network connection, product runtime, or solver.
+The dependency-free Python suite now contains 94 tests. Forty-two tests cover the common suite on memory and SQLite adapters, outcome and phase-time mapping, partial replay, startup admission, partial-write cleanup, four recovery crash boundaries, five cancellation crash boundaries, cancellation recovery, competing claims, external-cancellation CAS arbitration, cleanup retry convergence, schema and lock behavior, and the separate-process hard exit. Tests open isolated SQLite files only; no test opens a runtime socket, network connection, product runtime, or solver.
 
-The next state milestone is durable external cancellation and restart-safe cancellation arbitration. Backup and restore, power-loss qualification, distributed fencing, product activation, and product Docker and Podman adapters remain gated.
+The next state milestone is durable operation ownership and fencing across execution, cancellation, and recovery. Backup and restore, power-loss qualification, multi-host coordination, product activation, and product Docker and Podman adapters remain gated.

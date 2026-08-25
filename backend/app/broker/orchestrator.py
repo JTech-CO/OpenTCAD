@@ -27,6 +27,11 @@ from backend.app.runtime.protocol import RuntimeBackend
 
 from .archive import ArchiveLimits, validate_canonical_input_archive
 from .cancellation import CancellationOutcome, CancellationRequest
+from .cancellation_arbitration import (
+    DurableCancellationCheckpoint,
+    DurableCancellationCrashSignal,
+    cancellation_checkpoint,
+)
 from .cleanup import JobCleanupCoordinator
 from .diagnostics import InternalDiagnostic
 from .lifecycle import CancellationSignal, LifecycleCheckpoint
@@ -540,6 +545,9 @@ class SandboxBroker:
             events=tuple(events),
         )
 
+    def _cancellation_lease(self, identity: JobIdentity):
+        return self._cleanup_coordinator.lease(identity)
+
     async def cancel(self, request: CancellationRequest) -> CancellationOutcome:
         if not isinstance(request, CancellationRequest):
             raise RuntimeBackendError(
@@ -548,19 +556,73 @@ class SandboxBroker:
                 detail="cancellation-request-required",
             )
         identity = request.identity
-        async with self._cleanup_coordinator.lease(identity):
-            return await self._cancel_locked(identity)
+        async with self._cancellation_lease(identity):
+            return await self._cancel_locked(identity, None, None, None)
 
-    async def _cancel_locked(self, identity: JobIdentity) -> CancellationOutcome:
-        events: list[BrokerEvent] = []
+    async def _cancel_with_state_session_locked(
+        self,
+        request: CancellationRequest,
+        state_session: LiveStateSession,
+        intent_event: BrokerEvent,
+        crash_signal: DurableCancellationCrashSignal | None,
+    ) -> CancellationOutcome:
+        if not isinstance(request, CancellationRequest):
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.VALIDATE,
+                detail="cancellation-request-required",
+            )
+        identity = request.identity
+        if (
+            not isinstance(state_session, LiveStateSession)
+            or state_session.identity != identity
+            or state_session.backend is not self._backend.name
+            or state_session.failed
+            or state_session.last_snapshot is None
+            or state_session.last_snapshot.state is not BrokerState.CANCELLING
+        ):
+            raise RuntimeBackendError(
+                ErrorCode.IDENTITY_MISMATCH,
+                RuntimePhase.VALIDATE,
+                detail="cancellation-state-session-context-mismatch",
+            )
+        if (
+            not isinstance(intent_event, BrokerEvent)
+            or intent_event.sequence != 1
+            or intent_event.state is not BrokerState.CANCELLING
+            or intent_event.phase is not RuntimePhase.QUERY
+            or intent_event.code is not None
+        ):
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.VALIDATE,
+                detail="cancellation-intent-event-mismatch",
+            )
+        return await self._cancel_locked(
+            identity,
+            state_session,
+            intent_event,
+            crash_signal,
+        )
+
+    async def _cancel_locked(
+        self,
+        identity: JobIdentity,
+        state_session: LiveStateSession | None,
+        intent_event: BrokerEvent | None,
+        crash_signal: DurableCancellationCrashSignal | None,
+    ) -> CancellationOutcome:
+        events: list[BrokerEvent] = [] if intent_event is None else [intent_event]
         result: RunResult | None = None
         primary_error: BrokerError | None = None
         cleanup_error: BrokerError | None = None
         container: ContainerHandle | None = None
         volume: VolumeHandle | None = None
         terminal = False
+        converged_without_runtime = False
 
-        await self._event(events, BrokerState.VALIDATING, RuntimePhase.QUERY)
+        if intent_event is None:
+            await self._event(events, BrokerState.VALIDATING, RuntimePhase.QUERY)
         try:
             managed = await self._backend.list_managed(identity.job_id)
             handles = (*managed.containers, *managed.volumes)
@@ -571,13 +633,7 @@ class SandboxBroker:
                     backend=self._backend.name.value,
                     detail="cancellation-filter-returned-cross-job-handle",
                 )
-            if not managed.containers:
-                raise RuntimeBackendError(
-                    ErrorCode.CONTAINER_NOT_FOUND,
-                    RuntimePhase.KILL,
-                    backend=self._backend.name.value,
-                )
-            if len(managed.containers) != 1 or len(managed.volumes) > 1:
+            if len(managed.containers) > 1 or len(managed.volumes) > 1:
                 raise RuntimeBackendError(
                     ErrorCode.STALE_STATE,
                     RuntimePhase.QUERY,
@@ -585,22 +641,70 @@ class SandboxBroker:
                     backend=self._backend.name.value,
                     detail="cancellation-requires-exact-job-objects",
                 )
-            container = managed.containers[0]
-            volume = managed.volumes[0] if managed.volumes else None
-            await self._event(events, BrokerState.CANCELLING, RuntimePhase.KILL)
-            result = await self._backend.kill(container, TerminationReason.CANCELLATION)
-            terminal = True
-            if result.classification is not TerminalClassification.CANCELLED:
-                raise RuntimeBackendError(
-                    ErrorCode.CANCELLATION_REJECTED,
+            if not managed.containers:
+                if state_session is None:
+                    raise RuntimeBackendError(
+                        ErrorCode.CONTAINER_NOT_FOUND,
+                        RuntimePhase.KILL,
+                        backend=self._backend.name.value,
+                    )
+                volume = managed.volumes[0] if managed.volumes else None
+                converged_without_runtime = True
+            else:
+                container = managed.containers[0]
+                volume = managed.volumes[0] if managed.volumes else None
+                await self._event(
+                    events,
+                    BrokerState.CANCELLING,
                     RuntimePhase.KILL,
-                    backend=self._backend.name.value,
-                    detail="runtime-returned-noncancelled-result",
+                    state_session=state_session,
                 )
+                result = await self._backend.kill(
+                    container,
+                    TerminationReason.CANCELLATION,
+                )
+                terminal = True
+                if result.classification is not TerminalClassification.CANCELLED:
+                    raise RuntimeBackendError(
+                        ErrorCode.CANCELLATION_REJECTED,
+                        RuntimePhase.KILL,
+                        backend=self._backend.name.value,
+                        detail="runtime-returned-noncancelled-result",
+                    )
+        except LiveStateWriteError as error:
+            primary_error = self._capture_state_write_error(error)
         except RuntimeBackendError as error:
             primary_error = self._capture_error(identity, error)
         finally:
-            await self._event(events, BrokerState.CLEANING, RuntimePhase.CLEANUP)
+            classification = (
+                result.classification
+                if result is not None
+                else TerminalClassification.CANCELLED
+                if state_session is not None
+                else None
+            )
+            try:
+                await self._event(
+                    events,
+                    BrokerState.CLEANING,
+                    RuntimePhase.CLEANUP,
+                    state_session=state_session,
+                    classification=classification,
+                )
+            except LiveStateWriteError as error:
+                if primary_error is None:
+                    primary_error = self._capture_state_write_error(error)
+            if (
+                state_session is not None
+                and not state_session.failed
+                and state_session.last_snapshot is not None
+                and state_session.last_snapshot.state is BrokerState.CLEANING
+            ):
+                cancellation_checkpoint(
+                    crash_signal,
+                    DurableCancellationCheckpoint.AFTER_CLEANING_STATE,
+                    identity,
+                )
             first_cleanup_error = await self._cleanup_unlocked(
                 identity,
                 container,
@@ -610,17 +714,78 @@ class SandboxBroker:
             )
             verification_error = await self._verify_no_managed(identity)
             cleanup_error = first_cleanup_error or verification_error
+            cancellation_checkpoint(
+                crash_signal,
+                DurableCancellationCheckpoint.AFTER_CLEANUP,
+                identity,
+            )
 
-        cancelled = (
+        runtime_cancelled = (
             result is not None
             and result.classification is TerminalClassification.CANCELLED
+        )
+        cancelled = (
+            (runtime_cancelled or converged_without_runtime)
             and primary_error is None
             and cleanup_error is None
         )
         state = BrokerState.CANCELLED if cancelled else BrokerState.FAILED
         final_error = primary_error or cleanup_error
         final_phase = final_error.phase if final_error is not None else RuntimePhase.KILL
-        await self._event(events, state, final_phase, final_error)
+        classification = (
+            result.classification
+            if result is not None
+            else TerminalClassification.CANCELLED
+            if state_session is not None
+            else None
+        )
+        durable_state = BrokerState.CLEANING if cleanup_error is not None else None
+        try:
+            await self._event(
+                events,
+                state,
+                final_phase,
+                final_error,
+                state_session=state_session,
+                durable_state=durable_state,
+                durable_phase=(
+                    RuntimePhase.CLEANUP if durable_state is not None else None
+                ),
+                durable_error=cleanup_error,
+                classification=classification,
+                cleanup_complete=cleanup_error is None,
+            )
+        except LiveStateWriteError as error:
+            if primary_error is None:
+                primary_error = self._capture_state_write_error(error)
+            state = BrokerState.FAILED
+            final_error = primary_error or cleanup_error
+            final_phase = (
+                final_error.phase if final_error is not None else RuntimePhase.KILL
+            )
+            events.pop()
+            await self._event(
+                events,
+                state,
+                final_phase,
+                final_error,
+                state_session=state_session,
+                classification=classification,
+                cleanup_complete=cleanup_error is None,
+            )
+        else:
+            if (
+                state_session is not None
+                and not state_session.failed
+                and state_session.last_snapshot is not None
+                and state_session.last_snapshot.state
+                in {BrokerState.CANCELLED, BrokerState.FAILED}
+            ):
+                cancellation_checkpoint(
+                    crash_signal,
+                    DurableCancellationCheckpoint.AFTER_FINAL_STATE,
+                    identity,
+                )
         return CancellationOutcome(
             identity=identity,
             state=state,
@@ -629,6 +794,7 @@ class SandboxBroker:
             cleanup_error=cleanup_error,
             cleanup_complete=cleanup_error is None,
             events=tuple(events),
+            intent_persisted=state_session is not None,
         )
 
     async def _reconcile_locked(self, identity: JobIdentity) -> ReconciliationReport:

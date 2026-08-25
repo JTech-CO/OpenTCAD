@@ -157,15 +157,10 @@ class BrokerStateMapper:
         result_classification = (
             outcome.result.classification if outcome.result is not None else None
         )
-        cancellation_intent = (
-            outcome.error is None
-            and (
-                isinstance(outcome, CancellationOutcome)
-                or (
-                    isinstance(outcome, BrokerOutcome)
-                    and outcome.cancellation_checkpoint is not None
-                )
-            )
+        cancellation_intent = isinstance(outcome, CancellationOutcome) or (
+            isinstance(outcome, BrokerOutcome)
+            and outcome.error is None
+            and outcome.cancellation_checkpoint is not None
         )
         operation_namespace = _canonical_uuid(
             context.operation_id,

@@ -7,6 +7,12 @@ from .archive import (
     validate_canonical_input_archive,
 )
 from .cancellation import CancellationOutcome, CancellationRequest
+from .cancellation_arbitration import (
+    DurableCancellationCheckpoint,
+    DurableCancellationCrashInjection,
+    DurableCancellationCrashSignal,
+    DurableCancellationInterrupted,
+)
 from .cleanup import JobCleanupCoordinator
 from .diagnostics import InternalDiagnostic
 from .lifecycle import CancellationSignal, LifecycleCheckpoint, PhaseCancellation
@@ -89,6 +95,10 @@ __all__ = [
     "CancellationRequest",
     "CancellationSignal",
     "CrashRecoveryCoordinator",
+    "DurableCancellationCheckpoint",
+    "DurableCancellationCrashInjection",
+    "DurableCancellationCrashSignal",
+    "DurableCancellationInterrupted",
     "DurableJobEvent",
     "DurableBrokerComposition",
     "DurableJobStateStore",

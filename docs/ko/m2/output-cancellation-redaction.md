@@ -34,8 +34,8 @@ SUPREM, remesh, DEVSIM은 동일한 생성 규칙을 사용합니다. Kind, call
 
 ## 검증된 통제
 
-Dependency-free suite는 현재 test 86개를 포함합니다. 위 output, identity, redaction 통제에 더해 execution cancellation checkpoint 11곳 전체, 잘못된 identity 및 비정상 signal, concurrent cleanup 직렬화, 이미 사라진 object 수렴, durable-state revision CAS, event idempotency, transition 안전성, recovery scan, 저장 shape redaction, startup admission, phase-time persistence, 부분 write cleanup을 검사합니다. 자세한 내용은 [lifecycle cancellation, cleanup, state 계약](lifecycle-cleanup-state.md)에 있습니다.
+Dependency-free suite는 현재 test 94개를 포함합니다. 위 output, identity, redaction 통제에 더해 execution cancellation checkpoint 11곳 전체, 잘못된 identity 및 비정상 signal, concurrent cleanup 직렬화, 이미 사라진 object 수렴, durable-state revision CAS, event idempotency, transition 안전성, recovery scan, 저장 shape redaction, startup admission, phase-time persistence, 부분 write cleanup을 검사합니다. 자세한 내용은 [lifecycle cancellation, cleanup, state 계약](lifecycle-cleanup-state.md)에 있습니다.
 
 ## 남은 경계
 
-제품 runtime adapter, broker service transport, runtime detection, worker integration, 외부 cancellation persistence, restart-safe cancellation arbitration, solver 실행, runtime socket 접근은 아직 없습니다. Phase 지정 mock 주입과 process-local cleanup idempotence는 구현했고 비활성 SQLite 후보가 durable event 및 process hard-exit recovery를 검증하지만 제품 활성화는 gate 상태로 남습니다.
+제품 runtime adapter, broker service transport, runtime detection, worker integration, 외부 cancellation transport, solver 실행, runtime socket 접근은 아직 없습니다. Phase 지정 주입, process-local cleanup idempotence, mock 전용 durable external cancellation 중재는 구현했습니다. 비활성 SQLite 후보는 정규화 intent와 restart-safe 수렴을 기록하지만 제품 활성화는 gate 상태로 남습니다.
