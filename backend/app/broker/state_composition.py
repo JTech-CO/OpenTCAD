@@ -16,6 +16,7 @@ from .cancellation_arbitration import (
     DurableCancellationCrashSignal,
     cancellation_checkpoint,
 )
+from .lease import OwnerLeasePolicy
 from .lifecycle import CancellationSignal
 from .live_state import LiveStateEmission, LiveStateSession, LiveStateWriteError
 from .models import BrokerEvent, BrokerOutcome, BrokerRequest, BrokerState
@@ -115,17 +116,21 @@ class DurableBrokerComposition:
         self,
         broker: SandboxBroker,
         store: DurableJobStateStore,
+        lease_policy: OwnerLeasePolicy = OwnerLeasePolicy(),
     ) -> None:
         if not isinstance(broker, SandboxBroker):
             raise TypeError("DurableBrokerComposition requires SandboxBroker.")
         if not isinstance(store, DurableJobStateStore):
             raise TypeError("DurableBrokerComposition requires DurableJobStateStore.")
+        if not isinstance(lease_policy, OwnerLeasePolicy):
+            raise TypeError("DurableBrokerComposition requires OwnerLeasePolicy.")
         if broker.runtime_kind is not RuntimeKind.MOCK:
             raise StateCompositionError(
                 StateCompositionErrorCode.PRODUCT_RUNTIME_DISABLED,
             )
         self._broker = broker
         self._store = store
+        self._lease_policy = lease_policy
         self._startup_lock = asyncio.Lock()
         self._startup_report: BrokerStartupReport | None = None
 
@@ -147,6 +152,7 @@ class DurableBrokerComposition:
                 self._store,
                 self._broker,
                 self._broker.runtime_kind,
+                self._lease_policy,
             )
             pages: list[RecoveryReport] = []
             after: str | None = None
@@ -212,6 +218,7 @@ class DurableBrokerComposition:
             str(uuid4()),
             1,
             self._broker.runtime_kind,
+            lease_policy=self._lease_policy,
         )
         return await self._broker._execute_with_state_session(
             request,
@@ -264,6 +271,7 @@ class DurableBrokerComposition:
                 current.ownership.fencing_token + 1,
                 self._broker.runtime_kind,
                 expected_revision=current.revision,
+                lease_policy=self._lease_policy,
             )
             intent = BrokerEvent(
                 1,

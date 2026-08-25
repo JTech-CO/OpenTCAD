@@ -37,6 +37,7 @@ def conformance_event(
     code: ErrorCode | None = None,
     owner: int | None = None,
     fencing_token: int = 1,
+    lease_duration_ms: int = 30_000,
 ) -> DurableJobEvent:
     terminal = state in {
         BrokerState.SUCCEEDED,
@@ -64,6 +65,7 @@ def conformance_event(
         backend=RuntimeKind.MOCK,
         classification=classification,
         cleanup_complete=terminal,
+        lease_duration_ms=lease_duration_ms,
     )
 
 
@@ -74,6 +76,9 @@ class DurableStateStoreConformanceMixin:
         raise NotImplementedError
 
     def reopen_store(self) -> DurableJobStateStore:
+        raise NotImplementedError
+
+    def advance_lease_clock(self, milliseconds: int) -> None:
         raise NotImplementedError
 
     async def test_protocol_empty_load_and_scan(self) -> None:
@@ -283,6 +288,138 @@ class DurableStateStoreConformanceMixin:
         )
         self.assertEqual(continued.ownership, takeover.ownership)
         self.assertEqual(continued.revision, 3)
+
+    async def test_live_lease_renewal_preserves_revision_after_reopen(self) -> None:
+        store = self.new_store()
+        committed = await store.append(
+            conformance_event(
+                job=10,
+                event_number=100,
+                operation=10,
+                operation_sequence=1,
+                state=BrokerState.VALIDATING,
+                phase=RuntimePhase.VALIDATE,
+            ),
+            expected_revision=0,
+        )
+        self.advance_lease_clock(1_000)
+        renewed = await self.reopen_store().renew_ownership(
+            committed.ownership,
+            expected_revision=committed.revision,
+            lease_duration_ms=30_000,
+        )
+        self.assertEqual(renewed.revision, committed.revision)
+        self.assertEqual(renewed.last_event, committed.last_event)
+        self.assertGreater(renewed.lease_expires_at_ms, committed.lease_expires_at_ms)
+        self.assertEqual(await self.reopen_store().load(committed.identity), renewed)
+
+    async def test_expired_owner_cannot_verify_renew_or_append(self) -> None:
+        store = self.new_store()
+        committed = await store.append(
+            conformance_event(
+                job=11,
+                event_number=110,
+                operation=11,
+                operation_sequence=1,
+                state=BrokerState.VALIDATING,
+                phase=RuntimePhase.VALIDATE,
+                lease_duration_ms=10,
+            ),
+            expected_revision=0,
+        )
+        self.advance_lease_clock(10)
+        with self.assertRaises(StateStoreError) as verify_error:
+            await self.reopen_store().verify_ownership(
+                committed.ownership,
+                expected_revision=committed.revision,
+            )
+        self.assertEqual(verify_error.exception.code, StateStoreErrorCode.LEASE_EXPIRED)
+        with self.assertRaises(StateStoreError) as renew_error:
+            await store.renew_ownership(
+                committed.ownership,
+                expected_revision=committed.revision,
+                lease_duration_ms=30_000,
+            )
+        self.assertEqual(renew_error.exception.code, StateStoreErrorCode.LEASE_EXPIRED)
+        with self.assertRaises(StateStoreError) as append_error:
+            await store.append(
+                conformance_event(
+                    job=11,
+                    event_number=111,
+                    operation=11,
+                    operation_sequence=2,
+                    state=BrokerState.PREPARING,
+                    phase=RuntimePhase.IMAGE,
+                ),
+                expected_revision=committed.revision,
+            )
+        self.assertEqual(append_error.exception.code, StateStoreErrorCode.LEASE_EXPIRED)
+
+    async def test_recovery_waits_for_expiry_while_cancellation_preempts_live(self) -> None:
+        store = self.new_store()
+        live = await store.append(
+            conformance_event(
+                job=12,
+                event_number=120,
+                operation=12,
+                operation_sequence=1,
+                state=BrokerState.VALIDATING,
+                phase=RuntimePhase.VALIDATE,
+            ),
+            expected_revision=0,
+        )
+        recovery = conformance_event(
+            job=12,
+            event_number=121,
+            operation=121,
+            operation_sequence=1,
+            state=BrokerState.CLEANING,
+            phase=RuntimePhase.CLEANUP,
+            fencing_token=2,
+        )
+        with self.assertRaises(StateStoreError) as active_error:
+            await store.append(recovery, expected_revision=live.revision)
+        self.assertEqual(active_error.exception.code, StateStoreErrorCode.LEASE_ACTIVE)
+        cancelled = await store.append(
+            conformance_event(
+                job=12,
+                event_number=122,
+                operation=122,
+                operation_sequence=1,
+                state=BrokerState.CANCELLING,
+                phase=RuntimePhase.QUERY,
+                fencing_token=2,
+            ),
+            expected_revision=live.revision,
+        )
+        self.assertEqual(cancelled.ownership.fencing_token, 2)
+
+        expiring = await store.append(
+            conformance_event(
+                job=13,
+                event_number=130,
+                operation=13,
+                operation_sequence=1,
+                state=BrokerState.VALIDATING,
+                phase=RuntimePhase.VALIDATE,
+                lease_duration_ms=10,
+            ),
+            expected_revision=0,
+        )
+        self.advance_lease_clock(10)
+        claimed = await self.reopen_store().append(
+            conformance_event(
+                job=13,
+                event_number=131,
+                operation=131,
+                operation_sequence=1,
+                state=BrokerState.CLEANING,
+                phase=RuntimePhase.CLEANUP,
+                fencing_token=2,
+            ),
+            expected_revision=expiring.revision,
+        )
+        self.assertEqual(claimed.ownership.fencing_token, 2)
 
     async def test_recovery_scan_is_bounded_and_excludes_terminal_jobs(self) -> None:
         store = self.new_store()

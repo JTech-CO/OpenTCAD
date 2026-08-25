@@ -24,7 +24,7 @@
 5. Recoverable item 하나를 찾는 최종 scan을 수행합니다.
 6. 최종 scan이 비어 있을 때만 ready 상태를 공개합니다.
 
-Reconciliation이 미완료이면 job은 `cleaning`에 남고 admission gate도 닫힌 상태를 유지합니다. Store 실패는 공개 세부 정보가 없는 stable `store-unavailable` composition error가 됩니다. Ready 상태 뒤의 반복 startup 호출은 처음 완료된 report를 반환합니다. Gate는 계속 단일 process이고 durable store가 별도로 협력형 owner generation을 강제합니다. 어느 쪽도 distributed lease, liveness protocol, runtime 강제형 fence가 아닙니다.
+Reconciliation이 미완료이면 job은 `cleaning`에 남고 admission gate도 닫힌 상태를 유지합니다. Store 실패는 공개 세부 정보가 없는 stable `store-unavailable` composition error가 됩니다. Ready 상태 뒤의 반복 startup 호출은 처음 완료된 report를 반환합니다. Admission gate는 계속 단일 process입니다. Durable store는 제한된 owner lease를 별도로 강제합니다. Startup recovery는 이전 owner가 live인 동안 `owner-active`를 보고하고 gate를 닫은 상태로 유지하며 expiry 뒤에만 claim합니다. Guard가 적용된 runtime await는 정확한 generation을 호출 전, 진행 중, 완료 후에 갱신합니다. 이는 local liveness 계약이며 distributed 또는 multi-host lease가 아닙니다.
 
 ## Phase-time 순서
 
@@ -59,6 +59,6 @@ Runtime cleanup 자체가 미완료이면 공개 마지막 event는 `failed`일 
 
 ## 증거와 남은 게이트
 
-Execution composition test 9개는 startup admission 순서, SQLite phase 순서 및 owner-aware mapper 동등성, write 실패, restart 수렴, 기존 job 거부, stale object reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. Durable cancellation test 8개는 CAS 단일 승자, intent-before-query 순서, 이미 사라진 object 수렴, write 실패, restart checkpoint 5곳을 검사합니다. Ownership test 5개는 execution, cancellation, recovery takeover 경쟁을 추가합니다. 전체 dependency-free Python suite는 test 102개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
+Execution composition test 9개는 startup admission 순서, SQLite phase 순서 및 owner-aware mapper 동등성, write 실패, restart 수렴, 기존 job 거부, stale object reconciliation, 미완료 recovery의 gate 폐쇄, 제품 runtime 거부를 검사합니다. Durable cancellation test 8개는 CAS 단일 승자, intent-before-query 순서, 이미 사라진 object 수렴, write 실패, restart checkpoint 5곳을 검사합니다. Ownership test 5개는 execution, cancellation, recovery takeover 경쟁을 추가합니다. Owner lease 및 runtime fencing test 4개는 heartbeat renewal, expiry cancellation, stale-token 강제, cross-job 거부를 추가합니다. 전체 dependency-free Python suite는 test 113개를 포함하며 제품 runtime이나 solver를 호출하지 않습니다.
 
-구현된 ownership 경계는 [durable operation ownership 및 fencing](durable-operation-ownership.md)에 설명합니다. Owner liveness, lease expiry, runtime 강제형 token 전달, 제품 service transport, worker integration, multi-host coordination, retention compaction, backup 및 restore, host 전원 손실 자격 검증, 제품 runtime adapter, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.
+구현된 ownership 경계는 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 service transport, worker integration, 제품 runtime의 native token 저장과 강제, multi-host coordination, clock-skew policy, retention compaction, backup 및 restore, host 전원 손실 자격 검증, runtime socket, solver 실행은 계속 차단 또는 대기 상태입니다.

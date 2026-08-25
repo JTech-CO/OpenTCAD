@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from .fencing import RuntimeFencingContext
 from .models import (
     ContainerHandle,
     ImageIdentity,
@@ -21,19 +22,13 @@ from .models import (
 
 
 @runtime_checkable
-class RuntimeBackend(Protocol):
-    """Typed OCI lifecycle operations with no raw command or host-path surface."""
+class RuntimeJobBackend(Protocol):
+    """Job-bound lifecycle surface that enforces one fencing generation."""
 
     @property
-    def name(self) -> RuntimeKind: ...
+    def fence(self) -> RuntimeFencingContext: ...
 
-    async def probe(self) -> RuntimeProbe: ...
-
-    async def inspect_image(self, image: ImageIdentity) -> ImageIdentity: ...
-
-    async def ensure_image(self, image: ImageIdentity) -> ImageIdentity: ...
-
-    async def create_volume(self, identity: JobIdentity) -> VolumeHandle: ...
+    async def create_volume(self) -> VolumeHandle: ...
 
     async def stage_inputs(
         self,
@@ -67,4 +62,22 @@ class RuntimeBackend(Protocol):
 
     async def remove_volume(self, volume: VolumeHandle) -> None: ...
 
-    async def list_managed(self, job_id: str | None = None) -> ManagedObjects: ...
+    async def list_managed(self) -> ManagedObjects: ...
+
+
+@runtime_checkable
+class RuntimeBackend(Protocol):
+    """Global runtime surface; job lifecycle is available only through bind_job."""
+
+    @property
+    def name(self) -> RuntimeKind: ...
+
+    async def probe(self) -> RuntimeProbe: ...
+
+    async def inspect_image(self, image: ImageIdentity) -> ImageIdentity: ...
+
+    async def ensure_image(self, image: ImageIdentity) -> ImageIdentity: ...
+
+    def bind_job(self, fence: RuntimeFencingContext) -> RuntimeJobBackend: ...
+
+    async def list_managed(self) -> ManagedObjects: ...

@@ -42,6 +42,7 @@ from backend.app.runtime.models import (
     ValidatedInputArchive,
     VolumeHandle,
 )
+from backend.tests.broker.lease_support import ManualLeaseClock
 from backend.tests.broker.state_store_conformance import conformance_event, uuid_at
 from backend.tests.runtime.support import (
     ARCHIVE,
@@ -148,6 +149,19 @@ class TracingStateStore:
         if self.fail_at == self.append_count:
             raise StateStoreError(StateStoreErrorCode.STORE_UNAVAILABLE)
         return await self.delegate.append(event, expected_revision=expected_revision)
+
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
 
     async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
@@ -369,7 +383,8 @@ class StateCompositionContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_terminal_write_failure_downgrades_success_and_restart_closes_prefix(self) -> None:
         trace: list[str] = []
         backend = TracingBackend(trace)
-        delegate = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        delegate = InMemoryJobStateStore(clock=clock)
         store = TracingStateStore(delegate, trace)
         composition = await self.open_composition(backend, store, 50_005)
         store.append_count = 0
@@ -394,6 +409,7 @@ class StateCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         pending = await delegate.load(JobIdentity(job_id))
         self.assertEqual((pending.state, pending.revision), (BrokerState.CLEANING, 5))
 
+        clock.advance(30_001)
         restarted = await self.open_composition(backend, delegate, 50_006)
         final = await delegate.load(JobIdentity(job_id))
         self.assertTrue(restarted.ready)
@@ -430,8 +446,10 @@ class StateCompositionContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_startup_reconciles_stale_objects_before_opening_admission(self) -> None:
         trace: list[str] = []
         backend = TracingBackend(trace)
-        store = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        store = InMemoryJobStateStore(clock=clock)
         seeded = await self.seed_running(store, 308)
+        clock.advance(30_001)
         await self.create_running_objects(backend, seeded.identity)
         trace.clear()
         composition = DurableBrokerComposition(self.broker(backend), store)
@@ -449,8 +467,10 @@ class StateCompositionContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_incomplete_startup_recovery_keeps_admission_closed(self) -> None:
         trace: list[str] = []
         backend = LeakyTracingBackend(trace)
-        store = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        store = InMemoryJobStateStore(clock=clock)
         seeded = await self.seed_running(store, 309)
+        clock.advance(30_001)
         await self.create_running_objects(backend, seeded.identity)
         composition = DurableBrokerComposition(self.broker(backend), store)
         with self.assertRaises(StateCompositionError) as captured:

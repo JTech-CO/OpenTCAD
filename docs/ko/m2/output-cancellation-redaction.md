@@ -34,7 +34,7 @@ SUPREM, remesh, DEVSIM은 동일한 생성 규칙을 사용합니다. Kind, call
 
 ## 검증된 통제
 
-Dependency-free suite는 현재 test 102개를 포함합니다. 위 output, identity, redaction 통제에 더해 execution cancellation checkpoint 11곳 전체, 잘못된 identity 및 비정상 signal, concurrent cleanup 직렬화, 이미 사라진 object 수렴, durable-state revision CAS, event idempotency, transition 안전성, recovery scan, redacted owner UUID 및 fencing-token 저장, startup admission, phase-time persistence, stale-owner outcome, 부분 write cleanup을 검사합니다. 자세한 내용은 [lifecycle cancellation, cleanup, state 계약](lifecycle-cleanup-state.md)에 있습니다.
+Dependency-free suite는 현재 test 113개를 포함합니다. 위 output, identity, redaction 통제에 더해 execution cancellation checkpoint 11곳 전체, 잘못된 identity 및 비정상 signal, concurrent cleanup 직렬화, 이미 사라진 object 수렴, durable-state revision CAS, event idempotency, transition 안전성, recovery scan, redacted owner UUID 및 fencing-token 저장, startup admission, phase-time persistence, stale-owner outcome, revision-neutral lease renewal, expiry 거부, strict runtime fencing, 부분 write cleanup을 검사합니다. 자세한 내용은 [lifecycle cancellation, cleanup, state 계약](lifecycle-cleanup-state.md)에 있습니다.
 
 ## 남은 경계
 

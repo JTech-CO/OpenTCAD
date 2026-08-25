@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from enum import StrEnum
+from collections.abc import Awaitable, Callable
 from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
 
@@ -13,12 +14,19 @@ from backend.app.runtime.errors import (
     RetryDisposition,
     RuntimePhase,
 )
+from backend.app.runtime.fencing import RuntimeFencingContext
 from backend.app.runtime.models import (
     JobIdentity,
     RuntimeKind,
     TerminalClassification,
 )
 
+from .lease import (
+    DEFAULT_OWNER_LEASE_DURATION_MS,
+    LeaseClock,
+    OwnerLeasePolicy,
+    require_lease_clock,
+)
 from .models import BrokerState
 
 
@@ -34,6 +42,8 @@ class StateStoreErrorCode(StrEnum):
     INVALID_TRANSITION = "invalid-transition"
     STORE_UNAVAILABLE = "store-unavailable"
     OWNERSHIP_CONFLICT = "ownership-conflict"
+    LEASE_EXPIRED = "lease-expired"
+    LEASE_ACTIVE = "lease-active"
 
 
 class StateStoreError(Exception):
@@ -109,6 +119,7 @@ class DurableJobEvent:
     backend: RuntimeKind | None = None
     classification: TerminalClassification | None = None
     cleanup_complete: bool = False
+    lease_duration_ms: int = DEFAULT_OWNER_LEASE_DURATION_MS
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, JobIdentity):
@@ -178,6 +189,13 @@ class DurableJobEvent:
             _invalid_event()
         if self.cleanup_complete != (self.state in TERMINAL_STATES):
             _invalid_event()
+        if (
+            not isinstance(self.lease_duration_ms, int)
+            or isinstance(self.lease_duration_ms, bool)
+            or self.lease_duration_ms < 1
+            or self.lease_duration_ms > 300_000
+        ):
+            _invalid_event()
 
     @property
     def ownership(self) -> DurableOperationOwnership:
@@ -205,6 +223,7 @@ class DurableJobEvent:
                 self.classification.value if self.classification is not None else None
             ),
             "cleanup_complete": self.cleanup_complete,
+            "lease_duration_ms": self.lease_duration_ms,
         }
 
 
@@ -213,6 +232,7 @@ class JobStateSnapshot:
     identity: JobIdentity
     revision: int
     last_event: DurableJobEvent
+    lease_expires_at_ms: int
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, JobIdentity):
@@ -227,6 +247,12 @@ class JobStateSnapshot:
             _invalid_event()
         if self.last_event.identity != self.identity:
             _invalid_event()
+        if (
+            not isinstance(self.lease_expires_at_ms, int)
+            or isinstance(self.lease_expires_at_ms, bool)
+            or self.lease_expires_at_ms < 1
+        ):
+            _invalid_event()
 
     @property
     def state(self) -> BrokerState:
@@ -240,9 +266,19 @@ class JobStateSnapshot:
     def recoverable(self) -> bool:
         return self.state not in TERMINAL_STATES
 
+    def lease_live_at(self, now_ms: int) -> bool:
+        if (
+            not isinstance(now_ms, int)
+            or isinstance(now_ms, bool)
+            or now_ms < 0
+        ):
+            _invalid_event()
+        return now_ms < self.lease_expires_at_ms
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "revision": self.revision,
+            "lease_expires_at_ms": self.lease_expires_at_ms,
             **self.last_event.as_dict(),
         }
 
@@ -279,6 +315,14 @@ class DurableJobStateStore(Protocol):
         expected_revision: int,
     ) -> JobStateSnapshot: ...
 
+    async def renew_ownership(
+        self,
+        ownership: DurableOperationOwnership,
+        *,
+        expected_revision: int,
+        lease_duration_ms: int,
+    ) -> JobStateSnapshot: ...
+
     async def verify_ownership(
         self,
         ownership: DurableOperationOwnership,
@@ -309,7 +353,16 @@ class OperationOwnershipError(Exception):
 
 @runtime_checkable
 class OperationOwnershipGuard(Protocol):
+    @property
+    def runtime_fence(self) -> RuntimeFencingContext: ...
+
     async def assert_owned(self, phase: RuntimePhase) -> None: ...
+
+    async def run_owned(
+        self,
+        phase: RuntimePhase,
+        operation: Callable[[], Awaitable[Any]],
+    ) -> Any: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -317,6 +370,7 @@ class DurableOperationGuard:
     store: DurableJobStateStore
     ownership: DurableOperationOwnership
     expected_revision: int
+    lease_policy: OwnerLeasePolicy = OwnerLeasePolicy()
 
     def __post_init__(self) -> None:
         if not isinstance(self.store, DurableJobStateStore):
@@ -329,25 +383,87 @@ class DurableOperationGuard:
             or self.expected_revision < 1
         ):
             raise TypeError("DurableOperationGuard expected revision is invalid.")
+        if not isinstance(self.lease_policy, OwnerLeasePolicy):
+            raise TypeError("DurableOperationGuard requires OwnerLeasePolicy.")
+
+    @property
+    def runtime_fence(self) -> RuntimeFencingContext:
+        return RuntimeFencingContext(
+            self.ownership.identity,
+            self.ownership.owner_id,
+            self.ownership.fencing_token,
+        )
 
     async def assert_owned(self, phase: RuntimePhase) -> None:
         if not isinstance(phase, RuntimePhase):
             raise TypeError("DurableOperationGuard requires RuntimePhase.")
         try:
-            await self.store.verify_ownership(
+            await self.store.renew_ownership(
                 self.ownership,
                 expected_revision=self.expected_revision,
+                lease_duration_ms=self.lease_policy.duration_ms,
             )
         except StateStoreError as error:
             raise OperationOwnershipError(error.code, phase) from None
+
+    async def run_owned(
+        self,
+        phase: RuntimePhase,
+        operation: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        return await run_with_lease_heartbeat(
+            self,
+            phase,
+            self.lease_policy.heartbeat_interval_ms,
+            operation,
+        )
+
+
+async def run_with_lease_heartbeat(
+    guard: OperationOwnershipGuard,
+    phase: RuntimePhase,
+    heartbeat_interval_ms: int,
+    operation: Callable[[], Awaitable[Any]],
+) -> Any:
+    if not isinstance(phase, RuntimePhase) or not callable(operation):
+        raise TypeError("Owned runtime operation contract is invalid.")
+    await guard.assert_owned(phase)
+    task = asyncio.create_task(operation())
+    try:
+        while True:
+            done, _ = await asyncio.wait(
+                {task},
+                timeout=heartbeat_interval_ms / 1_000,
+            )
+            if done:
+                result = await task
+                await guard.assert_owned(phase)
+                return result
+            await guard.assert_owned(phase)
+    except BaseException:
+        if not task.done():
+            task.cancel()
+        try:
+            await task
+        except BaseException:
+            pass
+        raise
 
 
 def validate_operation_ownership(
     current: JobStateSnapshot | None,
     event: DurableJobEvent,
+    *,
+    now_ms: int,
 ) -> None:
     """Require a continuing owner or an explicit cancelling/cleaning takeover."""
 
+    if (
+        not isinstance(now_ms, int)
+        or isinstance(now_ms, bool)
+        or now_ms < 0
+    ):
+        _invalid_event()
     if current is None:
         if event.fencing_token != 1:
             raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
@@ -360,6 +476,8 @@ def validate_operation_ownership(
             or event.fencing_token != previous.fencing_token
         ):
             raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+        if not current.lease_live_at(now_ms):
+            raise StateStoreError(StateStoreErrorCode.LEASE_EXPIRED)
         return
 
     cancellation_takeover = (
@@ -375,11 +493,15 @@ def validate_operation_ownership(
     recovery_takeover = (
         event.state is BrokerState.CLEANING and current.state not in TERMINAL_STATES
     )
-    if (
-        event.fencing_token != previous.fencing_token + 1
-        or not (cancellation_takeover or recovery_takeover)
-    ):
+    if event.fencing_token != previous.fencing_token + 1:
         raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+    if cancellation_takeover:
+        return
+    if recovery_takeover:
+        if current.lease_live_at(now_ms):
+            raise StateStoreError(StateStoreErrorCode.LEASE_ACTIVE)
+        return
+    raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
 
 
 _TRANSITIONS: dict[BrokerState | None, frozenset[BrokerState]] = {
@@ -449,8 +571,9 @@ def validate_state_transition(
 class InMemoryStateStoreBacking:
     """Shared process-local backing for adapter conformance tests only."""
 
-    def __init__(self) -> None:
+    def __init__(self, clock: LeaseClock | None = None) -> None:
         self._lock = asyncio.Lock()
+        self._clock = require_lease_clock(clock)
         self._snapshots: dict[str, JobStateSnapshot] = {}
         self._events: dict[str, tuple[DurableJobEvent, JobStateSnapshot]] = {}
         self._operation_slots: dict[
@@ -462,10 +585,17 @@ class InMemoryStateStoreBacking:
 class InMemoryJobStateStore:
     """Contract test double. Data is lost with the process and is not durable."""
 
-    def __init__(self, backing: InMemoryStateStoreBacking | None = None) -> None:
+    def __init__(
+        self,
+        backing: InMemoryStateStoreBacking | None = None,
+        *,
+        clock: LeaseClock | None = None,
+    ) -> None:
         if backing is not None and not isinstance(backing, InMemoryStateStoreBacking):
             raise TypeError("InMemoryJobStateStore backing has the wrong type.")
-        self._backing = backing or InMemoryStateStoreBacking()
+        if backing is not None and clock is not None:
+            raise TypeError("Shared in-memory backing already owns its LeaseClock.")
+        self._backing = backing or InMemoryStateStoreBacking(clock)
 
     async def load(self, identity: JobIdentity) -> JobStateSnapshot | None:
         if not isinstance(identity, JobIdentity):
@@ -509,13 +639,58 @@ class InMemoryJobStateStore:
                 raise StateStoreError(StateStoreErrorCode.REVISION_CONFLICT)
             prior_state = current.state if current is not None else None
             validate_state_transition(prior_state, event.state)
-            validate_operation_ownership(current, event)
+            now_ms = self._backing._clock.now_ms()
+            validate_operation_ownership(current, event, now_ms=now_ms)
 
-            snapshot = JobStateSnapshot(event.identity, revision + 1, event)
+            snapshot = JobStateSnapshot(
+                event.identity,
+                revision + 1,
+                event,
+                now_ms + event.lease_duration_ms,
+            )
             self._backing._snapshots[event.identity.job_id] = snapshot
             self._backing._events[event.event_id] = (event, snapshot)
             self._backing._operation_slots[operation_slot] = (event, snapshot)
             return snapshot
+
+    async def renew_ownership(
+        self,
+        ownership: DurableOperationOwnership,
+        *,
+        expected_revision: int,
+        lease_duration_ms: int,
+    ) -> JobStateSnapshot:
+        if not isinstance(ownership, DurableOperationOwnership):
+            _invalid_event()
+        if (
+            not isinstance(expected_revision, int)
+            or isinstance(expected_revision, bool)
+            or expected_revision < 1
+            or not isinstance(lease_duration_ms, int)
+            or isinstance(lease_duration_ms, bool)
+            or lease_duration_ms < 1
+            or lease_duration_ms > 300_000
+        ):
+            _invalid_event()
+        async with self._backing._lock:
+            current = self._backing._snapshots.get(ownership.identity.job_id)
+            if (
+                current is None
+                or current.ownership != ownership
+                or current.revision != expected_revision
+            ):
+                raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+            now_ms = self._backing._clock.now_ms()
+            if not current.lease_live_at(now_ms):
+                raise StateStoreError(StateStoreErrorCode.LEASE_EXPIRED)
+            renewed = JobStateSnapshot(
+                current.identity,
+                current.revision,
+                current.last_event,
+                now_ms + lease_duration_ms,
+            )
+            self._backing._snapshots[ownership.identity.job_id] = renewed
+            return renewed
 
     async def verify_ownership(
         self,
@@ -542,6 +717,8 @@ class InMemoryJobStateStore:
                 )
             ):
                 raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+            if not current.lease_live_at(self._backing._clock.now_ms()):
+                raise StateStoreError(StateStoreErrorCode.LEASE_EXPIRED)
             return current
 
     async def scan_recoverable(

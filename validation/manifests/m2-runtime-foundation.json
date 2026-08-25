@@ -24,8 +24,8 @@
       "security-boundary"
     ],
     "numericalDelta": "none",
-    "dataMigration": "candidate-sqlite-schema-v2-forward-from-v1",
-    "rollback": "remove the inactive ownership composition and runtime foundation; schema v2 has no automatic downgrade"
+    "dataMigration": "candidate-sqlite-schema-v3-forward-from-v1-and-v2",
+    "rollback": "remove the inactive lease/fencing composition and runtime foundation; schema v3 has no automatic downgrade"
   },
   "entryConditions": {
     "m1CorpusGreen": false,
@@ -51,7 +51,7 @@
     {
       "id": "RUN-002",
       "status": "foundation-tested",
-      "result": "runtime-neutral protocol, immutable models, stable errors, and strict mock"
+      "result": "runtime-global and job-bound protocols, immutable fencing context, stable errors, and strict token-enforcing mock"
     },
     {
       "id": "RUN-003",
@@ -75,8 +75,8 @@
     },
     {
       "id": "RUN-007",
-      "status": "candidate-durable-ownership-tested",
-      "result": "inactive mock-only composition persists owner generations and fences stale execution, cancellation, and recovery attempts at checked boundaries"
+      "status": "candidate-lease-runtime-fencing-tested",
+      "result": "inactive mock-only composition persists bounded owner leases, heartbeats guarded awaits, and enforces exact runtime fencing contexts"
     }
   ],
   "securityBoundary": {
@@ -124,28 +124,23 @@
     "candidateDurableOperationOwnershipImplemented": true,
     "candidateDurableOperationOwnershipProductEnabled": false,
     "ownershipFencingStoreEnforced": true,
-    "ownershipFencingRuntimeEnforced": false,
-    "ownerLivenessImplemented": false,
-    "leaseExpiryImplemented": false,
+    "ownershipFencingRuntimeEnforced": true,
+    "ownerLivenessImplemented": true,
+    "leaseExpiryImplemented": true,
     "staleOwnerRuntimeMutationGuarded": true,
     "staleOwnerTerminalWriteRejected": true,
     "recoveryTakeoverFencingTested": true,
-    "schemaV1MigrationTested": true
+    "schemaV1MigrationTested": true,
+    "productRuntimeFencingEnforced": false,
+    "ownerHeartbeatImplemented": true,
+    "schemaV2MigrationTested": true
   },
   "contract": {
     "protocolOperations": [
       "probe",
       "inspect_image",
       "ensure_image",
-      "create_volume",
-      "stage_inputs",
-      "create_container",
-      "start",
-      "wait",
-      "kill",
-      "collect_artifacts",
-      "remove_container",
-      "remove_volume",
+      "bind_job",
       "list_managed"
     ],
     "capabilityVocabulary": [
@@ -168,7 +163,8 @@
       "fixed_non_root_user",
       "labels",
       "orphan_query",
-      "validated_artifact_transfer"
+      "validated_artifact_transfer",
+      "runtime_fencing"
     ],
     "requiredCapabilities": [
       "image_inspect",
@@ -189,7 +185,8 @@
       "fixed_non_root_user",
       "labels",
       "orphan_query",
-      "validated_artifact_transfer"
+      "validated_artifact_transfer",
+      "runtime_fencing"
     ],
     "stableErrorCodes": [
       "runtime-unavailable",
@@ -211,6 +208,18 @@
       "output-archive-rejected",
       "artifact-rejected",
       "operation-fenced"
+    ],
+    "jobProtocolOperations": [
+      "create_volume",
+      "stage_inputs",
+      "create_container",
+      "start",
+      "wait",
+      "kill",
+      "collect_artifacts",
+      "remove_container",
+      "remove_volume",
+      "list_managed"
     ]
   },
   "testContract": {
@@ -219,7 +228,7 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 102,
+    "testCount": 113,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
@@ -249,7 +258,7 @@
     "durableStateTestPath": "backend/tests/broker/test_state_store.py",
     "concurrentReconcileCallers": 4,
     "stateStoreUsesDatabase": true,
-    "durableAdapterConformanceTests": 7,
+    "durableAdapterConformanceTests": 10,
     "stateMappingTests": 5,
     "crashRecoveryTests": 4,
     "crashInjectionCheckpoints": 4,
@@ -258,8 +267,8 @@
     "stateMappingTestPath": "backend/tests/broker/test_state_mapping.py",
     "crashRecoveryTestPath": "backend/tests/broker/test_recovery.py",
     "adapterHandleReopenTested": true,
-    "sqliteAdapterConformanceTests": 7,
-    "sqliteSpecificContractTests": 5,
+    "sqliteAdapterConformanceTests": 10,
+    "sqliteSpecificContractTests": 6,
     "externalProcessHardExitTests": 1,
     "sqliteStateStoreTestPath": "backend/tests/broker/test_sqlite_state_store.py",
     "sqliteHardExitHelperPath": "backend/tests/broker/sqlite_recovery_child.py",
@@ -274,13 +283,16 @@
     "durableCancellationTestPath": "backend/tests/broker/test_durable_cancellation.py",
     "durableCancellationImplementation": "backend/app/broker/cancellation_arbitration.py",
     "operationOwnershipTests": 5,
-    "operationOwnershipTestPath": "backend/tests/broker/test_operation_ownership.py"
+    "operationOwnershipTestPath": "backend/tests/broker/test_operation_ownership.py",
+    "ownerLeaseRuntimeFencingTests": 4,
+    "ownerLeaseRuntimeFencingTestPath": "backend/tests/broker/test_owner_lease_runtime_fencing.py",
+    "leaseClockSupportPath": "backend/tests/broker/lease_support.py"
   },
   "sourceFiles": [
     {
       "path": "backend/app/runtime/__init__.py",
-      "bytes": 1298,
-      "sha256": "2bfaea469cddd3766d1c053495044c1ecd6b1d30c95ab5b193bf857adaabf86a"
+      "bytes": 1414,
+      "sha256": "385d51aa6d0aaeb11b8d8581a2654ec316fc72f356b475a8f06d22247e998599"
     },
     {
       "path": "backend/app/runtime/errors.py",
@@ -289,28 +301,33 @@
     },
     {
       "path": "backend/app/runtime/models.py",
-      "bytes": 21219,
-      "sha256": "9fe119b626aa97e88522d38831d6ce20b237a5435b057203f9e6ebae6a9ae908"
+      "bytes": 21268,
+      "sha256": "2f5013b783136219710e98344231b2686660c5db56632d5621ee75d894cf269a"
     },
     {
       "path": "backend/app/runtime/policy.py",
-      "bytes": 6479,
-      "sha256": "e4e5dc819b553e0e0d7d22eca3928eb87ac8f039b3532209bf54882606c24057"
+      "bytes": 6502,
+      "sha256": "23f1c200b4880fce3d07e845d08857629bdcdac0b0d016a3b933427e3ae3febe"
     },
     {
       "path": "backend/app/runtime/protocol.py",
-      "bytes": 1833,
-      "sha256": "c9915f8f693b3faf408c2ad5260a8c2d4eb3365242d73a1096c7323986acf012"
+      "bytes": 2161,
+      "sha256": "14e0e41c87650975e814a3f3a527e4d2ec2b72d99dea548b95d75eca9db1d6f0"
+    },
+    {
+      "path": "backend/app/runtime/fencing.py",
+      "bytes": 1612,
+      "sha256": "8d1f5b87fc4eebf7e5eeacaaece13b0ba17b426cf73b08d64ac4e585e4af9a29"
     },
     {
       "path": "backend/app/runtime/mock_backend.py",
-      "bytes": 17498,
-      "sha256": "b382bf30e278e32801da8f12d7db1732dd1133206a314b58d4263f07b1262fb6"
+      "bytes": 24264,
+      "sha256": "f817d971698c10da18078a5d29a1a04488a0c9453d7fc419a5c3da189eefddaf"
     },
     {
       "path": "backend/app/broker/__init__.py",
-      "bytes": 4242,
-      "sha256": "6c1f9e44c12e3b6054bd23535e08aa7b305ac1eeb7cd914106e7f1b70742fe7d"
+      "bytes": 4619,
+      "sha256": "d9cb3cd36163011cca125e367ebefbb96048700f79fc635aef6245053ccd3846"
     },
     {
       "path": "backend/app/broker/archive.py",
@@ -343,9 +360,14 @@
       "sha256": "f61bda45867b06b3339468263f098d35131b45302b172fa388a3e22e1ec8584d"
     },
     {
+      "path": "backend/app/broker/lease.py",
+      "bytes": 1983,
+      "sha256": "9404779f92696a49b25e968a18f9b5e110706f86c3998021f31b70c5c9abf802"
+    },
+    {
       "path": "backend/app/broker/live_state.py",
-      "bytes": 8532,
-      "sha256": "9cc1444774dc9fed9a4214a32ada27b4097e1f4d7670352848e5af6f6ff8c879"
+      "bytes": 9676,
+      "sha256": "b38816947cfad4bb50f302bafead8e06623fb526a259c2ee94a4c48f0d52fb03"
     },
     {
       "path": "backend/app/broker/models.py",
@@ -354,8 +376,8 @@
     },
     {
       "path": "backend/app/broker/orchestrator.py",
-      "bytes": 42431,
-      "sha256": "c85379836537aad70502e6bc50f4decf68de9b9144366df49d11fddf7b6490b3"
+      "bytes": 45165,
+      "sha256": "331e8d7333f8c4132d105979217ab4b78173cdb3dcdd507cbacf69860b038779"
     },
     {
       "path": "backend/app/broker/output_archive.py",
@@ -364,13 +386,13 @@
     },
     {
       "path": "backend/app/broker/state.py",
-      "bytes": 19052,
-      "sha256": "a6476502f74bb938f48141ee5796bba08edde1d6adb8692a617dbde75444cf97"
+      "bytes": 25020,
+      "sha256": "5e10a4a69bec55f15217d5a58171846b206efd9bdcf3e8eb7b19530bad867fac"
     },
     {
       "path": "backend/app/broker/sqlite_state.py",
-      "bytes": 20672,
-      "sha256": "c5c5d17563fc91f77b762a7a5e4aac1601fbc2c8674542462429babfdf0c4451"
+      "bytes": 30021,
+      "sha256": "6aba315e7b0e1af4e1b445e2b2d940f839201cdcfc59b46ed47ddec44fa55473"
     },
     {
       "path": "backend/app/broker/state_mapping.py",
@@ -379,13 +401,13 @@
     },
     {
       "path": "backend/app/broker/recovery.py",
-      "bytes": 16518,
-      "sha256": "b949d54dff5133895093682221c4f01a5d818979fb808d468dcdfb626d347a0c"
+      "bytes": 18060,
+      "sha256": "ff02b457ecedb2751cf191bc38b4b8a12754e2baaabe2f01c4a636c2d8b134d5"
     },
     {
       "path": "backend/app/broker/state_composition.py",
-      "bytes": 11212,
-      "sha256": "6821489ccb82cc91f9f9fde23e6a5bc875d690a8f952186e75d07d72848e5dd5"
+      "bytes": 11623,
+      "sha256": "364a8ca47c963d29ea3742f815373498e228aeef7664690bcbf2ebe02baafc3d"
     },
     {
       "path": "backend/pyproject.toml",
@@ -423,6 +445,11 @@
       "sha256": "b811c516fab5be441b06e63b9adc0a56dd2cce5a90d2560ea3ed7936d858d0ec"
     },
     {
+      "path": "backend/tests/broker/lease_support.py",
+      "bytes": 594,
+      "sha256": "d235ce76b2f4b4c34687a7a49a091ba1550707804552e21ed53f6ff322d4a946"
+    },
+    {
       "path": "backend/tests/broker/test_cancellation_redaction.py",
       "bytes": 7666,
       "sha256": "bb2c60d6eac873edbee9a08f6e1057adeec660b20b112da559c2574de5574187"
@@ -434,13 +461,18 @@
     },
     {
       "path": "backend/tests/broker/test_durable_cancellation.py",
-      "bytes": 25740,
-      "sha256": "7689a2a6ec89a946a8cf4cbdb256ad4be3174c29bd2ff5956b8226d1f4cb3e8b"
+      "bytes": 26809,
+      "sha256": "8b128e0683ee3aab7e6f63f804a9063993e0cdf6a1c093cd883ee2ec2d2b1292"
     },
     {
       "path": "backend/tests/broker/test_operation_ownership.py",
-      "bytes": 17044,
-      "sha256": "6db2454df8c4f4a9155c878bb58e9be9a6364594bbda6f43975ecc264c23783f"
+      "bytes": 18564,
+      "sha256": "2608b125236f841b370e194342c9c6850cf1518c936962d1808e290bf5aeb23e"
+    },
+    {
+      "path": "backend/tests/broker/test_owner_lease_runtime_fencing.py",
+      "bytes": 7480,
+      "sha256": "7638f08e2248e176bd6f8b4074b5b14b5c1609b7ce92ec20bccf1ea39a98f7a0"
     },
     {
       "path": "backend/tests/broker/test_lifecycle_control.py",
@@ -459,28 +491,28 @@
     },
     {
       "path": "backend/tests/broker/state_store_conformance.py",
-      "bytes": 11615,
-      "sha256": "38789095f3c6291f560ee3fd2145e23b15b7a1cfc282c0869a2cd1165883c2c6"
+      "bytes": 16829,
+      "sha256": "d53ee4cc3f640e73a7453fadd42a774f1e8bca9d3bb40c2ea5eb633791fae266"
     },
     {
       "path": "backend/tests/broker/test_recovery.py",
-      "bytes": 10672,
-      "sha256": "1c21ff0f569915e9cfad62a4963decaf9b63c191b5122bac5b68c70dd10c2888"
+      "bytes": 11432,
+      "sha256": "e6bd350e62b982fca7dc8968296bca1f488edff746b259cc39a8525b5cd910d7"
     },
     {
       "path": "backend/tests/broker/sqlite_recovery_child.py",
-      "bytes": 1740,
-      "sha256": "5d18f6367d4a249c68ab4725a7320d7ad2bd6b484d4ae9aaef62cf7bbec4df15"
+      "bytes": 1828,
+      "sha256": "478cc4a6d5e9b7ba6756b0c78ad83e8a4f0fc69eb4eac3d3d933e0362f2d2b28"
     },
     {
       "path": "backend/tests/broker/test_sqlite_state_store.py",
-      "bytes": 12354,
-      "sha256": "6f8ef43f9a0be99cdebe25c3a6e9b5c1e4351dbebe6fe399f97a28731e40bac5"
+      "bytes": 16582,
+      "sha256": "15473d797d24bdbe94d9c5d71e10b1a982bf031b558def91353a6554d98b7512"
     },
     {
       "path": "backend/tests/broker/test_state_composition.py",
-      "bytes": 17869,
-      "sha256": "1e15093a7bf873848a988b1eaa917b4ce31f89fb8b37b5bca3ac3239309f6b43"
+      "bytes": 18481,
+      "sha256": "80da5aab3dafb0dfdd4df7e955c860f97b794faf7f0d529525b8e80457d4879a"
     },
     {
       "path": "backend/tests/broker/test_state_mapping.py",
@@ -489,8 +521,8 @@
     },
     {
       "path": "backend/tests/broker/test_state_store_conformance.py",
-      "bytes": 791,
-      "sha256": "99b318cffce42774e0da22208baa6cb8b7de404fa0cf1edca1f5f23158b43b1f"
+      "bytes": 989,
+      "sha256": "4a9c49b3a2a072cbd3b6bcf7e9e66370facff5e89302fb1723aecdaecdde861d"
     },
     {
       "path": "backend/tests/broker/test_state_store.py",
@@ -499,8 +531,8 @@
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 48263,
-      "sha256": "61eef2bdb3c0e691a6e042b6721f645e7a4e10aa81cc36aa44f5f226fe20877f"
+      "bytes": 55404,
+      "sha256": "15c48f970e8dfd75631db44d66c770779c41d20aeee039fd9288bccf81321654"
     },
     {
       "path": "tools/run-python-tests.mjs",
@@ -509,18 +541,18 @@
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 11474,
-      "sha256": "ef30ebc88f9c793415806e866cd29037433712f8bd85e564bb647a6eacd608c3"
+      "bytes": 12291,
+      "sha256": "289fd7be2e4596ad9c991b65743bd4297d49fa356b4cb1cf79ce4900cd64c339"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
-      "bytes": 4943,
-      "sha256": "d97f2c21024e39b1d2ad0727f09cd7818101b226aa1c2e0528a907690341326c"
+      "bytes": 5432,
+      "sha256": "9d4a6c5ecd553ce32b512c27c241a2fdfa99c465b8cf260b5bf8f8d85a17198e"
     },
     {
       "path": "docs/en/m2/broker-threat-model.md",
-      "bytes": 6653,
-      "sha256": "8e03cefc25dd2fd92541bad4145870a7cc414da4fecf8e1f2ebbce93282ec981"
+      "bytes": 6811,
+      "sha256": "7100f5d6459e4d18109e9b2764b6da5ff165538dce9673a5af7fb27941dd7b53"
     },
     {
       "path": "docs/en/m2/broker-archive-foundation.md",
@@ -529,53 +561,58 @@
     },
     {
       "path": "docs/en/m2/output-cancellation-redaction.md",
-      "bytes": 3513,
-      "sha256": "b29656232a29a3b64e39e26d8a683b2290f1fc3106d288ff2e5dbb339281fce9"
+      "bytes": 3587,
+      "sha256": "5436359f90559de73e1a0fc0ba613627ee4c4fe64e0b80ee866d16224f3ed782"
     },
     {
       "path": "docs/en/m2/lifecycle-cleanup-state.md",
-      "bytes": 6845,
-      "sha256": "45b6559993d6e131946757ac271bda8a699025a1deb4c9e8b4ec6ef2768fd509"
+      "bytes": 7488,
+      "sha256": "0ecf89d5efc474b0e083cfbda796e8bbe3f08f607eda6ea04404b6da176cae39"
     },
     {
       "path": "docs/en/m2/event-state-recovery.md",
-      "bytes": 8072,
-      "sha256": "a08d865ce0a2e81fa8ead8ea83e0a1b64a5fbde9a0365847339dc33750ea91f5"
+      "bytes": 9022,
+      "sha256": "f1455d640e9d007c75c28328f48c4cc83be728676bd1529e14df3c44075bc68b"
     },
     {
       "path": "docs/en/m2/sqlite-durable-state.md",
-      "bytes": 4935,
-      "sha256": "c125d967dec47a8d01cdd651110503e5c3c82ce1ca392e50f859bd5e534e3773"
+      "bytes": 5961,
+      "sha256": "064b8b4c5eb79cede879859f4852301451f8051c762e77e2a4bc231ac1e661a2"
     },
     {
       "path": "docs/en/m2/live-state-composition.md",
-      "bytes": 5430,
-      "sha256": "beb64ed03bba76331b32ca1355b2fab84bae1bda64cc5a8ef3271a7112573264"
+      "bytes": 5821,
+      "sha256": "7ead9282d80e8bcf995215506fc975f31419973880c8f7595f33cef2e3bf06ef"
     },
     {
       "path": "docs/en/m2/durable-cancellation-arbitration.md",
-      "bytes": 5799,
-      "sha256": "e9e22f4f92e51574d97def6d1a476fe9d0f0d7fa652f2833bd7f872e2ac51168"
+      "bytes": 6271,
+      "sha256": "401824fcc874464900526dd7eb1f9f1815d901931b0fdd3b009f1d97abd940e6"
     },
     {
       "path": "docs/en/m2/durable-operation-ownership.md",
-      "bytes": 5186,
-      "sha256": "61582cdab0a6d6e671d5b64c3f219a1cd04a3904b30aed904ccb439eafd532d6"
+      "bytes": 6172,
+      "sha256": "0739443c5b27769afdfe885396c6e7ff7d1248c239a6364813c1aef40dbc4fa2"
+    },
+    {
+      "path": "docs/en/m2/owner-lease-runtime-fencing.md",
+      "bytes": 4569,
+      "sha256": "2e28cd346526b4238f43108e14163edfbb6565e9e49a93bc704036741ea20a32"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 11865,
-      "sha256": "c87bf2dfe9973b30afb3732f815049733a242f045e6db66cc3f8d286501d9dae"
+      "bytes": 12794,
+      "sha256": "1b1fd261822808ee303d1903434d80dc2b2aa12bb6efb2ebb75d8eec9a045c50"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
-      "bytes": 5314,
-      "sha256": "896aac5b68a2e44147880a328f134e0d74c1dc5d15ed7fb58585d2a6cba89474"
+      "bytes": 5810,
+      "sha256": "fb5f9d41e63274dc3aaf940c775c294d5b1c1f50d74d33b739314c08ee073d4e"
     },
     {
       "path": "docs/ko/m2/broker-threat-model.md",
-      "bytes": 7045,
-      "sha256": "a7e595386832447569596ad29daebe6381ea09d914740efbce1ae724de151c5e"
+      "bytes": 7205,
+      "sha256": "ea491ba74b8a703577d07b0eb65f55f2962ba625f26145be336a80805bfd846e"
     },
     {
       "path": "docs/ko/m2/broker-archive-foundation.md",
@@ -584,38 +621,43 @@
     },
     {
       "path": "docs/ko/m2/output-cancellation-redaction.md",
-      "bytes": 3723,
-      "sha256": "2002ab1f59b53065f8e3441b84e720d4ff42641056a332c244f45c56ba32e428"
+      "bytes": 3794,
+      "sha256": "79237424892634a58e98fd2a9eedec435682efe0ee8ede83ba94e2838d6e349d"
     },
     {
       "path": "docs/ko/m2/lifecycle-cleanup-state.md",
-      "bytes": 7287,
-      "sha256": "326cf471dedbe2df3832ad5a8c2dd07223a84d1d5a1c800c706f42b3cd8e3062"
+      "bytes": 7957,
+      "sha256": "add71743c1c25d1cb73c9a49258a1f6241ccf095b14cfa24af094b6a11290b30"
     },
     {
       "path": "docs/ko/m2/event-state-recovery.md",
-      "bytes": 8708,
-      "sha256": "e7655b5cc5e23da46b8cd420c68d382251e5b3ae80456a69864a1e251c70ddbe"
+      "bytes": 9677,
+      "sha256": "ca395c755ea2f8358ef63578668d5c1f402f1d439905f6e0f194b39548eea0ec"
     },
     {
       "path": "docs/ko/m2/sqlite-durable-state.md",
-      "bytes": 5314,
-      "sha256": "9d163b627d87b49e9f920f0f978ea3c860e6d5967a95227e6fd6bcd362544d31"
+      "bytes": 6434,
+      "sha256": "f410f7bcc92a149958f04118bdfedc2cad9aa38b39c559cc4af6abd688d602c1"
     },
     {
       "path": "docs/ko/m2/live-state-composition.md",
-      "bytes": 5893,
-      "sha256": "4c65eb353d512b79c11b9085ed03da21384272b72096672edbeb8ead6213689a"
+      "bytes": 6365,
+      "sha256": "dcb14a866935e7a7cef510322ca3146b9977335a772ddfa1ee261378206d0b70"
     },
     {
       "path": "docs/ko/m2/durable-cancellation-arbitration.md",
-      "bytes": 6087,
-      "sha256": "fdf06bbf150b56f0ef2272b369a7bf50fd44e5d22dd2fffef55de2e8a49d8036"
+      "bytes": 6564,
+      "sha256": "89e6fdcb385e6091d37cabbd06fccfec47a42c70ab01f1794a47c6a1042c84df"
     },
     {
       "path": "docs/ko/m2/durable-operation-ownership.md",
-      "bytes": 5745,
-      "sha256": "bfb72f80848ca63d6cc9fba2d794bb4d140cdaceb666b3a5f76f1a867566a100"
+      "bytes": 6905,
+      "sha256": "a693e471616b5f90093723afbee711c2bb8d7b8a7044f76e616a12eb78072025"
+    },
+    {
+      "path": "docs/ko/m2/owner-lease-runtime-fencing.md",
+      "bytes": 5190,
+      "sha256": "699e74f1fe04880db6f64f06ed51ecc46f9b09bab854b24aaa1eae1c9c40e2e7"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -624,8 +666,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 8454,
-      "sha256": "5a6ed685ad6ca9baf63a32eedf0eb2be055152fa004e8ae2a7310ea24b56fbda"
+      "bytes": 9409,
+      "sha256": "6a70e458cd14bf3b1a4a25b948e89e6492f803225e687d09722c5120b23d7e8c"
     }
   ],
   "exitCriteria": {
@@ -660,8 +702,9 @@
     "productExternalCancellationWiring": "pending",
     "durableOperationOwnershipFencing": "candidate-framework-verified",
     "candidateDurableOperationOwnership": "framework-verified",
-    "runtimeEnforcedFencing": "pending",
-    "ownerLivenessLeaseExpiry": "pending"
+    "runtimeEnforcedFencing": "strict-mock-framework-verified",
+    "ownerLivenessLeaseExpiry": "candidate-framework-verified",
+    "productNativeRuntimeFencing": "pending"
   },
   "productExecutionAllowed": false,
   "distributionAllowed": false,
@@ -683,18 +726,18 @@
     },
     {
       "id": "BRK-006",
-      "status": "candidate-fenced-recovery-tested",
-      "result": "fresh recovery owners increment fencing tokens and a newer recovery fences stale reconciliation before checked mutation"
+      "status": "candidate-lease-aware-recovery-tested",
+      "result": "recovery refuses a live owner, takes over only after expiry with the next token, and strict mock reconciliation enforces the bound context"
     },
     {
       "id": "BRK-007",
-      "status": "candidate-fenced-cancellation-tested",
-      "result": "external cancellation takes over with the next owner generation before runtime query and stale cancellation cannot mutate or terminalize"
+      "status": "candidate-lease-runtime-fenced-cancellation-tested",
+      "result": "external cancellation preempts a live lease with the next owner generation before runtime query and uses a strict bound runtime context"
     },
     {
       "id": "BRK-008",
-      "status": "candidate-owner-state-tested",
-      "result": "redacted durable events persist owner UUID and fencing token and stale outcomes normalize to operation-fenced"
+      "status": "candidate-owner-lease-state-tested",
+      "result": "redacted durable events persist owner, token, and lease duration while revision-neutral renewal persists current expiry separately"
     }
   ],
   "archiveContract": {
@@ -779,6 +822,7 @@
     "operations": [
       "load",
       "append",
+      "renew_ownership",
       "verify_ownership",
       "scan_recoverable"
     ],
@@ -800,6 +844,7 @@
       "operation_sequence",
       "owner_id",
       "fencing_token",
+      "lease_duration_ms",
       "state",
       "phase",
       "code",
@@ -822,7 +867,22 @@
       "cancelling",
       "cleaning"
     ],
-    "ownershipVerificationExactRevision": true
+    "ownershipVerificationExactRevision": true,
+    "currentLeasePersistedFields": [
+      "job_id",
+      "operation_id",
+      "owner_id",
+      "fencing_token",
+      "revision",
+      "lease_expires_at_ms"
+    ],
+    "currentLeaseExpiryPersisted": true,
+    "renewalAdvancesJobRevision": false,
+    "expiredOwnerCanVerify": false,
+    "expiredOwnerCanRenew": false,
+    "expiredOwnerCanAppend": false,
+    "recoveryRequiresExpiredLease": true,
+    "cancellationCanPreemptLiveLease": true
   },
   "eventStateMappingContract": {
     "sourceSequenceContiguous": true,
@@ -848,8 +908,11 @@
       "idempotent-replay",
       "event-and-operation-conflicts",
       "concurrent-cas",
-      "bounded-recovery-pagination",
-      "owner-takeover-stale-token-after-reopen"
+      "owner-takeover-stale-token-after-reopen",
+      "live-lease-renewal-revision-neutral-after-reopen",
+      "expired-owner-rejected",
+      "recovery-waits-cancellation-preempts-expired-recovery-takes-over",
+      "bounded-recovery-pagination"
     ],
     "freshHandleReopenTested": true,
     "inMemoryBackingDurable": false,
@@ -884,20 +947,22 @@
     "claimUsesFreshOwnerAttempt": true,
     "takeoverIncrementsFencingToken": true,
     "staleReconcilerMutationAccepted": false,
-    "recoveryIdIsOwnerId": false
+    "recoveryIdIsOwnerId": false,
+    "recoveryRequiresExpiredLease": true,
+    "liveOwnerStatus": "owner-active",
+    "hardExitLeaseExpirationTested": true
   },
   "sqliteDurableStateContract": {
     "adapter": "python-stdlib-sqlite3",
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "localFileOnly": true,
     "memoryDatabaseAccepted": false,
     "uriDatabaseAccepted": false,
     "journalMode": "wal",
     "synchronous": "full",
     "appendTransaction": "begin-immediate",
-    "appendOnly": true,
     "automaticRetention": false,
-    "retentionPolicy": "append-only-no-automatic-deletion",
+    "retentionPolicy": "append-only-events-explicit-lease-renewal",
     "forwardOnlyMigration": true,
     "unknownForwardVersionAccepted": false,
     "destructiveMigrationAutomatic": false,
@@ -908,11 +973,17 @@
     "exactSchemaRequired": true,
     "candidateMockExecutionWiring": true,
     "productLiveBrokerWiring": false,
-    "previousSchemaVersion": 1,
+    "previousSchemaVersion": 2,
     "v1MigrationTested": true,
     "migrationPreservesRows": true,
     "migrationOwnerIdFromOperationId": true,
-    "migrationGenerationOrder": "first-operation-revision"
+    "migrationGenerationOrder": "first-operation-revision",
+    "legacySchemaVersion": 1,
+    "v2MigrationTested": true,
+    "eventLogAppendOnly": true,
+    "leaseControlRowMutable": true,
+    "renewalAdvancesJobRevision": false,
+    "migrationExpiredLeaseIsConservative": true
   },
   "liveStateCompositionContract": {
     "productEnabled": false,
@@ -952,7 +1023,11 @@
     "initialExecutionFencingToken": 1,
     "ownershipCheckedBeforeRuntimeBoundaries": true,
     "staleOwnerCleanupAccepted": false,
-    "staleOwnerTerminalWriteAccepted": false
+    "staleOwnerTerminalWriteAccepted": false,
+    "ownerLeaseHeartbeat": true,
+    "recoveryRequiresExpiredLease": true,
+    "jobLifecycleRuntimeFenceBound": true,
+    "productNativeRuntimeFence": false
   },
   "durableCancellationContract": {
     "productEnabled": false,
@@ -988,7 +1063,9 @@
     "ownershipTakeover": true,
     "fencingTokenIncrement": 1,
     "staleOwnerCleanupAccepted": false,
-    "staleOwnerTerminalWriteAccepted": false
+    "staleOwnerTerminalWriteAccepted": false,
+    "cancellationPreemptsLiveLease": true,
+    "runtimeFenceBoundBeforeQuery": true
   },
   "operationOwnershipContract": {
     "productEnabled": false,
@@ -1011,11 +1088,55 @@
     "staleOwnerRuntimeMutationAccepted": false,
     "staleOwnerCleanupAccepted": false,
     "staleOwnerTerminalAppendAccepted": false,
-    "runtimeEnforced": false,
+    "runtimeEnforced": true,
     "verificationAndRuntimeCallAtomic": false,
     "inFlightCallRevocation": false,
-    "ownerLiveness": false,
-    "leaseExpiry": false,
+    "ownerLiveness": true,
+    "leaseExpiry": true,
+    "multiHost": false,
+    "productNativeRuntimeEnforced": false,
+    "ownerHeartbeat": true,
+    "recoveryRequiresExpiredLease": true,
+    "cancellationPreemptsLiveLease": true,
+    "heartbeatCancelsPythonAwaitable": true,
+    "runtimeFenceLabels": [
+      "tcad.job_id",
+      "tcad.owner_id",
+      "tcad.fencing_token"
+    ],
+    "runtimeRejectsLowerToken": true,
+    "runtimeRejectsSameTokenDifferentOwner": true,
+    "runtimeRejectsCrossJobContext": true,
+    "clockSkewBounded": false
+  },
+  "ownerLeaseRuntimeFencingContract": {
+    "productEnabled": false,
+    "acceptedRuntime": "mock",
+    "clock": "utc-epoch-milliseconds",
+    "defaultDurationMs": 30000,
+    "defaultHeartbeatIntervalMs": 10000,
+    "maxDurationMs": 300000,
+    "currentExpiryPersisted": true,
+    "renewalRevisionNeutral": true,
+    "expiredOwnerRejected": true,
+    "sameOwnerCanRenewAfterExpiry": false,
+    "recoveryRequiresExpiredLease": true,
+    "cancellationPreemptsLiveLease": true,
+    "heartbeatBeforeDuringAfterAwait": true,
+    "heartbeatLossCancelsPythonAwaitable": true,
+    "jobLifecycleRequiresRuntimeBinding": true,
+    "runtimeFenceLabels": [
+      "tcad.job_id",
+      "tcad.owner_id",
+      "tcad.fencing_token"
+    ],
+    "strictMockRejectsLowerToken": true,
+    "strictMockRejectsSameTokenDifferentOwner": true,
+    "strictMockRejectsCrossJobContext": true,
+    "productNativeRuntimeEnforced": false,
+    "storeCommitAndRuntimeActivationAtomic": false,
+    "nativeInFlightRevocationProven": false,
+    "clockSkewBounded": false,
     "multiHost": false
   }
 }

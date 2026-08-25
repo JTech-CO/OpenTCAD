@@ -14,7 +14,7 @@ M1 수치 및 권리 게이트는 계속 열려 있습니다. 따라서 이 ADR�
 
 ## 제안 결정
 
-1. `RuntimeBackend`는 향후 sandbox broker가 소유하는 비동기 Python protocol입니다.
+1. `RuntimeBackend`는 향후 sandbox broker가 소유하는 Python protocol입니다. Global probe와 image operation은 이 surface에 남고 모든 job lifecycle operation은 `bind_job(RuntimeFencingContext)` 및 `RuntimeJobBackend`를 통해서만 사용할 수 있습니다.
 2. Worker는 `SandboxSpec`만 제출하며 raw runtime operation을 제출할 수 없습니다.
 3. `SandboxPolicy`는 profile, image, input, output, limit, capability 검사가 모두 통과한 뒤에만 spec을 `ValidatedSandboxSpec`으로 변환합니다.
 4. Backend별 option mapping은 분리된 Docker 및 Podman module 내부에 둡니다.
@@ -27,16 +27,17 @@ M1 수치 및 권리 게이트는 계속 열려 있습니다. 따라서 이 ADR�
 
 | 영역 | Operation | 경계 |
 |---|---|---|
-| Runtime | `probe` | 정규화한 health, version, OS, architecture, rootless 상태, capability |
-| Image | `inspect_image`, `ensure_image` | Digest 고정 `ImageIdentity`만 사용 |
-| Volume | `create_volume`, `stage_inputs`, `remove_volume` | Server UUID 및 validated spec 사용, host path 없음 |
-| Container | `create_container`, `start`, `wait`, `kill`, `remove_container` | Validated spec 및 opaque handle만 사용 |
-| Artifact | `collect_artifacts` | 예상 이름, hash, 개수, byte limit 적용 |
-| Repair | `list_managed` | 정확한 cleanup을 위한 label 범위 관리 객체 |
+| Runtime global | `probe` | 정규화한 health, version, OS, architecture, rootless 상태, capability |
+| Image global | `inspect_image`, `ensure_image` | Digest 고정 `ImageIdentity`만 사용 |
+| Job binding | `bind_job` | Canonical job UUID, owner UUID, 양의 fencing token으로 job-bound lifecycle 반환 |
+| Volume job lifecycle | `create_volume`, `stage_inputs`, `remove_volume` | Bound job context 및 validated spec 사용, host path 없음 |
+| Container job lifecycle | `create_container`, `start`, `wait`, `kill`, `remove_container` | Bound context, validated spec, opaque handle만 사용 |
+| Artifact job lifecycle | `collect_artifacts` | Bound context와 예상 이름, hash, 개수, byte limit 적용 |
+| Repair | Global 및 bound `list_managed` | Global startup discovery 또는 정확한 bound-job cleanup |
 
 ## 필수 실행 capability
 
-Image inspect 및 digest 검증, managed volume, 검증된 input 및 artifact transfer, container lifecycle, bounded output, CPU, memory, PID, time limit, network none, 전체 capability 제거, no-new-privileges, read-only root, writable tmpfs 통제, 고정 non-root user, label, orphan query는 필수입니다.
+Image inspect 및 digest 검증, managed volume, 검증된 input 및 artifact transfer, container lifecycle, bounded output, CPU, memory, PID, time limit, network none, 전체 capability 제거, no-new-privileges, read-only root, writable tmpfs 통제, 고정 non-root user, label, orphan query, runtime fencing 강제는 필수입니다.
 
 Image pull은 별도로 보고합니다. 승인 image가 이미 있을 때 pull capability가 없다고 실행 정책을 약화하지는 않습니다. Image를 inspect하고 identity를 맞출 수 없으면 거부합니다.
 
@@ -53,7 +54,7 @@ Runtime 자동 탐지는 RUN-006으로 미룹니다. 향후 결정은 결정론�
 - Socket을 추가하기 전에 strict memory backend로 broker를 시험할 수 있습니다.
 - 제품 adapter는 lifecycle 및 error test를 공유하지만 argument 또는 API 매핑은 분리합니다.
 - 새 capability field에는 contract 및 policy 검토가 필요합니다.
-- Canonical input/output archive 검증, 고정 job identity, phase 지정 cancellation, process-local cleanup 직렬화, 공개 및 내부 diagnostic 분리, owner-aware outcome 및 phase-time mapping, 공통 adapter conformance case 7개, durable-state interface, transaction 기반 v1 migration을 갖춘 비활성 SQLite schema-v2 후보, startup recovery admission, 부분 write cleanup, durable external cancellation CAS takeover, cancellation restart 경계 5곳, store 강제형 owner generation 및 협력형 fencing token, 별도 process hard-exit takeover를 broker 기반에 구현했습니다. 제품 runtime transfer 및 token 강제, owner liveness 및 lease expiry, 외부 cancellation transport, backup, power-loss 자격 검증은 별도 gate 상태 책임으로 남습니다.
+- Canonical input/output archive 검증, 고정 job identity, phase 지정 cancellation, process-local cleanup 직렬화, 공개 및 내부 diagnostic 분리, owner-aware outcome 및 phase-time mapping, 공통 adapter conformance case 10개, durable-state interface, transaction 기반 v1 및 v2 migration을 갖춘 비활성 SQLite schema-v3 후보, startup recovery admission, 부분 write cleanup, durable external cancellation CAS takeover, cancellation restart 경계 5곳, heartbeat renewal을 갖춘 제한된 owner lease, strict mock runtime fencing-context 강제, 별도 process hard-exit takeover를 broker 기반에 구현했습니다. 제품 runtime transfer 및 native token 강제, native in-flight 취소, 외부 cancellation transport, clock-skew policy, backup, power-loss 자격 검증은 별도 gate 상태 책임으로 남습니다.
 - 필수 검토와 M2 진입 증거가 생기기 전에는 이 제안을 승인 상태로 바꿀 수 없습니다.
 
 ## Rollback

@@ -26,6 +26,7 @@ from backend.app.broker import (
 )
 from backend.app.runtime.errors import ErrorCode, RuntimePhase
 from backend.app.runtime.models import RuntimeKind
+from backend.tests.broker.lease_support import ManualLeaseClock
 from backend.tests.broker.sqlite_recovery_child import HARD_EXIT_CODE
 from backend.tests.broker.state_store_conformance import (
     DurableStateStoreConformanceMixin,
@@ -41,15 +42,19 @@ class SQLiteStateStoreConformanceTests(
     def setUp(self) -> None:
         self._temporary = tempfile.TemporaryDirectory()
         self._database = Path(self._temporary.name) / "state.sqlite3"
+        self.clock = ManualLeaseClock()
 
     def tearDown(self) -> None:
         self._temporary.cleanup()
 
     def new_store(self) -> SQLiteJobStateStore:
-        return SQLiteJobStateStore(self._database)
+        return SQLiteJobStateStore(self._database, clock=self.clock)
 
     def reopen_store(self) -> SQLiteJobStateStore:
-        return SQLiteJobStateStore(self._database)
+        return SQLiteJobStateStore(self._database, clock=self.clock)
+
+    def advance_lease_clock(self, milliseconds: int) -> None:
+        self.clock.advance(milliseconds)
 
 
 class CompleteReconciler:
@@ -85,7 +90,7 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
     def tearDown(self) -> None:
         self._temporary.cleanup()
 
-    async def test_schema_v2_is_wal_append_only_redacted_and_inactive(self) -> None:
+    async def test_schema_v3_is_wal_event_append_only_redacted_and_inactive(self) -> None:
         for invalid in (":memory:", "file:state.sqlite3?mode=memory", 7):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(TypeError):
@@ -111,6 +116,11 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
                 for row in connection.execute("PRAGMA table_info(job_events)")
             )
             rows = connection.execute("SELECT COUNT(*) FROM job_events").fetchone()[0]
+            lease_columns = tuple(
+                row[1]
+                for row in connection.execute("PRAGMA table_info(job_leases)")
+            )
+            lease_rows = connection.execute("SELECT COUNT(*) FROM job_leases").fetchone()[0]
         self.assertEqual(version, SQLITE_STATE_SCHEMA_VERSION)
         self.assertEqual(str(mode).casefold(), "wal")
         self.assertEqual(rows, 1)
@@ -119,9 +129,13 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("host_path", columns)
         self.assertIn("owner_id", columns)
         self.assertIn("fencing_token", columns)
+        self.assertIn("lease_duration_ms", columns)
+        self.assertIn("lease_expires_at_ms", columns)
+        self.assertIn("job_revision", lease_columns)
+        self.assertEqual(lease_rows, 1)
         self.assertEqual(
             SQLITE_STATE_RETENTION_POLICY,
-            "append-only-no-automatic-deletion",
+            "append-only-events-explicit-lease-renewal",
         )
         self.assertFalse(SQLITE_STATE_PRODUCT_ENABLED)
         self.assertNotIn(str(self._database), repr(store))
@@ -179,13 +193,12 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
             (3, BrokerState.CANCELLING, operation_two),
         )
         self.assertEqual(migrated.ownership.fencing_token, 2)
-        self.assertEqual(
+        with self.assertRaises(StateStoreError) as expired:
             await store.verify_ownership(
                 migrated.ownership,
                 expected_revision=3,
-            ),
-            migrated,
-        )
+            )
+        self.assertEqual(expired.exception.code, StateStoreErrorCode.LEASE_EXPIRED)
         with closing(sqlite3.connect(self._database)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             rows = tuple(
@@ -203,6 +216,84 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
                 (operation_two, operation_two, 2),
             ),
         )
+
+    async def test_schema_v2_forward_migration_expires_legacy_lease(self) -> None:
+        job_id = uuid_at(10_260)
+        operation_id = uuid_at(20_260)
+        owner_id = uuid_at(30_260)
+        with closing(sqlite3.connect(self._database)) as connection:
+            connection.execute(
+                """
+                CREATE TABLE job_events (
+                    job_id TEXT NOT NULL,
+                    revision INTEGER NOT NULL CHECK (revision >= 1),
+                    event_id TEXT NOT NULL UNIQUE,
+                    operation_id TEXT NOT NULL,
+                    operation_sequence INTEGER NOT NULL CHECK (operation_sequence >= 1),
+                    owner_id TEXT NOT NULL,
+                    fencing_token INTEGER NOT NULL CHECK (fencing_token >= 1),
+                    state TEXT NOT NULL,
+                    phase TEXT NOT NULL,
+                    code TEXT,
+                    retry TEXT,
+                    backend TEXT,
+                    classification TEXT,
+                    cleanup_complete INTEGER NOT NULL CHECK (cleanup_complete IN (0, 1)),
+                    PRIMARY KEY (job_id, revision),
+                    UNIQUE (job_id, operation_id, operation_sequence)
+                )
+                """,
+            )
+            connection.execute(
+                "INSERT INTO job_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    job_id, 1, uuid_at(40_260), operation_id, 1,
+                    owner_id, 1, "running", "wait", None, None,
+                    "mock", None, 0,
+                ),
+            )
+            connection.execute("PRAGMA user_version = 2")
+            connection.commit()
+
+        store = SQLiteJobStateStore(self._database)
+        migrated = await store.load(
+            conformance_event(
+                job=260,
+                event_number=260,
+                operation=260,
+                operation_sequence=1,
+                state=BrokerState.VALIDATING,
+                phase=RuntimePhase.VALIDATE,
+            ).identity,
+        )
+        self.assertEqual(migrated.identity.job_id, job_id)
+        self.assertEqual(migrated.ownership.owner_id, owner_id)
+        self.assertEqual(migrated.ownership.fencing_token, 1)
+        with self.assertRaises(StateStoreError) as expired:
+            await store.verify_ownership(migrated.ownership, expected_revision=1)
+        self.assertEqual(expired.exception.code, StateStoreErrorCode.LEASE_EXPIRED)
+
+        claimed = await store.append(
+            conformance_event(
+                job=260,
+                event_number=261,
+                operation=261,
+                operation_sequence=1,
+                state=BrokerState.CLEANING,
+                phase=RuntimePhase.CLEANUP,
+                fencing_token=2,
+            ),
+            expected_revision=1,
+        )
+        self.assertEqual((claimed.revision, claimed.ownership.fencing_token), (2, 2))
+        with closing(sqlite3.connect(self._database)) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            lease = connection.execute(
+                "SELECT owner_id, fencing_token, job_revision FROM job_leases WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+        self.assertEqual(version, 3)
+        self.assertEqual(lease, (claimed.ownership.owner_id, 2, 2))
 
     async def test_locked_writer_maps_to_redacted_store_unavailable(self) -> None:
         store = SQLiteJobStateStore(self._database, busy_timeout_ms=25)
@@ -261,7 +352,10 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(str(captured.exception), "store-unavailable")
 
     async def test_hard_exit_claim_survives_process_and_recovery_converges(self) -> None:
-        store = SQLiteJobStateStore(self._database)
+        store = SQLiteJobStateStore(
+            self._database,
+            clock=ManualLeaseClock(),
+        )
         job = 203
         path = (
             (BrokerState.VALIDATING, RuntimePhase.VALIDATE),

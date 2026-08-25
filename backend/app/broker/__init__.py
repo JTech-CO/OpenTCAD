@@ -15,6 +15,14 @@ from .cancellation_arbitration import (
 )
 from .cleanup import JobCleanupCoordinator
 from .diagnostics import InternalDiagnostic
+from .lease import (
+    DEFAULT_OWNER_HEARTBEAT_INTERVAL_MS,
+    DEFAULT_OWNER_LEASE_DURATION_MS,
+    MAX_OWNER_LEASE_DURATION_MS,
+    LeaseClock,
+    OwnerLeasePolicy,
+    SystemLeaseClock,
+)
 from .lifecycle import CancellationSignal, LifecycleCheckpoint, PhaseCancellation
 from .live_state import LiveStateEmission, LiveStateSession, LiveStateWriteError
 from .models import (
@@ -108,19 +116,24 @@ __all__ = [
     "DurableJobStateStore",
     "DurableOperationGuard",
     "DurableOperationOwnership",
+    "DEFAULT_OWNER_HEARTBEAT_INTERVAL_MS",
+    "DEFAULT_OWNER_LEASE_DURATION_MS",
     "InMemoryJobStateStore",
     "InMemoryStateStoreBacking",
     "InputPayload",
     "InternalDiagnostic",
     "JobCleanupCoordinator",
     "JobStateSnapshot",
+    "LeaseClock",
     "LifecycleCheckpoint",
     "LiveStateEmission",
     "LiveStateSession",
     "LiveStateWriteError",
+    "MAX_OWNER_LEASE_DURATION_MS",
     "MappedStateBatch",
     "OperationOwnershipError",
     "OperationOwnershipGuard",
+    "OwnerLeasePolicy",
     "PhaseCancellation",
     "RecoverableStatePage",
     "ReconciliationReport",
@@ -147,6 +160,7 @@ __all__ = [
     "StateStoreError",
     "StateOperationContext",
     "StateStoreErrorCode",
+    "SystemLeaseClock",
     "build_canonical_input_archive",
     "build_canonical_output_archive",
     "output_archive_limits",

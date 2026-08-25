@@ -20,6 +20,7 @@ from backend.app.broker import (
 )
 from backend.app.runtime.errors import ErrorCode, RetryDisposition, RuntimePhase
 from backend.app.runtime.models import JobIdentity, RuntimeKind
+from backend.tests.broker.lease_support import ManualLeaseClock
 
 
 def uuid_at(value: int) -> str:
@@ -107,6 +108,19 @@ class BarrierScanStore:
     async def append(self, event, *, expected_revision):
         return await self.delegate.append(event, expected_revision=expected_revision)
 
+    async def renew_ownership(
+        self,
+        ownership,
+        *,
+        expected_revision,
+        lease_duration_ms,
+    ):
+        return await self.delegate.renew_ownership(
+            ownership,
+            expected_revision=expected_revision,
+            lease_duration_ms=lease_duration_ms,
+        )
+
     async def verify_ownership(self, ownership, *, expected_revision=None):
         return await self.delegate.verify_ownership(
             ownership,
@@ -182,9 +196,11 @@ class CrashRecoveryContractTests(unittest.IsolatedAsyncioTestCase):
         }
         for offset, checkpoint in enumerate(RecoveryCheckpoint, start=1):
             with self.subTest(checkpoint=checkpoint.value):
-                backing = InMemoryStateStoreBacking()
+                clock = ManualLeaseClock()
+                backing = InMemoryStateStoreBacking(clock)
                 store = InMemoryJobStateStore(backing)
                 seeded = await self.seed(store, 100 + offset)
+                clock.advance(30_001)
                 objects = {seeded.identity.job_id: 1}
                 reconciler = ObjectReconciler(objects)
                 request = RecoveryRequest(uuid_at(500_000 + offset), limit=1)
@@ -204,6 +220,7 @@ class CrashRecoveryContractTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((crashed.state, crashed.revision), (state, revision))
                 self.assertEqual(objects[seeded.identity.job_id], remaining)
 
+                clock.advance(30_001)
                 reopened = InMemoryJobStateStore(backing)
                 report = await CrashRecoveryCoordinator(
                     reopened,
@@ -220,8 +237,10 @@ class CrashRecoveryContractTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(report.items[0].status, RecoveryStatus.RECOVERED_FAILED)
 
     async def test_cancellation_intent_closes_as_cancelled(self) -> None:
-        store = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        store = InMemoryJobStateStore(clock=clock)
         seeded = await self.seed(store, 110, cancelling=True)
+        clock.advance(30_001)
         reconciler = ObjectReconciler({seeded.identity.job_id: 1})
         report = await CrashRecoveryCoordinator(
             store,
@@ -233,8 +252,10 @@ class CrashRecoveryContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report.items[0].status, RecoveryStatus.RECOVERED_CANCELLED)
 
     async def test_concurrent_recoverers_from_one_revision_have_one_cas_winner(self) -> None:
-        delegate = InMemoryJobStateStore()
+        clock = ManualLeaseClock()
+        delegate = InMemoryJobStateStore(clock=clock)
         seeded = await self.seed(delegate, 120)
+        clock.advance(30_001)
         store = BarrierScanStore(delegate)
         reconciler = ObjectReconciler({seeded.identity.job_id: 1})
         coordinators = (
@@ -253,9 +274,11 @@ class CrashRecoveryContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await delegate.load(seeded.identity)).state, BrokerState.FAILED)
 
     async def test_incomplete_cleanup_remains_recoverable_for_next_pass(self) -> None:
-        backing = InMemoryStateStoreBacking()
+        clock = ManualLeaseClock()
+        backing = InMemoryStateStoreBacking(clock)
         first_store = InMemoryJobStateStore(backing)
         seeded = await self.seed(first_store, 130)
+        clock.advance(30_001)
         objects = {seeded.identity.job_id: 1}
         reconciler = ObjectReconciler(objects, failures=1)
         first = await CrashRecoveryCoordinator(
@@ -269,6 +292,7 @@ class CrashRecoveryContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(pending.recoverable)
         self.assertEqual(objects[seeded.identity.job_id], 1)
 
+        clock.advance(30_001)
         reopened = InMemoryJobStateStore(backing)
         second = await CrashRecoveryCoordinator(
             reopened,

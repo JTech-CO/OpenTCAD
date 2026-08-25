@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from backend.app.runtime.errors import (
     ErrorCode,
@@ -10,6 +11,7 @@ from backend.app.runtime.errors import (
     RuntimeBackendError,
     RuntimePhase,
 )
+from backend.app.runtime.fencing import RuntimeFencingContext
 from backend.app.runtime.models import (
     ArtifactRecord,
     ContainerHandle,
@@ -23,7 +25,7 @@ from backend.app.runtime.models import (
     VolumeHandle,
 )
 from backend.app.runtime.policy import SandboxPolicy
-from backend.app.runtime.protocol import RuntimeBackend
+from backend.app.runtime.protocol import RuntimeBackend, RuntimeJobBackend
 
 from .archive import ArchiveLimits, validate_canonical_input_archive
 from .cancellation import CancellationOutcome, CancellationRequest
@@ -146,6 +148,7 @@ class SandboxBroker:
             StateStoreErrorCode.OWNERSHIP_CONFLICT,
             StateStoreErrorCode.REVISION_CONFLICT,
             StateStoreErrorCode.EVENT_CONFLICT,
+            StateStoreErrorCode.LEASE_EXPIRED,
         }
 
     def _capture_state_write_error(
@@ -189,6 +192,42 @@ class SandboxBroker:
     ) -> None:
         if guard is not None:
             await guard.assert_owned(phase)
+
+    @staticmethod
+    async def _run_owned(
+        guard: OperationOwnershipGuard | None,
+        phase: RuntimePhase,
+        operation: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        if guard is None:
+            return await operation()
+        return await guard.run_owned(phase, operation)
+
+    @staticmethod
+    def _runtime_fence(
+        identity: JobIdentity,
+        guard: OperationOwnershipGuard | None,
+    ) -> RuntimeFencingContext:
+        if guard is None:
+            return RuntimeFencingContext(identity, identity.job_id, 1)
+        fence = guard.runtime_fence
+        if fence.identity != identity:
+            raise RuntimeBackendError(
+                ErrorCode.IDENTITY_MISMATCH,
+                RuntimePhase.VALIDATE,
+                detail="runtime-fence-job-identity-mismatch",
+            )
+        return fence
+
+    def _job_runtime(
+        self,
+        identity: JobIdentity,
+        guard: OperationOwnershipGuard | None,
+    ) -> RuntimeJobBackend:
+        runtime = self._backend.bind_job(self._runtime_fence(identity, guard))
+        if not isinstance(runtime, RuntimeJobBackend):
+            raise TypeError("Runtime backend returned an invalid job binding.")
+        return runtime
 
     @staticmethod
     def _live_classification(
@@ -248,17 +287,24 @@ class SandboxBroker:
         ownership_guard: OperationOwnershipGuard | None = None,
     ) -> BrokerError | None:
         first_error: BrokerError | None = None
+        runtime = self._job_runtime(identity, ownership_guard)
         if container is not None:
             if started and not terminal:
                 try:
-                    await self._assert_owned(ownership_guard, RuntimePhase.KILL)
-                    await self._backend.kill(container, TerminationReason.SHUTDOWN)
+                    await self._run_owned(
+                        ownership_guard,
+                        RuntimePhase.KILL,
+                        lambda: runtime.kill(container, TerminationReason.SHUTDOWN),
+                    )
                 except RuntimeBackendError as error:
                     if error.code is not ErrorCode.CONTAINER_NOT_FOUND:
                         first_error = self._capture_error(identity, error)
             try:
-                await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
-                await self._backend.remove_container(container)
+                await self._run_owned(
+                    ownership_guard,
+                    RuntimePhase.CLEANUP,
+                    lambda: runtime.remove_container(container),
+                )
             except RuntimeBackendError as error:
                 if error.code is not ErrorCode.CONTAINER_NOT_FOUND:
                     captured = self._capture_error(identity, error)
@@ -266,8 +312,11 @@ class SandboxBroker:
                         first_error = captured
         if volume is not None:
             try:
-                await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
-                await self._backend.remove_volume(volume)
+                await self._run_owned(
+                    ownership_guard,
+                    RuntimePhase.CLEANUP,
+                    lambda: runtime.remove_volume(volume),
+                )
             except RuntimeBackendError as error:
                 if error.code is not ErrorCode.VOLUME_NOT_FOUND:
                     captured = self._capture_error(identity, error)
@@ -281,8 +330,12 @@ class SandboxBroker:
         ownership_guard: OperationOwnershipGuard | None = None,
     ) -> BrokerError | None:
         try:
-            await self._assert_owned(ownership_guard, RuntimePhase.QUERY)
-            remaining = await self._backend.list_managed(identity.job_id)
+            runtime = self._job_runtime(identity, ownership_guard)
+            remaining = await self._run_owned(
+                ownership_guard,
+                RuntimePhase.QUERY,
+                runtime.list_managed,
+            )
             handles = (*remaining.containers, *remaining.volumes)
             if any(handle.job_id != identity.job_id for handle in handles):
                 return BrokerError(
@@ -371,6 +424,7 @@ class SandboxBroker:
                 RuntimePhase.VALIDATE,
                 detail="state-session-context-mismatch",
             )
+        runtime = self._job_runtime(identity, state_session)
         events: list[BrokerEvent] = []
         result: RunResult | None = None
         artifacts: tuple[ArtifactRecord, ...] = ()
@@ -392,8 +446,11 @@ class SandboxBroker:
                 state_session=state_session,
             )
             self._checkpoint(cancellation, LifecycleCheckpoint.PROBE)
-            await self._assert_owned(state_session, RuntimePhase.PROBE)
-            probe = await self._backend.probe()
+            probe = await self._run_owned(
+                state_session,
+                RuntimePhase.PROBE,
+                self._backend.probe,
+            )
             if probe.health is not RuntimeHealth.AVAILABLE or probe.capabilities is None:
                 raise RuntimeBackendError(
                     ErrorCode.RUNTIME_UNAVAILABLE,
@@ -424,20 +481,35 @@ class SandboxBroker:
                 state_session=state_session,
             )
             self._checkpoint(cancellation, LifecycleCheckpoint.IMAGE)
-            await self._assert_owned(state_session, RuntimePhase.IMAGE)
-            await self._backend.ensure_image(request.spec.image)
+            await self._run_owned(
+                state_session,
+                RuntimePhase.IMAGE,
+                lambda: self._backend.ensure_image(request.spec.image),
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.VOLUME)
-            await self._assert_owned(state_session, RuntimePhase.VOLUME)
-            volume = await self._backend.create_volume(validated_spec.identity)
+            volume = await self._run_owned(
+                state_session,
+                RuntimePhase.VOLUME,
+                runtime.create_volume,
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.INPUT_STAGE)
-            await self._assert_owned(state_session, RuntimePhase.INPUT)
-            await self._backend.stage_inputs(volume, validated_spec, validated_archive)
+            await self._run_owned(
+                state_session,
+                RuntimePhase.INPUT,
+                lambda: runtime.stage_inputs(volume, validated_spec, validated_archive),
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.CONTAINER_CREATE)
-            await self._assert_owned(state_session, RuntimePhase.CREATE)
-            container = await self._backend.create_container(validated_spec, volume)
+            container = await self._run_owned(
+                state_session,
+                RuntimePhase.CREATE,
+                lambda: runtime.create_container(validated_spec, volume),
+            )
             self._checkpoint(cancellation, LifecycleCheckpoint.START)
-            await self._assert_owned(state_session, RuntimePhase.START)
-            await self._backend.start(container)
+            await self._run_owned(
+                state_session,
+                RuntimePhase.START,
+                lambda: runtime.start(container),
+            )
             started = True
 
             await self._event(
@@ -447,8 +519,11 @@ class SandboxBroker:
                 state_session=state_session,
             )
             self._checkpoint(cancellation, LifecycleCheckpoint.WAIT)
-            await self._assert_owned(state_session, RuntimePhase.WAIT)
-            result = await self._backend.wait(container)
+            result = await self._run_owned(
+                state_session,
+                RuntimePhase.WAIT,
+                lambda: runtime.wait(container),
+            )
             terminal = True
             if result.classification is TerminalClassification.SUCCEEDED:
                 await self._event(
@@ -459,8 +534,11 @@ class SandboxBroker:
                     classification=result.classification,
                 )
                 self._checkpoint(cancellation, LifecycleCheckpoint.ARTIFACT_COLLECTION)
-                await self._assert_owned(state_session, RuntimePhase.ARTIFACT)
-                raw_archive = await self._backend.collect_artifacts(container)
+                raw_archive = await self._run_owned(
+                    state_session,
+                    RuntimePhase.ARTIFACT,
+                    lambda: runtime.collect_artifacts(container),
+                )
                 limits = output_archive_limits(
                     request.spec.limits.artifact_bytes,
                     request.spec.limits.file_count,
@@ -485,10 +563,13 @@ class SandboxBroker:
                     state_session=state_session,
                 )
                 if started and not terminal and container is not None:
-                    await self._assert_owned(state_session, RuntimePhase.KILL)
-                    result = await self._backend.kill(
-                        container,
-                        TerminationReason.CANCELLATION,
+                    result = await self._run_owned(
+                        state_session,
+                        RuntimePhase.KILL,
+                        lambda: runtime.kill(
+                            container,
+                            TerminationReason.CANCELLATION,
+                        ),
                     )
                     terminal = True
                     if result.classification is not TerminalClassification.CANCELLED:
@@ -706,6 +787,7 @@ class SandboxBroker:
         intent_event: BrokerEvent | None,
         crash_signal: DurableCancellationCrashSignal | None,
     ) -> CancellationOutcome:
+        runtime = self._job_runtime(identity, state_session)
         events: list[BrokerEvent] = [] if intent_event is None else [intent_event]
         result: RunResult | None = None
         primary_error: BrokerError | None = None
@@ -719,8 +801,11 @@ class SandboxBroker:
         if intent_event is None:
             await self._event(events, BrokerState.VALIDATING, RuntimePhase.QUERY)
         try:
-            await self._assert_owned(state_session, RuntimePhase.QUERY)
-            managed = await self._backend.list_managed(identity.job_id)
+            managed = await self._run_owned(
+                state_session,
+                RuntimePhase.QUERY,
+                runtime.list_managed,
+            )
             handles = (*managed.containers, *managed.volumes)
             if any(handle.job_id != identity.job_id for handle in handles):
                 raise RuntimeBackendError(
@@ -755,10 +840,13 @@ class SandboxBroker:
                     RuntimePhase.KILL,
                     state_session=state_session,
                 )
-                await self._assert_owned(state_session, RuntimePhase.KILL)
-                result = await self._backend.kill(
-                    container,
-                    TerminationReason.CANCELLATION,
+                result = await self._run_owned(
+                    state_session,
+                    RuntimePhase.KILL,
+                    lambda: runtime.kill(
+                        container,
+                        TerminationReason.CANCELLATION,
+                    ),
                 )
                 terminal = True
                 if result.classification is not TerminalClassification.CANCELLED:
@@ -929,8 +1017,12 @@ class SandboxBroker:
         identity: JobIdentity,
         ownership_guard: OperationOwnershipGuard | None = None,
     ) -> ReconciliationReport:
-        await self._assert_owned(ownership_guard, RuntimePhase.QUERY)
-        managed = await self._backend.list_managed(identity.job_id)
+        runtime = self._job_runtime(identity, ownership_guard)
+        managed = await self._run_owned(
+            ownership_guard,
+            RuntimePhase.QUERY,
+            runtime.list_managed,
+        )
         errors: list[BrokerError] = []
         containers_removed = 0
         volumes_removed = 0
@@ -947,8 +1039,11 @@ class SandboxBroker:
         else:
             for container in managed.containers:
                 try:
-                    await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
-                    await self._backend.remove_container(container)
+                    await self._run_owned(
+                        ownership_guard,
+                        RuntimePhase.CLEANUP,
+                        lambda: runtime.remove_container(container),
+                    )
                 except RuntimeBackendError as error:
                     if error.code is ErrorCode.CONTAINER_NOT_FOUND:
                         containers_removed += 1
@@ -957,8 +1052,11 @@ class SandboxBroker:
                         errors.append(self._capture_error(identity, error))
                         continue
                     try:
-                        await self._assert_owned(ownership_guard, RuntimePhase.KILL)
-                        await self._backend.kill(container, TerminationReason.SHUTDOWN)
+                        await self._run_owned(
+                            ownership_guard,
+                            RuntimePhase.KILL,
+                            lambda: runtime.kill(container, TerminationReason.SHUTDOWN),
+                        )
                     except RuntimeBackendError as kill_error:
                         if kill_error.code is ErrorCode.CONTAINER_NOT_FOUND:
                             containers_removed += 1
@@ -966,8 +1064,11 @@ class SandboxBroker:
                         errors.append(self._capture_error(identity, kill_error))
                         continue
                     try:
-                        await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
-                        await self._backend.remove_container(container)
+                        await self._run_owned(
+                            ownership_guard,
+                            RuntimePhase.CLEANUP,
+                            lambda: runtime.remove_container(container),
+                        )
                     except RuntimeBackendError as retry_error:
                         if retry_error.code is not ErrorCode.CONTAINER_NOT_FOUND:
                             errors.append(self._capture_error(identity, retry_error))
@@ -976,16 +1077,22 @@ class SandboxBroker:
 
             for volume in managed.volumes:
                 try:
-                    await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
-                    await self._backend.remove_volume(volume)
+                    await self._run_owned(
+                        ownership_guard,
+                        RuntimePhase.CLEANUP,
+                        lambda: runtime.remove_volume(volume),
+                    )
                 except RuntimeBackendError as error:
                     if error.code is not ErrorCode.VOLUME_NOT_FOUND:
                         errors.append(self._capture_error(identity, error))
                         continue
                 volumes_removed += 1
 
-        await self._assert_owned(ownership_guard, RuntimePhase.QUERY)
-        remaining = await self._backend.list_managed(identity.job_id)
+        remaining = await self._run_owned(
+            ownership_guard,
+            RuntimePhase.QUERY,
+            runtime.list_managed,
+        )
         return ReconciliationReport(
             containers_found=len(managed.containers),
             containers_removed=containers_removed,

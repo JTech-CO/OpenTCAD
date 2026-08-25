@@ -1,6 +1,7 @@
 """Runtime-neutral contracts with no product runtime socket access."""
 
 from .errors import ErrorCode, RetryDisposition, RuntimeBackendError, RuntimePhase
+from .fencing import RuntimeFencingContext
 from .models import (
     ArtifactRecord,
     ContainerHandle,
@@ -24,7 +25,7 @@ from .models import (
     VolumeHandle,
 )
 from .policy import EngineProfile, SandboxPolicy
-from .protocol import RuntimeBackend
+from .protocol import RuntimeBackend, RuntimeJobBackend
 
 __all__ = [
     "ArtifactRecord",
@@ -40,6 +41,8 @@ __all__ = [
     "RetryDisposition",
     "RunResult",
     "RuntimeBackend",
+    "RuntimeFencingContext",
+    "RuntimeJobBackend",
     "RuntimeBackendError",
     "RuntimeCapabilities",
     "RuntimeHealth",

@@ -9,6 +9,7 @@ import sys
 
 from backend.app.broker import (
     CrashRecoveryCoordinator,
+    OwnerLeasePolicy,
     RecoveryCheckpoint,
     RecoveryRequest,
     ReconciliationReport,
@@ -53,6 +54,7 @@ async def _run(database: Path, recovery_id: str, job_id: str) -> None:
         SQLiteJobStateStore(database),
         UnreachableReconciler(),
         RuntimeKind.MOCK,
+        OwnerLeasePolicy(duration_ms=2, heartbeat_interval_ms=1),
     )
     await coordinator.recover(
         RecoveryRequest(recovery_id, limit=1),
