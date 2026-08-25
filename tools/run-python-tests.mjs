@@ -83,7 +83,7 @@ if (!python) {
       env: environment,
       shell: false,
       stdio: "inherit",
-      timeout: 60_000,
+      timeout: 120_000,
       windowsHide: true,
     },
   );

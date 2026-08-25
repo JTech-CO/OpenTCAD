@@ -75,8 +75,8 @@
     },
     {
       "id": "RUN-007",
-      "status": "candidate-lease-runtime-fencing-tested",
-      "result": "inactive mock-only composition persists bounded owner leases, heartbeats guarded awaits, and enforces exact runtime fencing contexts"
+      "status": "candidate-native-fence-conformance-tested",
+      "result": "inactive shared process-local authority, exact mock native-object labels, pre-operation activation, post-operation verification, takeover restrictions, and reusable adapter conformance are tested"
     }
   ],
   "securityBoundary": {
@@ -133,7 +133,12 @@
     "schemaV1MigrationTested": true,
     "productRuntimeFencingEnforced": false,
     "ownerHeartbeatImplemented": true,
-    "schemaV2MigrationTested": true
+    "schemaV2MigrationTested": true,
+    "candidateRuntimeFenceAuthorityImplemented": true,
+    "candidateRuntimeFenceAuthorityProductEnabled": false,
+    "nativeObjectFenceLabelsPersistedInMock": true,
+    "runtimeFenceConformanceSuiteImplemented": true,
+    "runtimeFencePostMutationVerificationTested": true
   },
   "contract": {
     "protocolOperations": [
@@ -217,6 +222,7 @@
       "wait",
       "kill",
       "collect_artifacts",
+      "inspect_fence",
       "remove_container",
       "remove_volume",
       "list_managed"
@@ -228,7 +234,7 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 113,
+    "testCount": 121,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
@@ -286,13 +292,19 @@
     "operationOwnershipTestPath": "backend/tests/broker/test_operation_ownership.py",
     "ownerLeaseRuntimeFencingTests": 4,
     "ownerLeaseRuntimeFencingTestPath": "backend/tests/broker/test_owner_lease_runtime_fencing.py",
-    "leaseClockSupportPath": "backend/tests/broker/lease_support.py"
+    "leaseClockSupportPath": "backend/tests/broker/lease_support.py",
+    "runtimeFenceConformanceTests": 8,
+    "runtimeFenceCommonCases": 5,
+    "runtimeFenceConformanceSuitePath": "backend/tests/runtime/fence_conformance.py",
+    "runtimeFenceConformanceTestPath": "backend/tests/runtime/test_runtime_fence_conformance.py",
+    "runtimeFenceAuthorityImplementation": "backend/app/runtime/fence_authority.py",
+    "runtimeTestProcessTimeoutMs": 120000
   },
   "sourceFiles": [
     {
       "path": "backend/app/runtime/__init__.py",
-      "bytes": 1414,
-      "sha256": "385d51aa6d0aaeb11b8d8581a2654ec316fc72f356b475a8f06d22247e998599"
+      "bytes": 2046,
+      "sha256": "128dd0a77a2e91dcb404cf3919aa86175b93c7f52b7011b1d8372feb72e4b014"
     },
     {
       "path": "backend/app/runtime/errors.py",
@@ -311,18 +323,23 @@
     },
     {
       "path": "backend/app/runtime/protocol.py",
-      "bytes": 2161,
-      "sha256": "14e0e41c87650975e814a3f3a527e4d2ec2b72d99dea548b95d75eca9db1d6f0"
+      "bytes": 2289,
+      "sha256": "5d577308ca4c877b44a46c8e8be4fecf5e3b0d87217d2547c72fdaf69b5673ae"
     },
     {
       "path": "backend/app/runtime/fencing.py",
-      "bytes": 1612,
-      "sha256": "8d1f5b87fc4eebf7e5eeacaaece13b0ba17b426cf73b08d64ac4e585e4af9a29"
+      "bytes": 4217,
+      "sha256": "d914a4dd67bf695b02fe894fd8862dc792150460b470e5c258673db2f7c2aaa8"
+    },
+    {
+      "path": "backend/app/runtime/fence_authority.py",
+      "bytes": 3256,
+      "sha256": "8970e195975fa3da08f370961e3c5b571914b81ccff00b7d0e57c4ddd4c3fc28"
     },
     {
       "path": "backend/app/runtime/mock_backend.py",
-      "bytes": 24264,
-      "sha256": "f817d971698c10da18078a5d29a1a04488a0c9453d7fc419a5c3da189eefddaf"
+      "bytes": 27888,
+      "sha256": "d7d20b12cf7371dcd0e987f0daea9ea70aa67b734ff9e5323a44760eb4452c32"
     },
     {
       "path": "backend/app/broker/__init__.py",
@@ -420,6 +437,11 @@
       "sha256": "783e18977d5d757ad45bbb85fb3df47c1cfe28f6aba0c5259502d9a1a5f4629d"
     },
     {
+      "path": "backend/tests/runtime/fence_conformance.py",
+      "bytes": 5947,
+      "sha256": "4be1941bbc8fb8b9b4a1b83caed088a290be6706337a178659fe9d1442a25836"
+    },
+    {
       "path": "backend/tests/runtime/test_identity.py",
       "bytes": 2027,
       "sha256": "b9c289514d219ea1ce4ae4ae94bd7399ca185738619cfe0b68b3665b785363e4"
@@ -438,6 +460,11 @@
       "path": "backend/tests/runtime/test_policy.py",
       "bytes": 6107,
       "sha256": "ae5159d074efb3d058884ab2841c4d0ddb5553cab8d974e275cb5994da178dda"
+    },
+    {
+      "path": "backend/tests/runtime/test_runtime_fence_conformance.py",
+      "bytes": 4505,
+      "sha256": "4b198fbc7f56ae6900bed3c3f241e55a8ad2e7b3ac6722c151954d7a3d9e7677"
     },
     {
       "path": "backend/tests/broker/test_archive.py",
@@ -531,18 +558,18 @@
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 55404,
-      "sha256": "15c48f970e8dfd75631db44d66c770779c41d20aeee039fd9288bccf81321654"
+      "bytes": 62376,
+      "sha256": "ebfb271d3dcdff4de9d180593eca2a4dce3dc1864e4b48875ac3dfb6da7fb001"
     },
     {
       "path": "tools/run-python-tests.mjs",
-      "bytes": 2769,
-      "sha256": "7ac8ce143fe0fc9a750b7f4f61c5d61a584f8271fc2bbc568fdcce1d141bd886"
+      "bytes": 2770,
+      "sha256": "d1630bacaaea01d66a6f8ac9fa783c5fca28ce1cf0c50c90b489eb76f91cd24b"
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 12291,
-      "sha256": "289fd7be2e4596ad9c991b65743bd4297d49fa356b4cb1cf79ce4900cd64c339"
+      "bytes": 13867,
+      "sha256": "b737fed5cde2fcbd2b26e5f19b8887f0d052c4164e98f480be846a807394bf89"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
@@ -562,17 +589,17 @@
     {
       "path": "docs/en/m2/output-cancellation-redaction.md",
       "bytes": 3587,
-      "sha256": "5436359f90559de73e1a0fc0ba613627ee4c4fe64e0b80ee866d16224f3ed782"
+      "sha256": "8021b62e178535819fc553f4a1c46365ddb41c7362abc19257716fd3c0ddf6a0"
     },
     {
       "path": "docs/en/m2/lifecycle-cleanup-state.md",
       "bytes": 7488,
-      "sha256": "0ecf89d5efc474b0e083cfbda796e8bbe3f08f607eda6ea04404b6da176cae39"
+      "sha256": "3ab6e7ac856789b82bfd9cd2b40c1607175ae7cb618244393bcecea959e022ed"
     },
     {
       "path": "docs/en/m2/event-state-recovery.md",
       "bytes": 9022,
-      "sha256": "f1455d640e9d007c75c28328f48c4cc83be728676bd1529e14df3c44075bc68b"
+      "sha256": "39051e1f6be701c62ca799b4fc42852cfcb9e5b41b1f7f9f08650ea53632877c"
     },
     {
       "path": "docs/en/m2/sqlite-durable-state.md",
@@ -582,27 +609,32 @@
     {
       "path": "docs/en/m2/live-state-composition.md",
       "bytes": 5821,
-      "sha256": "7ead9282d80e8bcf995215506fc975f31419973880c8f7595f33cef2e3bf06ef"
+      "sha256": "1193a3498ae1de3faa92fb6a080c7286cda4b4bd6431cac5d6d0ecd573b0ac10"
     },
     {
       "path": "docs/en/m2/durable-cancellation-arbitration.md",
       "bytes": 6271,
-      "sha256": "401824fcc874464900526dd7eb1f9f1815d901931b0fdd3b009f1d97abd940e6"
+      "sha256": "d4b757cc7b408ddf0782e29c7fb8f37617e6c0b85290fbf5bb311e1603312821"
     },
     {
       "path": "docs/en/m2/durable-operation-ownership.md",
-      "bytes": 6172,
-      "sha256": "0739443c5b27769afdfe885396c6e7ff7d1248c239a6364813c1aef40dbc4fa2"
+      "bytes": 6746,
+      "sha256": "6778cb1b4a2535c86549742d589ea33fb0a9a140ef1c7874e14ccf69d354785c"
     },
     {
       "path": "docs/en/m2/owner-lease-runtime-fencing.md",
-      "bytes": 4569,
-      "sha256": "2e28cd346526b4238f43108e14163edfbb6565e9e49a93bc704036741ea20a32"
+      "bytes": 5123,
+      "sha256": "8afbabf676c03c3f1835a191e6cfaea43a507063baea36af9897343c6a8b7a40"
+    },
+    {
+      "path": "docs/en/m2/native-runtime-fence-conformance.md",
+      "bytes": 4181,
+      "sha256": "304c97702d51674c7b5e5ab052e9a8d00a93f0b34b651375d33968b87b8b3774"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 12794,
-      "sha256": "1b1fd261822808ee303d1903434d80dc2b2aa12bb6efb2ebb75d8eec9a045c50"
+      "bytes": 14463,
+      "sha256": "f1f05825bc3ed7cd7785197a2d17ef6dce6172a18a7810ba101b251b7491d034"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
@@ -622,17 +654,17 @@
     {
       "path": "docs/ko/m2/output-cancellation-redaction.md",
       "bytes": 3794,
-      "sha256": "79237424892634a58e98fd2a9eedec435682efe0ee8ede83ba94e2838d6e349d"
+      "sha256": "bd41a8921273213857914867eed257da270d7b3aeefc876690b9645b29b464a4"
     },
     {
       "path": "docs/ko/m2/lifecycle-cleanup-state.md",
       "bytes": 7957,
-      "sha256": "add71743c1c25d1cb73c9a49258a1f6241ccf095b14cfa24af094b6a11290b30"
+      "sha256": "1b1a65694c87d1d96a299d28f3bc95bffd2869bc781fc453be5fa0982f9331b6"
     },
     {
       "path": "docs/ko/m2/event-state-recovery.md",
       "bytes": 9677,
-      "sha256": "ca395c755ea2f8358ef63578668d5c1f402f1d439905f6e0f194b39548eea0ec"
+      "sha256": "b7450c2fa129aac333267d270da1b90537e3c76ef1a370ad55c47fee03e363eb"
     },
     {
       "path": "docs/ko/m2/sqlite-durable-state.md",
@@ -642,22 +674,27 @@
     {
       "path": "docs/ko/m2/live-state-composition.md",
       "bytes": 6365,
-      "sha256": "dcb14a866935e7a7cef510322ca3146b9977335a772ddfa1ee261378206d0b70"
+      "sha256": "ae548c08bac1e1f5bbe24fbb6bd4c88ae02c94c805f0aedd10d16f1b56d52942"
     },
     {
       "path": "docs/ko/m2/durable-cancellation-arbitration.md",
       "bytes": 6564,
-      "sha256": "89e6fdcb385e6091d37cabbd06fccfec47a42c70ab01f1794a47c6a1042c84df"
+      "sha256": "f26cf0c62001f87cbd7a03d893bb52a3bcbe5f20ac084c66f5bf202551ef330f"
     },
     {
       "path": "docs/ko/m2/durable-operation-ownership.md",
-      "bytes": 6905,
-      "sha256": "a693e471616b5f90093723afbee711c2bb8d7b8a7044f76e616a12eb78072025"
+      "bytes": 7521,
+      "sha256": "2cc8ccc73b7edfa6f4de36a665ad2a4b073312f930c065d5d662a7fb824e85ca"
     },
     {
       "path": "docs/ko/m2/owner-lease-runtime-fencing.md",
-      "bytes": 5190,
-      "sha256": "699e74f1fe04880db6f64f06ed51ecc46f9b09bab854b24aaa1eae1c9c40e2e7"
+      "bytes": 5767,
+      "sha256": "24b2cb384674b075bcf846a758e65514ae1afaf9623a89e4516ee188b2ee4b54"
+    },
+    {
+      "path": "docs/ko/m2/native-runtime-fence-conformance.md",
+      "bytes": 4509,
+      "sha256": "f248dadf245c92394ef18dc20b858536437dafd97c598aacc0445e4d09860e6c"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -666,8 +703,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 9409,
-      "sha256": "6a70e458cd14bf3b1a4a25b948e89e6492f803225e687d09722c5120b23d7e8c"
+      "bytes": 10416,
+      "sha256": "d8f626415f2b6e1d1ad18707d2bd62bb6a9d7034d6cb84ecd5aa4f9d098befb6"
     }
   ],
   "exitCriteria": {
@@ -702,9 +739,11 @@
     "productExternalCancellationWiring": "pending",
     "durableOperationOwnershipFencing": "candidate-framework-verified",
     "candidateDurableOperationOwnership": "framework-verified",
-    "runtimeEnforcedFencing": "strict-mock-framework-verified",
+    "runtimeEnforcedFencing": "shared-authority-native-object-conformance-verified",
     "ownerLivenessLeaseExpiry": "candidate-framework-verified",
-    "productNativeRuntimeFencing": "pending"
+    "productNativeRuntimeFencing": "pending",
+    "candidateRuntimeFenceAuthority": "framework-verified",
+    "nativeObjectFenceConformance": "framework-verified"
   },
   "productExecutionAllowed": false,
   "distributionAllowed": false,
@@ -1107,7 +1146,18 @@
     "runtimeRejectsLowerToken": true,
     "runtimeRejectsSameTokenDifferentOwner": true,
     "runtimeRejectsCrossJobContext": true,
-    "clockSkewBounded": false
+    "clockSkewBounded": false,
+    "runtimeAuthorityScope": "process-local",
+    "runtimeAuthoritySharedAcrossAdapterInstances": true,
+    "nativeObjectLabelsPersistedInMock": true,
+    "runtimeActivatesBeforeOperation": true,
+    "runtimeVerifiesAfterOperation": true,
+    "staleCompletedResultSuppressed": true,
+    "predecessorTakeoverPhases": [
+      "query",
+      "kill",
+      "cleanup"
+    ]
   },
   "ownerLeaseRuntimeFencingContract": {
     "productEnabled": false,
@@ -1137,6 +1187,58 @@
     "storeCommitAndRuntimeActivationAtomic": false,
     "nativeInFlightRevocationProven": false,
     "clockSkewBounded": false,
-    "multiHost": false
+    "multiHost": false,
+    "runtimeAuthorityScope": "process-local",
+    "runtimeAuthoritySharedAcrossAdapterInstances": true,
+    "nativeObjectLabelsPersistedInMock": true,
+    "runtimeActivatesBeforeOperation": true,
+    "runtimeVerifiesAfterOperation": true,
+    "staleCompletedResultSuppressed": true,
+    "reusableRuntimeFenceConformanceCases": 5
+  },
+  "runtimeFenceAuthorityContract": {
+    "protocolPath": "backend/app/runtime/fence_authority.py",
+    "productEnabled": false,
+    "acceptedRuntime": "mock",
+    "referenceScope": "process-local",
+    "activationBeforeOperation": true,
+    "verificationAfterOperation": true,
+    "highestGenerationPerJob": true,
+    "sharedAcrossAdapterInstances": true,
+    "crossProcessDurable": false,
+    "storeCommitAndActivationAtomic": false,
+    "nativeInFlightRevocationProven": false,
+    "staleCompletedResultSuppressed": true,
+    "stableRejectionCode": "operation-fenced"
+  },
+  "nativeObjectFenceConformanceContract": {
+    "suitePath": "backend/tests/runtime/fence_conformance.py",
+    "concreteMockPath": "backend/tests/runtime/test_runtime_fence_conformance.py",
+    "commonCases": [
+      "exact-label-persistence-inspection",
+      "shared-authority-cross-adapter-fencing",
+      "same-token-owner-ambiguity-rejected",
+      "takeover-predecessor-query-kill-cleanup-only",
+      "cross-job-object-rejected"
+    ],
+    "labels": [
+      "tcad.job_id",
+      "tcad.owner_id",
+      "tcad.fencing_token"
+    ],
+    "inspectionOperation": "inspect_fence",
+    "canonicalPositiveDecimalTokenRequired": true,
+    "exactGenerationRequiredForNormalLifecycle": true,
+    "predecessorObjectPhases": [
+      "query",
+      "kill",
+      "cleanup"
+    ],
+    "malformedLabelsAccepted": false,
+    "postMutationAuthorityRecheck": true,
+    "staleCompletedResultSuppressed": true,
+    "cleanupConvergenceAfterTakeover": true,
+    "productDockerTested": false,
+    "productPodmanTested": false
   }
 }

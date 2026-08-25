@@ -1,7 +1,20 @@
 """Runtime-neutral contracts with no product runtime socket access."""
 
 from .errors import ErrorCode, RetryDisposition, RuntimeBackendError, RuntimePhase
-from .fencing import RuntimeFencingContext
+from .fence_authority import (
+    InMemoryRuntimeFenceAuthority,
+    RUNTIME_FENCE_AUTHORITY_PRODUCT_ENABLED,
+    RuntimeFenceAuthority,
+)
+from .fencing import (
+    RUNTIME_FENCE_LABEL_KEYS,
+    RUNTIME_FENCING_TOKEN_LABEL,
+    RUNTIME_JOB_ID_LABEL,
+    RUNTIME_OWNER_ID_LABEL,
+    TAKEOVER_OBJECT_PHASES,
+    RuntimeFencingContext,
+    enforce_runtime_object_fence,
+)
 from .models import (
     ArtifactRecord,
     ContainerHandle,
@@ -32,15 +45,22 @@ __all__ = [
     "ContainerHandle",
     "EngineProfile",
     "ErrorCode",
+    "InMemoryRuntimeFenceAuthority",
     "InputFile",
     "JobIdentity",
     "JobKind",
     "ManagedObjects",
     "RawArtifactArchive",
     "ResourceLimits",
+    "RUNTIME_FENCE_AUTHORITY_PRODUCT_ENABLED",
+    "RUNTIME_FENCE_LABEL_KEYS",
+    "RUNTIME_FENCING_TOKEN_LABEL",
+    "RUNTIME_JOB_ID_LABEL",
+    "RUNTIME_OWNER_ID_LABEL",
     "RetryDisposition",
     "RunResult",
     "RuntimeBackend",
+    "RuntimeFenceAuthority",
     "RuntimeFencingContext",
     "RuntimeJobBackend",
     "RuntimeBackendError",
@@ -51,10 +71,12 @@ __all__ = [
     "RuntimeProbe",
     "SandboxPolicy",
     "SandboxSpec",
+    "TAKEOVER_OBJECT_PHASES",
     "TerminalClassification",
     "TerminationReason",
     "ValidatedArtifactArchive",
     "ValidatedInputArchive",
     "ValidatedSandboxSpec",
     "VolumeHandle",
+    "enforce_runtime_object_fence",
 ]

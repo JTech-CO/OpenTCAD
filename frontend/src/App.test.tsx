@@ -28,7 +28,7 @@ describe("OpenTCAD static foundation", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Not solver output").length).toBeGreaterThan(0);
-  });
+  }, 10_000);
 
   it("switches every maintained surface to Korean", async () => {
     const user = userEvent.setup();

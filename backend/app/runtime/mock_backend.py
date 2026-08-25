@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import Any
 
-from .fencing import RuntimeFencingContext
+from .fence_authority import (
+    InMemoryRuntimeFenceAuthority,
+    RuntimeFenceAuthority,
+)
+from .fencing import RuntimeFencingContext, enforce_runtime_object_fence
 from .errors import (
     ErrorCode,
     RetryDisposition,
@@ -75,6 +79,7 @@ def full_mock_capabilities(**overrides: bool) -> RuntimeCapabilities:
 @dataclass(slots=True)
 class _MockVolume:
     handle: VolumeHandle
+    fence_labels: dict[str, str]
     inputs_staged: bool = False
     archive_sha256: str | None = None
 
@@ -84,6 +89,7 @@ class _MockContainer:
     handle: ContainerHandle
     volume: VolumeHandle
     validated_spec: ValidatedSandboxSpec
+    fence_labels: dict[str, str]
     state: str = "created"
     result: RunResult | None = None
 
@@ -115,15 +121,11 @@ class _MockRuntimeJobBackend:
         phase: RuntimePhase,
         operation: Callable[[], Awaitable[Any]],
     ) -> Any:
-        self._backend._enforce_fence(self._fence, self._fence.identity.job_id, phase)
+        await self._backend._activate_fence(self._fence, phase)
         token = _ACTIVE_RUNTIME_FENCE.set(self._fence)
         try:
             result = await operation()
-            self._backend._enforce_fence(
-                self._fence,
-                self._fence.identity.job_id,
-                phase,
-            )
+            await self._backend._verify_fence(self._fence, phase)
             return result
         finally:
             _ACTIVE_RUNTIME_FENCE.reset(token)
@@ -180,6 +182,15 @@ class _MockRuntimeJobBackend:
             lambda: self._backend.collect_artifacts(container),
         )
 
+    async def inspect_fence(
+        self,
+        handle: ContainerHandle | VolumeHandle,
+    ) -> RuntimeFencingContext:
+        return await self._invoke(
+            RuntimePhase.QUERY,
+            lambda: self._backend.inspect_fence(handle),
+        )
+
     async def remove_container(self, container: ContainerHandle) -> None:
         await self._invoke(
             RuntimePhase.CLEANUP,
@@ -208,17 +219,21 @@ class MockRuntimeBackend:
         images: tuple[ImageIdentity, ...],
         capabilities: RuntimeCapabilities | None = None,
         available: bool = True,
+        fence_authority: RuntimeFenceAuthority | None = None,
     ) -> None:
         self._capabilities = capabilities or full_mock_capabilities()
         if self._capabilities.backend is not RuntimeKind.MOCK:
             raise ValueError("Mock backend requires mock capabilities.")
         self._available = available
+        authority = fence_authority or InMemoryRuntimeFenceAuthority()
+        if not isinstance(authority, RuntimeFenceAuthority):
+            raise TypeError("Mock backend requires RuntimeFenceAuthority.")
+        self._fence_authority = authority
         self._images = {image.reference: image for image in images}
         self._volumes: dict[str, _MockVolume] = {}
         self._containers: dict[str, _MockContainer] = {}
         self._planned_results: dict[str, RunResult] = {}
         self._planned_artifact_archives: dict[str, RawArtifactArchive] = {}
-        self._runtime_fences: dict[str, RuntimeFencingContext] = {}
 
     @property
     def name(self) -> RuntimeKind:
@@ -234,19 +249,36 @@ class MockRuntimeBackend:
             )
         return _MockRuntimeJobBackend(self, fence)
 
-    def _enforce_fence(
+    async def _activate_fence(
         self,
         fence: RuntimeFencingContext,
+        phase: RuntimePhase,
+    ) -> None:
+        await self._fence_authority.activate(
+            fence,
+            phase=phase,
+            backend=self.name,
+        )
+
+    async def _verify_fence(
+        self,
+        fence: RuntimeFencingContext,
+        phase: RuntimePhase,
+    ) -> None:
+        await self._fence_authority.verify(
+            fence,
+            phase=phase,
+            backend=self.name,
+        )
+
+    async def _enforce_active_fence(
+        self,
         job_id: str,
         phase: RuntimePhase,
     ) -> None:
-        if not isinstance(fence, RuntimeFencingContext):
-            raise RuntimeBackendError(
-                ErrorCode.INVALID_SPEC,
-                phase,
-                backend=self.name.value,
-                detail="runtime-fencing-context-required",
-            )
+        fence = _ACTIVE_RUNTIME_FENCE.get()
+        if fence is None:
+            return
         if fence.identity.job_id != job_id:
             raise RuntimeBackendError(
                 ErrorCode.IDENTITY_MISMATCH,
@@ -254,28 +286,27 @@ class MockRuntimeBackend:
                 backend=self.name.value,
                 detail="runtime-fence-job-identity-mismatch",
             )
-        current = self._runtime_fences.get(job_id)
-        if current is not None and (
-            fence.fencing_token < current.fencing_token
-            or (
-                fence.fencing_token == current.fencing_token
-                and fence.owner_id != current.owner_id
-            )
-        ):
-            raise RuntimeBackendError(
-                ErrorCode.OPERATION_FENCED,
-                phase,
-                retry=RetryDisposition.INFRASTRUCTURE,
-                backend=self.name.value,
-                detail="runtime-fencing-token-rejected",
-            )
-        if current is None or fence.fencing_token > current.fencing_token:
-            self._runtime_fences[job_id] = fence
+        await self._verify_fence(fence, phase)
 
-    def _enforce_active_fence(self, job_id: str, phase: RuntimePhase) -> None:
+    @staticmethod
+    def _fence_labels(identity: JobIdentity) -> dict[str, str]:
         fence = _ACTIVE_RUNTIME_FENCE.get()
-        if fence is not None:
-            self._enforce_fence(fence, job_id, phase)
+        if fence is None:
+            fence = RuntimeFencingContext(identity, identity.job_id, 1)
+        return dict(fence.labels)
+
+    async def _enforce_object_fence(
+        self,
+        job_id: str,
+        labels: dict[str, str],
+        phase: RuntimePhase,
+    ) -> RuntimeFencingContext:
+        await self._enforce_active_fence(job_id, phase)
+        observed = RuntimeFencingContext.from_labels(labels)
+        requested = _ACTIVE_RUNTIME_FENCE.get()
+        if requested is not None:
+            enforce_runtime_object_fence(requested, observed, phase, self.name)
+        return observed
 
     def plan_result(
         self,
@@ -384,7 +415,7 @@ class MockRuntimeBackend:
     async def create_volume(self, identity: JobIdentity) -> VolumeHandle:
         self._require_available(RuntimePhase.VOLUME)
         if isinstance(identity, JobIdentity):
-            self._enforce_active_fence(identity.job_id, RuntimePhase.VOLUME)
+            await self._enforce_active_fence(identity.job_id, RuntimePhase.VOLUME)
         if not isinstance(identity, JobIdentity):
             raise RuntimeBackendError(
                 ErrorCode.INVALID_SPEC,
@@ -401,7 +432,7 @@ class MockRuntimeBackend:
                 backend=self.name.value,
             )
         handle = VolumeHandle(self.name, opaque_id, identity.job_id)
-        self._volumes[opaque_id] = _MockVolume(handle)
+        self._volumes[opaque_id] = _MockVolume(handle, self._fence_labels(identity))
         return handle
 
     async def stage_inputs(
@@ -412,7 +443,7 @@ class MockRuntimeBackend:
     ) -> None:
         self._require_available(RuntimePhase.INPUT)
         if isinstance(volume, VolumeHandle):
-            self._enforce_active_fence(volume.job_id, RuntimePhase.INPUT)
+            await self._enforce_active_fence(volume.job_id, RuntimePhase.INPUT)
         if not isinstance(spec, ValidatedSandboxSpec):
             raise RuntimeBackendError(
                 ErrorCode.INVALID_SPEC,
@@ -435,6 +466,11 @@ class MockRuntimeBackend:
                 detail="input-archive-manifest-mismatch",
             )
         managed = self._volume(volume, RuntimePhase.INPUT)
+        await self._enforce_object_fence(
+            volume.job_id,
+            managed.fence_labels,
+            RuntimePhase.INPUT,
+        )
         if volume.job_id != spec.spec.job_id:
             raise RuntimeBackendError(
                 ErrorCode.INVALID_SPEC,
@@ -454,7 +490,7 @@ class MockRuntimeBackend:
     ) -> ContainerHandle:
         self._require_available(RuntimePhase.CREATE)
         if isinstance(volume, VolumeHandle):
-            self._enforce_active_fence(volume.job_id, RuntimePhase.CREATE)
+            await self._enforce_active_fence(volume.job_id, RuntimePhase.CREATE)
         if not isinstance(spec, ValidatedSandboxSpec):
             raise RuntimeBackendError(
                 ErrorCode.INVALID_SPEC,
@@ -463,6 +499,11 @@ class MockRuntimeBackend:
                 detail="validated-spec-required",
             )
         managed_volume = self._volume(volume, RuntimePhase.CREATE)
+        await self._enforce_object_fence(
+            volume.job_id,
+            managed_volume.fence_labels,
+            RuntimePhase.CREATE,
+        )
         if not managed_volume.inputs_staged:
             raise self._invalid_state(RuntimePhase.CREATE, "inputs-not-staged")
         if volume.job_id != spec.spec.job_id:
@@ -489,14 +530,24 @@ class MockRuntimeBackend:
                 backend=self.name.value,
             )
         handle = ContainerHandle(self.name, opaque_id, spec.spec.job_id)
-        self._containers[opaque_id] = _MockContainer(handle, volume, spec)
+        self._containers[opaque_id] = _MockContainer(
+            handle,
+            volume,
+            spec,
+            self._fence_labels(spec.identity),
+        )
         return handle
 
     async def start(self, container: ContainerHandle) -> None:
         self._require_available(RuntimePhase.START)
         if isinstance(container, ContainerHandle):
-            self._enforce_active_fence(container.job_id, RuntimePhase.START)
+            await self._enforce_active_fence(container.job_id, RuntimePhase.START)
         managed = self._container(container, RuntimePhase.START)
+        await self._enforce_object_fence(
+            container.job_id,
+            managed.fence_labels,
+            RuntimePhase.START,
+        )
         if managed.state != "created":
             raise self._invalid_state(RuntimePhase.START, "container-not-created")
         managed.state = "running"
@@ -504,8 +555,13 @@ class MockRuntimeBackend:
     async def wait(self, container: ContainerHandle) -> RunResult:
         self._require_available(RuntimePhase.WAIT)
         if isinstance(container, ContainerHandle):
-            self._enforce_active_fence(container.job_id, RuntimePhase.WAIT)
+            await self._enforce_active_fence(container.job_id, RuntimePhase.WAIT)
         managed = self._container(container, RuntimePhase.WAIT)
+        await self._enforce_object_fence(
+            container.job_id,
+            managed.fence_labels,
+            RuntimePhase.WAIT,
+        )
         if managed.state != "running":
             raise self._invalid_state(RuntimePhase.WAIT, "container-not-running")
         result = self._planned_results.pop(
@@ -540,8 +596,13 @@ class MockRuntimeBackend:
     ) -> RunResult:
         self._require_available(RuntimePhase.KILL)
         if isinstance(container, ContainerHandle):
-            self._enforce_active_fence(container.job_id, RuntimePhase.KILL)
+            await self._enforce_active_fence(container.job_id, RuntimePhase.KILL)
         managed = self._container(container, RuntimePhase.KILL)
+        await self._enforce_object_fence(
+            container.job_id,
+            managed.fence_labels,
+            RuntimePhase.KILL,
+        )
         if not isinstance(reason, TerminationReason):
             raise RuntimeBackendError(
                 ErrorCode.INVALID_SPEC,
@@ -582,8 +643,13 @@ class MockRuntimeBackend:
     ) -> RawArtifactArchive:
         self._require_available(RuntimePhase.ARTIFACT)
         if isinstance(container, ContainerHandle):
-            self._enforce_active_fence(container.job_id, RuntimePhase.ARTIFACT)
+            await self._enforce_active_fence(container.job_id, RuntimePhase.ARTIFACT)
         managed = self._container(container, RuntimePhase.ARTIFACT)
+        await self._enforce_object_fence(
+            container.job_id,
+            managed.fence_labels,
+            RuntimePhase.ARTIFACT,
+        )
         if managed.state != "exited" or managed.result is None:
             raise self._invalid_state(RuntimePhase.ARTIFACT, "container-not-terminal")
         artifacts = managed.result.artifacts
@@ -616,8 +682,13 @@ class MockRuntimeBackend:
     async def remove_container(self, container: ContainerHandle) -> None:
         self._require_available(RuntimePhase.CLEANUP)
         if isinstance(container, ContainerHandle):
-            self._enforce_active_fence(container.job_id, RuntimePhase.CLEANUP)
+            await self._enforce_active_fence(container.job_id, RuntimePhase.CLEANUP)
         managed = self._container(container, RuntimePhase.CLEANUP)
+        await self._enforce_object_fence(
+            container.job_id,
+            managed.fence_labels,
+            RuntimePhase.CLEANUP,
+        )
         if managed.state == "running":
             raise self._invalid_state(RuntimePhase.CLEANUP, "running-container")
         del self._containers[container.opaque_id]
@@ -627,17 +698,44 @@ class MockRuntimeBackend:
     async def remove_volume(self, volume: VolumeHandle) -> None:
         self._require_available(RuntimePhase.CLEANUP)
         if isinstance(volume, VolumeHandle):
-            self._enforce_active_fence(volume.job_id, RuntimePhase.CLEANUP)
-        self._volume(volume, RuntimePhase.CLEANUP)
+            await self._enforce_active_fence(volume.job_id, RuntimePhase.CLEANUP)
+        managed = self._volume(volume, RuntimePhase.CLEANUP)
+        await self._enforce_object_fence(
+            volume.job_id,
+            managed.fence_labels,
+            RuntimePhase.CLEANUP,
+        )
         if any(item.volume == volume for item in self._containers.values()):
             raise self._invalid_state(RuntimePhase.CLEANUP, "container-still-managed")
         del self._volumes[volume.opaque_id]
+
+    async def inspect_fence(
+        self,
+        handle: ContainerHandle | VolumeHandle,
+    ) -> RuntimeFencingContext:
+        self._require_available(RuntimePhase.QUERY)
+        if isinstance(handle, ContainerHandle):
+            managed = self._container(handle, RuntimePhase.QUERY)
+        elif isinstance(handle, VolumeHandle):
+            managed = self._volume(handle, RuntimePhase.QUERY)
+        else:
+            raise RuntimeBackendError(
+                ErrorCode.INVALID_SPEC,
+                RuntimePhase.QUERY,
+                backend=self.name.value,
+                detail="managed-handle-required",
+            )
+        return await self._enforce_object_fence(
+            handle.job_id,
+            managed.fence_labels,
+            RuntimePhase.QUERY,
+        )
 
     async def list_managed(self, job_id: str | None = None) -> ManagedObjects:
         self._require_available(RuntimePhase.QUERY)
         if job_id is not None:
             _require_uuid(job_id, "query.job_id")
-            self._enforce_active_fence(job_id, RuntimePhase.QUERY)
+            await self._enforce_active_fence(job_id, RuntimePhase.QUERY)
         volumes = tuple(
             item.handle
             for item in self._volumes.values()
@@ -648,4 +746,19 @@ class MockRuntimeBackend:
             for item in self._containers.values()
             if job_id is None or item.handle.job_id == job_id
         )
+        if _ACTIVE_RUNTIME_FENCE.get() is not None:
+            for item in self._volumes.values():
+                if job_id is None or item.handle.job_id == job_id:
+                    await self._enforce_object_fence(
+                        item.handle.job_id,
+                        item.fence_labels,
+                        RuntimePhase.QUERY,
+                    )
+            for item in self._containers.values():
+                if job_id is None or item.handle.job_id == job_id:
+                    await self._enforce_object_fence(
+                        item.handle.job_id,
+                        item.fence_labels,
+                        RuntimePhase.QUERY,
+                    )
         return ManagedObjects(volumes=volumes, containers=containers)

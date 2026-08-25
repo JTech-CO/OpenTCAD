@@ -18,7 +18,7 @@ Guard가 적용된 모든 runtime await는 owner heartbeat로 감쌉니다. Guar
 
 `RuntimeBackend.bind_job(RuntimeFencingContext)`는 broker가 사용하는 유일한 job lifecycle 진입점입니다. 이 메서드는 하나의 job UUID, owner UUID, 양의 fencing token에 바인딩된 `RuntimeJobBackend`를 반환합니다. Context는 향후 OCI metadata label인 `tcad.job_id`, `tcad.owner_id`, `tcad.fencing_token`을 제공합니다. `runtime_fencing`은 실패 폐쇄형 필수 runtime capability입니다.
 
-Strict mock adapter는 job마다 승인한 가장 높은 generation을 보관합니다. 더 낮은 token, 같은 token의 다른 owner, 다른 job handle에 사용된 context를 거부합니다. 각 job operation 전후에 bound context를 다시 검사합니다. 따라서 cancellation 또는 recovery가 generation을 올리면 이전 broker가 store guard를 우회하더라도 이전 execution의 후속 호출은 fence 처리됩니다.
+Mock adapter는 RuntimeFenceAuthority를 주입받습니다. 공유형 process-local 기준 authority는 adapter instance 사이에서 job별로 활성화된 가장 높은 generation을 보관합니다. 모든 bound 호출은 adapter 작업 직전에 활성화하고 반환 직후에 다시 확인합니다. Managed mock volume과 container는 정확한 job, owner, token label을 저장하고 모든 operation은 관찰한 context를 복원해 검사합니다. 일반 lifecycle 작업에는 정확한 generation이 필요하고 더 높은 takeover는 이전 object에 query, kill, cleanup만 수행할 수 있습니다. 낮은 token, 같은 token의 owner 불일치, 잘못된 label, cross-job context, handle 불일치는 실패 폐쇄합니다.
 
 Mock backend의 raw lifecycle 메서드는 바인딩되지 않은 test seed 전용 표면으로만 남습니다. 이 메서드는 `RuntimeBackend` 제품 protocol에 포함되지 않으며 broker의 job lifecycle에서 호출하지 않습니다.
 
@@ -26,10 +26,10 @@ Mock backend의 raw lifecycle 메서드는 바인딩되지 않은 test seed 전�
 
 Schema v3는 정확한 schema v1 및 v2 file을 forward-only `BEGIN IMMEDIATE` transaction으로 migration합니다. 기존 event와 owner generation은 보존됩니다. Legacy row의 만료 시각은 `1`이 되므로 migration된 owner는 보수적으로 expired 상태가 되고 다음 작업 전에 recovery claim이 필요합니다. 알 수 없거나 일치하지 않는 schema는 계속 실패 폐쇄합니다.
 
-Memory 및 SQLite 공통 adapter conformance suite는 revision을 바꾸지 않는 renewal, expired-owner 거부, live-owner recovery 거부, cancellation 선점, 만료 후 recovery takeover를 포함한 10개 case로 확장됐습니다. 별도 test는 heartbeat renewal, 만료된 in-flight awaitable 취소, 낮은 token 거부, 같은 token의 owner 불일치, cross-job context, schema v2 migration, hard-exit takeover를 검사합니다. Dependency-free backend suite는 test 113개를 포함합니다.
+Memory 및 SQLite 공통 state-adapter conformance suite는 case 10개를 포함합니다. 재사용 가능한 runtime-fence suite는 label 저장, 공유 authority fencing, owner 불일치, takeover 제한, cross-job 거부를 위한 공통 adapter case 5개를 추가합니다. 집중 case 3개는 잘못된 label, 활성화 전 verification, post-mutation stale 결과 차단과 이후 current-owner cleanup 수렴을 검사합니다. 별도 lease 및 recovery test는 heartbeat renewal, 만료된 in-flight awaitable 취소, schema v2 migration, hard-exit takeover를 계속 검사합니다. Dependency-free backend suite는 test 121개를 포함합니다.
 
 ## 의도적으로 남긴 한계
 
-이는 비활성 local 후보와 strict mock adapter를 위한 durable liveness 및 runtime 강제이며 제품 OCI adapter 또는 distributed system의 증거가 아닙니다. Store commit과 runtime token 활성화는 하나의 원자적 동작이 아닙니다. Python task를 취소해도 이미 제출된 native runtime 요청이 취소됐음을 증명하지 않습니다. Mock token registry는 process memory에 있으며 현재 Docker 또는 Podman object는 세 label을 저장하거나 강제하지 않습니다.
+이는 비활성 local 후보와 strict mock adapter를 위한 durable liveness 및 native object 계약 강제이며 제품 OCI adapter 또는 distributed system의 증거가 아닙니다. Store commit과 runtime 활성화는 하나의 원자적 동작이 아닙니다. Authority는 process-local이고 mock object metadata는 Docker 또는 Podman metadata가 아닙니다. 제출된 native operation은 takeover 뒤에도 변경을 완료할 수 있습니다. Operation 후 검사는 stale 결과를 차단하고 current-owner cleanup은 수렴할 수 있지만 native 취소나 rollback을 증명하지는 않습니다.
 
-System clock은 이동할 수 있고 독립적으로 설정된 host는 서로 다른 시간을 판단할 수 있습니다. Database service, clock-skew bound, multi-host lease, quorum, 제품 adapter 자격 검증, power-loss 자격 검증, backup 및 restore 증거는 없습니다. 향후 Docker 또는 Podman adapter는 managed object에 owner와 token을 저장하고 모든 변경 전에 비교하며 stale native 요청을 거부하고 native-platform 장애 증거를 통과해야 이 gate를 승격할 수 있습니다.
+System clock은 이동할 수 있고 독립적으로 설정된 host는 서로 다른 시간을 판단할 수 있습니다. Database service, process 간 authority, clock-skew bound, multi-host lease, quorum, 제품 adapter 자격 검증, power-loss 자격 검증, backup 및 restore 증거는 없습니다. 향후 Docker 또는 Podman adapter는 같은 label, authority, inspection, operation 규칙을 구현하고 공통 suite를 변경 없이 통과하며 native platform 장애 증거를 만들어야 이 gate를 승격할 수 있습니다.

@@ -42,10 +42,10 @@ Stale 또는 expired execution이나 cancellation이 renewal을 잃으면 Python
 4. Recovery가 runtime query 전 cancellation을 takeover하면 recovery만 mock runtime을 변경합니다.
 5. 더 새로운 recovery가 이전 reconciler를 runtime object 변경 전에 fence 처리합니다.
 
-추가 집중 test 4개는 revision을 바꾸지 않는 heartbeat renewal, expired in-flight Python awaitable 취소, 낮은 token 및 같은 token의 다른 owner 거부, fencing label 전달, cross-job context와 handle 거부를 증명합니다. 전체 dependency-free Python suite는 test 113개를 포함합니다. 제품 runtime, network service, runtime socket, solver를 호출하지 않습니다.
+Owner lease test 4개는 revision을 바꾸지 않는 heartbeat renewal, expired in-flight Python awaitable 취소, stale 및 ambiguous owner 거부, cross-job 거부를 증명합니다. 재사용 가능한 runtime-fence suite는 공통 adapter case 5개와 authority, parser, post-mutation 집중 case 3개를 추가합니다. 정확한 mock object label 저장, adapter instance 사이의 공유 authority, takeover 제한, operation 후 stale 결과 차단, cleanup 수렴을 증명합니다. 전체 dependency-free Python suite는 test 121개를 포함합니다. 제품 runtime, network service, runtime socket, solver를 호출하지 않습니다.
 
 ## 정확한 한계와 다음 경계
 
-비활성 local 후보에는 durable heartbeat liveness, lease expiry, strict mock adapter의 runtime 강제형 fencing을 구현했습니다. Store commit과 runtime token 활성화는 하나의 원자적 동작이 아닙니다. Python awaitable을 취소해도 이전에 제출된 native runtime 요청이 취소됐음을 증명하지 않습니다. Mock token registry는 process memory에 있으며 현재 Docker 또는 Podman object는 fencing label 세 개를 저장하거나 강제하지 않습니다. Bounded clock-skew 계약, multi-host lock, database service, power-loss 자격 검증, 제품 adapter 통합도 없습니다.
+비활성 local 후보에는 durable heartbeat liveness, lease expiry, 공유형 process-local runtime authority, strict mock adapter의 native object fencing 강제를 구현했습니다. Store commit과 runtime 활성화는 하나의 원자적 동작이 아닙니다. Python awaitable을 취소해도 이전에 제출된 native runtime 요청이 취소됐음을 증명하지 않습니다. Operation 후 검사는 stale 성공을 차단하고 current-owner cleanup 수렴을 허용하지만 완료된 변경을 되돌릴 수는 없습니다. Authority와 object metadata는 process-local mock 증거로 남고 Docker 또는 Podman object는 label을 저장하거나 강제하지 않습니다. Bounded clock-skew 계약, multi-host lock, database service, power-loss 자격 검증, 제품 adapter 통합도 없습니다.
 
-다음 ownership 경계는 검토된 Docker 및 Podman adapter에서의 native token 저장과 강제이며 in-flight 취소 또는 안전한 수렴 증거를 포함해야 합니다. [Owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)을 참고합니다. 이 제품 작업은 불변 engine profile, M1 증거, 제품 adapter 검토, 기존 no-socket 제품 경계에 따라 계속 gate 상태입니다.
+다음 ownership 경계는 이 공통 authority 및 object label 계약을 구현하고 재사용 가능한 suite를 변경 없이 통과하며 in-flight 취소 또는 안전한 수렴의 명시적인 native platform 증거를 만드는 검토된 Docker 또는 Podman adapter입니다. [Owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)과 [native object runtime fencing conformance](native-runtime-fence-conformance.md)를 참고합니다. 제품 작업은 불변 engine profile, M1 증거, 제품 adapter 검토, 기존 no-socket 제품 경계에 따라 계속 gate 상태입니다.
