@@ -9,13 +9,13 @@
 - Product Docker and Podman runtime kinds: rejected at construction
 - Service, worker, runtime socket, network, and solver authority: none
 - Phase-time execution persistence: implemented through explicit opt-in composition
-- External `SandboxBroker.cancel()` persistence: not implemented
+- Durable external cancellation: implemented only through the explicit composition; direct `SandboxBroker.cancel()` remains non-persisted
 
-`DurableBrokerComposition` connects the existing broker lifecycle to `DurableJobStateStore` without making that connection the product execution path. Direct `SandboxBroker.execute()` retains its prior in-memory event behavior. The composition accepts only `RuntimeKind.MOCK`, so adding a future product backend cannot implicitly activate this candidate.
+`DurableBrokerComposition` connects the existing broker lifecycle to `DurableJobStateStore` without making that connection the product execution path. Direct `SandboxBroker.execute()` and `SandboxBroker.cancel()` retain their prior in-memory event behavior. The composition accepts only `RuntimeKind.MOCK`, so adding a future product backend cannot implicitly activate this candidate.
 
 ## Startup before admission
 
-One serialized `startup()` call must complete before `execute()` admits a job:
+One serialized `startup()` call must complete before `execute()` or durable `cancel()` admits work:
 
 1. scan one bounded page of recoverable snapshots;
 2. use a deterministic page recovery UUID to claim each revision with compare-and-swap;
@@ -40,7 +40,7 @@ An incomplete reconciliation leaves the job in `cleaning` and keeps the admissio
 | `cleaning` | object cleanup |
 | terminal state | returning the final outcome |
 
-The composition loads the job before creating a session. Any existing snapshot, terminal or recoverable, is rejected before the runtime probe. Concurrent first writers are still protected by revision CAS. Phase-time records contain only normalized state, phase, code, retry, backend, classification, and cleanup completion fields.
+The composition loads state before creating a session. Execution rejects any existing snapshot before runtime probe. Durable cancellation instead requires an existing nonterminal state, rejects an existing cancellation or cleanup intent, and commits `cancelling/query` before runtime query. Concurrent operation IDs are protected by revision CAS. Phase-time records contain only normalized state, phase, code, retry, backend, classification, and cleanup completion fields.
 
 ## Partial-write behavior
 
@@ -59,6 +59,6 @@ When runtime cleanup itself is incomplete, the public final event may be `failed
 
 ## Evidence and remaining gates
 
-Nine focused tests cover startup admission ordering, SQLite phase ordering and mapper equivalence, early and post-allocation write failures, terminal-write downgrade and restart convergence, existing-job refusal, stale-object startup reconciliation, incomplete-recovery gate closure, and product-runtime rejection. The complete dependency-free Python suite contains 86 tests and invokes no product runtime or solver.
+Nine execution-composition tests cover startup admission ordering, SQLite phase ordering and mapper equivalence, write failures, restart convergence, existing-job refusal, stale-object reconciliation, incomplete-recovery gate closure, and product-runtime rejection. Eight additional durable cancellation tests cover single-winner CAS, intent-before-query ordering, already-absent convergence, write failures, and five restart checkpoints. The complete dependency-free Python suite contains 94 tests and invokes no product runtime or solver.
 
-The next state boundary is durable external cancellation and restart-safe cancellation arbitration. Product service transport, worker integration, distributed ownership and fencing, retention compaction, backup and restore, host power-loss qualification, product runtime adapters, runtime sockets, and solver execution remain blocked or pending.
+The next state boundary is durable operation ownership and fencing across execution, cancellation, and recovery. Product service transport, worker integration, multi-host coordination, retention compaction, backup and restore, host power-loss qualification, product runtime adapters, runtime sockets, and solver execution remain blocked or pending.

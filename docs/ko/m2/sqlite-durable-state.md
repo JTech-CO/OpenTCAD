@@ -38,8 +38,8 @@ SQLite 후보는 변경하지 않은 공통 adapter conformance case 6개를 실
 
 Version 1은 자동 삭제나 compaction을 수행하지 않습니다. 과거 row를 제거하면 event-ID 및 operation-slot idempotency 증거와 audit sequence가 사라집니다. 향후 retention 설계는 삭제를 활성화하기 전에 latest snapshot, event-ID tombstone, operation-slot tombstone, revision 단조 증가, backup 및 restore 동작, recovery scan 의미를 보존해야 합니다.
 
-Database는 후보 test artifact로 남습니다. 명시적인 mock 전용 composition은 startup recovery 뒤 execution phase event를 여기에 쓰지만 broker 직접 실행, 외부 cancellation, service는 database를 열지 않습니다. 제품 runtime 또는 solver operation도 이에 의존하지 않습니다.
+Database는 후보 test artifact로 남습니다. 명시적인 mock 전용 composition은 startup recovery 뒤 execution과 외부 cancellation phase event를 여기에 쓰지만 broker 직접 호출과 service는 database를 열지 않습니다. 제품 runtime 또는 solver operation도 이에 의존하지 않습니다.
 
 ## 다음 게이트
 
-다음 state 범위는 durable external cancellation과 restart-safe cancellation arbitration입니다. Distributed fencing, backup 및 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.
+다음 state 범위는 execution, cancellation, recovery 사이의 durable operation ownership 및 fencing입니다. Distributed coordination, backup 및 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.

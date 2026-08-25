@@ -2,7 +2,7 @@
 
 ## English
 
-The current backend is an engine-independent M2 runtime and mock broker foundation. It includes an inactive file-backed SQLite durable-state candidate and an explicit mock-only phase-time composition with startup recovery admission. It has no external cancellation persistence, web service, worker integration, broker service transport, product Docker or Podman adapter, runtime detection, socket access, or solver invocation.
+The current backend is an engine-independent M2 runtime and mock broker foundation. It includes an inactive file-backed SQLite durable-state candidate and an explicit mock-only phase-time composition with startup recovery admission and durable external-cancellation arbitration. It has no external cancellation transport, web service, worker integration, broker service transport, product Docker or Podman adapter, runtime detection, socket access, or solver invocation.
 
 | Path | Responsibility |
 |---|---|
@@ -14,6 +14,7 @@ The current backend is an engine-independent M2 runtime and mock broker foundati
 | `backend/app/broker/archive.py` | Canonical in-memory input USTAR builder and traversal, link, device, compression, collision, and bomb defense |
 | `backend/app/broker/output_archive.py` | Untrusted output USTAR builder, byte/manifest validator, and artifact substitution defense |
 | `backend/app/broker/cancellation.py` | Typed fixed-identity cancellation request and redacted outcome |
+| `backend/app/broker/cancellation_arbitration.py` | Five deterministic durable-cancellation interruption seams and test-only crash signal |
 | `backend/app/broker/lifecycle.py` | Eleven deterministic cancellation checkpoints and the in-process signal contract |
 | `backend/app/broker/cleanup.py` | Injectable process-local job cleanup coordinator |
 | `backend/app/broker/state.py` | Durable state protocol, shared revision/transition and operation-slot rules, and non-durable shared-backing test double |
@@ -21,11 +22,11 @@ The current backend is an engine-independent M2 runtime and mock broker foundati
 | `backend/app/broker/state_mapping.py` | Deterministic redacted outcome mapping and CAS batch recorder |
 | `backend/app/broker/live_state.py` | Phase-time deterministic durable emissions and fail-safe write-session contract |
 | `backend/app/broker/recovery.py` | Bounded CAS claim, exact-job reconciliation, and mock crash/restart convergence |
-| `backend/app/broker/state_composition.py` | Mock-only startup recovery gate and opt-in durable execution composition |
+| `backend/app/broker/state_composition.py` | Mock-only startup recovery gate, opt-in durable execution, and external-cancellation CAS admission |
 | `backend/app/broker/diagnostics.py` | Repr-hidden internal raw diagnostics separated from public errors |
-| `backend/app/broker/orchestrator.py` | Mock-only typed execution, phase cancellation, redacted outcome, idempotent cleanup, and reconciliation |
+| `backend/app/broker/orchestrator.py` | Mock-only typed execution, phase and durable cancellation, redacted outcomes, idempotent cleanup, and reconciliation |
 | `backend/tests/runtime/` | Policy, identity, lifecycle, fault mapping, and cleanup contract tests |
-| `backend/tests/broker/` | Archive attacks, phase cancellation, redaction, cleanup concurrency, event mapping, common adapter conformance, live-state composition, reconciliation, and crash/restart contract tests |
+| `backend/tests/broker/` | Archive attacks, phase and durable cancellation, redaction, cleanup concurrency, event mapping, common adapter conformance, live-state composition, CAS arbitration, reconciliation, and crash/restart contract tests |
 | `validation/manifests/m2-runtime-foundation.json` | Machine-readable gate state and frozen source evidence |
 | `tools/check-m2.mjs` | Drift, gate, scope, and hash verifier |
 
@@ -33,7 +34,7 @@ The allowed execution dependency direction is `domain worker -> SandboxSpec -> S
 
 ## 한국어
 
-현재 백엔드는 엔진 독립 M2 runtime 및 mock broker 기반입니다. 비활성 file-backed SQLite durable-state 후보와 startup recovery admission을 갖춘 명시적인 mock 전용 phase-time composition을 포함합니다. 외부 cancellation persistence, 웹 service, worker 통합, broker service transport, 제품 Docker 또는 Podman adapter, runtime detection, socket 접근, solver 호출은 없습니다.
+현재 백엔드는 엔진 독립 M2 runtime 및 mock broker 기반입니다. 비활성 file-backed SQLite durable-state 후보와 startup recovery admission 및 durable external cancellation 중재를 갖춘 명시적인 mock 전용 phase-time composition을 포함합니다. 외부 cancellation transport, 웹 service, worker 통합, broker service transport, 제품 Docker 또는 Podman adapter, runtime detection, socket 접근, solver 호출은 없습니다.
 
 | 경로 | 책임 |
 |---|---|
@@ -45,6 +46,7 @@ The allowed execution dependency direction is `domain worker -> SandboxSpec -> S
 | `backend/app/broker/archive.py` | Canonical memory 기반 input USTAR builder와 traversal, link, device, 압축, collision, bomb 방어 |
 | `backend/app/broker/output_archive.py` | 신뢰되지 않은 output USTAR builder, byte/manifest validator, artifact substitution 방어 |
 | `backend/app/broker/cancellation.py` | Typed 고정 identity cancellation request와 redacted outcome |
+| `backend/app/broker/cancellation_arbitration.py` | 결정론적 durable cancellation 중단 경계 5곳과 test 전용 crash signal |
 | `backend/app/broker/lifecycle.py` | 결정론적 cancellation checkpoint 11곳과 in-process signal 계약 |
 | `backend/app/broker/cleanup.py` | 주입 가능한 process-local job cleanup coordinator |
 | `backend/app/broker/state.py` | Durable state protocol, 공통 revision, transition 및 operation slot 규칙, non-durable shared-backing test double |
@@ -52,11 +54,11 @@ The allowed execution dependency direction is `domain worker -> SandboxSpec -> S
 | `backend/app/broker/state_mapping.py` | 결정론적 redacted outcome mapping 및 CAS batch recorder |
 | `backend/app/broker/live_state.py` | Phase-time 결정론적 durable emission 및 fail-safe write session 계약 |
 | `backend/app/broker/recovery.py` | Bounded CAS claim, 정확한 job reconciliation, mock crash/restart 수렴 |
-| `backend/app/broker/state_composition.py` | Mock 전용 startup recovery gate 및 opt-in durable execution composition |
+| `backend/app/broker/state_composition.py` | Mock 전용 startup recovery gate, opt-in durable execution, 외부 cancellation CAS admission |
 | `backend/app/broker/diagnostics.py` | 공개 error와 분리하고 repr에서 숨긴 내부 raw diagnostic |
-| `backend/app/broker/orchestrator.py` | Mock 전용 typed execution, phase cancellation, redacted outcome, idempotent cleanup, reconciliation |
+| `backend/app/broker/orchestrator.py` | Mock 전용 typed execution, phase 및 durable cancellation, redacted outcome, idempotent cleanup, reconciliation |
 | `backend/tests/runtime/` | 정책, identity, lifecycle, 장애 mapping, 정리 계약 test |
-| `backend/tests/broker/` | Archive 공격, phase cancellation, redaction, cleanup concurrency, event mapping, 공통 adapter conformance, live-state composition, reconciliation, crash/restart 계약 test |
+| `backend/tests/broker/` | Archive 공격, phase 및 durable cancellation, redaction, cleanup concurrency, event mapping, 공통 adapter conformance, live-state composition, CAS 중재, reconciliation, crash/restart 계약 test |
 | `validation/manifests/m2-runtime-foundation.json` | 기계 판독 게이트 상태와 고정 source 증거 |
 | `tools/check-m2.mjs` | drift, gate, 범위, hash 검증기 |
 

@@ -34,8 +34,8 @@ Public broker errors contain only stable code, phase, retry disposition, and a n
 
 ## Verified controls
 
-The dependency-free suite now contains 86 tests. In addition to the output, identity, and redaction controls above, it exercises all eleven execution cancellation checkpoints, wrong-identity and malformed signals, concurrent cleanup serialization, already-absent convergence, durable-state revision CAS, event idempotency, transition safety, recovery scanning, persisted-shape redaction, startup admission, phase-time persistence, and partial-write cleanup. See the [lifecycle cancellation, cleanup, and state contract](lifecycle-cleanup-state.md).
+The dependency-free suite now contains 94 tests. In addition to the output, identity, and redaction controls above, it exercises all eleven execution cancellation checkpoints, wrong-identity and malformed signals, concurrent cleanup serialization, already-absent convergence, durable-state revision CAS, event idempotency, transition safety, recovery scanning, persisted-shape redaction, startup admission, phase-time persistence, and partial-write cleanup. See the [lifecycle cancellation, cleanup, and state contract](lifecycle-cleanup-state.md).
 
 ## Remaining boundary
 
-There is still no product runtime adapter, broker service transport, runtime detection, worker integration, external cancellation persistence, restart-safe cancellation arbitration, solver execution, or runtime socket access. Phase-addressable mock injection and process-local cleanup idempotence are implemented; an inactive SQLite candidate now covers durable events and process hard-exit recovery while product activation remains gated.
+There is still no product runtime adapter, broker service transport, runtime detection, worker integration, external cancellation transport, solver execution, or runtime socket access. Phase-addressable injection, process-local cleanup idempotence, and mock-only durable external-cancellation arbitration are implemented. The inactive SQLite candidate records normalized intent and restart-safe convergence while product activation remains gated.

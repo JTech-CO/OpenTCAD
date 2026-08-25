@@ -7,14 +7,26 @@ from dataclasses import dataclass
 from enum import StrEnum
 from uuid import UUID, uuid5
 
+from backend.app.runtime.errors import RuntimePhase
 from backend.app.runtime.models import JobIdentity, RuntimeKind
 
+from .cancellation import CancellationOutcome, CancellationRequest
+from .cancellation_arbitration import (
+    DurableCancellationCheckpoint,
+    DurableCancellationCrashSignal,
+    cancellation_checkpoint,
+)
 from .lifecycle import CancellationSignal
-from .live_state import LiveStateSession
-from .models import BrokerOutcome, BrokerRequest
+from .live_state import LiveStateEmission, LiveStateSession, LiveStateWriteError
+from .models import BrokerEvent, BrokerOutcome, BrokerRequest, BrokerState
 from .orchestrator import SandboxBroker
 from .recovery import CrashRecoveryCoordinator, RecoveryReport, RecoveryRequest
-from .state import DurableJobStateStore, StateStoreError
+from .state import (
+    TERMINAL_STATES,
+    DurableJobStateStore,
+    StateStoreError,
+    StateStoreErrorCode,
+)
 
 
 BROKER_STATE_COMPOSITION_PRODUCT_ENABLED = False
@@ -26,6 +38,10 @@ class StateCompositionErrorCode(StrEnum):
     JOB_STATE_EXISTS = "job-state-exists"
     STORE_UNAVAILABLE = "store-unavailable"
     PRODUCT_RUNTIME_DISABLED = "product-runtime-disabled"
+    JOB_STATE_MISSING = "job-state-missing"
+    JOB_STATE_TERMINAL = "job-state-terminal"
+    CANCELLATION_IN_PROGRESS = "cancellation-in-progress"
+    CANCELLATION_CONFLICT = "cancellation-conflict"
 
 
 class StateCompositionError(Exception):
@@ -93,7 +109,7 @@ class BrokerStartupReport:
 
 
 class DurableBrokerComposition:
-    """Runs startup recovery before admitting opt-in persisted mock execution."""
+    """Gates opt-in persisted mock execution and external cancellation."""
 
     def __init__(
         self,
@@ -200,3 +216,79 @@ class DurableBrokerComposition:
             cancellation,
             session,
         )
+
+    async def cancel(
+        self,
+        request: CancellationRequest,
+        context: StateOperationContext,
+        crash_signal: DurableCancellationCrashSignal | None = None,
+    ) -> CancellationOutcome:
+        if not isinstance(request, CancellationRequest):
+            raise TypeError("DurableBrokerComposition requires CancellationRequest.")
+        if not isinstance(context, StateOperationContext):
+            raise TypeError("DurableBrokerComposition requires StateOperationContext.")
+        if not self.ready:
+            raise StateCompositionError(StateCompositionErrorCode.STARTUP_REQUIRED)
+        identity = request.identity
+        async with self._broker._cancellation_lease(identity):
+            try:
+                current = await self._store.load(identity)
+            except StateStoreError:
+                raise StateCompositionError(
+                    StateCompositionErrorCode.STORE_UNAVAILABLE,
+                ) from None
+            if current is None:
+                raise StateCompositionError(
+                    StateCompositionErrorCode.JOB_STATE_MISSING,
+                )
+            if current.state in TERMINAL_STATES:
+                raise StateCompositionError(
+                    StateCompositionErrorCode.JOB_STATE_TERMINAL,
+                )
+            if current.state in {BrokerState.CANCELLING, BrokerState.CLEANING}:
+                raise StateCompositionError(
+                    StateCompositionErrorCode.CANCELLATION_IN_PROGRESS,
+                )
+            cancellation_checkpoint(
+                crash_signal,
+                DurableCancellationCheckpoint.BEFORE_INTENT,
+                identity,
+            )
+            session = LiveStateSession(
+                self._store,
+                identity,
+                context.operation_id,
+                self._broker.runtime_kind,
+                expected_revision=current.revision,
+            )
+            intent = BrokerEvent(
+                1,
+                BrokerState.CANCELLING,
+                RuntimePhase.QUERY,
+            )
+            try:
+                await session.record(
+                    LiveStateEmission(
+                        intent,
+                        BrokerState.CANCELLING,
+                        RuntimePhase.QUERY,
+                    ),
+                )
+            except LiveStateWriteError as error:
+                code = (
+                    StateCompositionErrorCode.STORE_UNAVAILABLE
+                    if error.code is StateStoreErrorCode.STORE_UNAVAILABLE
+                    else StateCompositionErrorCode.CANCELLATION_CONFLICT
+                )
+                raise StateCompositionError(code) from None
+            cancellation_checkpoint(
+                crash_signal,
+                DurableCancellationCheckpoint.AFTER_INTENT,
+                identity,
+            )
+            return await self._broker._cancel_with_state_session_locked(
+                request,
+                session,
+                intent,
+                crash_signal,
+            )

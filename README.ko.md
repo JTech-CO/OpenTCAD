@@ -15,7 +15,7 @@ OpenTCAD은 반도체 공정과 소자 시뮬레이션을 학습하기 위한 �
 - 제출된 입력을 절대 실행하지 않는 GitHub Pages 정적 빌드
 - Node.js가 동작하는 모든 OS에서 사용할 수 있는 로컬 개발·미리보기 서버
 - CI, 접근성 중심 상호작용 상태, 향후 샌드박스 로컬 엔진을 위한 아키텍처 경계
-- 제품 runtime이나 solver를 호출하지 않는 런타임 중립 `RuntimeBackend` 계약, 실패 폐쇄 정책 validator, canonical input/output archive, phase 지정 cancellation, process-local idempotent cleanup, 결정론적 broker-event mapping, 재사용 가능한 state-adapter conformance suite, CAS durable-state interface, 별도 process hard-exit recovery를 검증한 file-backed SQLite 후보, startup recovery와 부분 write cleanup 계약을 갖춘 비활성 mock 전용 phase-time durable composition, redacted 공개 event, 엄격한 test double
+- 제품 runtime이나 solver를 호출하지 않는 런타임 중립 `RuntimeBackend` 계약, 실패 폐쇄 policy validator, canonical input/output archive, phase 지정 cancellation, process-local idempotent cleanup, 결정론적 broker-event mapping, 재사용 가능한 state-adapter conformance suite, CAS durable-state interface, 별도 process hard-exit recovery를 검증한 file-backed SQLite 후보, startup recovery, 부분 write cleanup, durable external cancellation intent, CAS 단일 승자 중재, cancellation crash checkpoint 5곳을 갖춘 비활성 mock 전용 phase-time durable composition, redacted 공개 event, 엄격한 test double
 - OpenTCAD 고유 코드의 MIT 라이선스와 제3자 시뮬레이터의 분리된 라이선스 경계
 
 정적 사이트는 제품 미리보기이며 브라우저 기반 솔버가 아닙니다. 실제 SUPREM-IV.GS와 DEVSIM 잡은 향후 로컬 API → 워커 → 샌드박스 브로커 → OCI 런타임 경로에서만 실행합니다. 브라우저에는 Docker/Podman 소켓을 절대 노출하지 않습니다.
@@ -45,7 +45,7 @@ npm run check
 npm run coverage
 ```
 
-이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. Gate 상태의 [M2 런타임 및 mock broker 기반](docs/ko/m2/README.md)은 typed lifecycle, capability, error, policy, canonical input/output archive, cancellation checkpoint 11곳, redaction, concurrent idempotent mock cleanup, reconciliation, 결정론적 event-to-state mapping, 재사용 가능한 adapter conformance suite, transaction, schema, retention, 별도 process hard-exit recovery 계약을 갖춘 file-backed SQLite durable-state 후보를 고정했습니다. 명시적인 mock 전용 composition은 execution event를 phase-time에 저장하고 startup recovery 완료 전 admission을 막습니다. 이 경로는 제품 비활성 상태이며 외부 cancellation API는 저장하지 않습니다. 제품 adapter, runtime detection, worker integration, runtime socket, solver 실행은 계속 비활성입니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
+이 저장소는 솔버 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. Gate 상태의 [M2 런타임 및 mock broker 기반](docs/ko/m2/README.md)은 typed lifecycle, capability, error, policy, canonical input/output archive, execution cancellation checkpoint 11곳, redaction, concurrent idempotent mock cleanup, reconciliation, 결정론적 event-to-state mapping, 재사용 가능한 adapter conformance suite, transaction, schema, retention, 별도 process hard-exit recovery 계약을 갖춘 file-backed SQLite durable-state 후보를 고정했습니다. 명시적인 mock 전용 composition은 execution과 외부 cancellation phase event를 저장하고, runtime query 전에 cancellation intent를 commit하며, 경쟁 operation ID를 CAS로 중재하고, restart 때 commit된 intent를 cancelled로 닫습니다. 이 경로는 제품 비활성 상태입니다. 제품 adapter, runtime detection, worker integration, runtime socket, solver 실행은 계속 비활성입니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
 
 ## 문서
 
@@ -65,6 +65,7 @@ npm run coverage
 | [M2 event mapping, adapter conformance, and restart recovery](docs/en/m2/event-state-recovery.md) | [M2 event mapping, adapter conformance, restart recovery](docs/ko/m2/event-state-recovery.md) |
 | [M2 SQLite durable-state candidate](docs/en/m2/sqlite-durable-state.md) | [M2 SQLite durable-state 후보](docs/ko/m2/sqlite-durable-state.md) |
 | [M2 inactive live-state composition](docs/en/m2/live-state-composition.md) | [M2 비활성 live-state composition](docs/ko/m2/live-state-composition.md) |
+| [M2 durable external cancellation arbitration](docs/en/m2/durable-cancellation-arbitration.md) | [M2 durable external cancellation 중재](docs/ko/m2/durable-cancellation-arbitration.md) |
 | [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
 | [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
 

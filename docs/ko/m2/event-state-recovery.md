@@ -8,7 +8,7 @@
 - Runtime 및 solver 접근: 없음
 - SQLite durable-state 후보: test 완료, 비활성
 - Phase-time execution wiring: 비활성 mock 전용 composition에 구현
-- 외부 cancellation wiring: 미구현
+- 외부 cancellation wiring: 비활성 mock 전용 composition에 구현, 제품 비활성
 
 이 계약은 완료된 redacted broker operation을 durable event로 바꾸는 방법, 모든 state adapter가 통과해야 할 공통 test, restart 뒤 recoverable state가 수렴하는 방법을 정의합니다. 기존 mapping 및 recovery 연결부는 engine-independent 상태를 유지하고 함께 제공하는 SQLite 후보는 표준 library local database와 test 전용 child process만 추가합니다. Service transport, runtime socket, 제품 Docker 또는 Podman adapter, worker 통합, solver 실행은 추가하지 않습니다.
 
@@ -32,7 +32,7 @@ Adapter는 event UUID를 다른 내용으로 재사용하거나 `(job_id, operat
 
 Cleanup이 끝나지 않은 outcome은 terminal로 저장하지 않습니다. 마지막 source terminal event를 phase가 `cleanup`이고 stable cleanup error를 가진 recoverable `cleaning` event로 바꿉니다. Broker가 공개 outcome에 대해 이미 `failed`를 선택했더라도 orphan runtime object가 recovery scan에서 사라지는 일을 막습니다.
 
-이 mapper는 계속 완료된 outcome을 입력으로 받습니다. `LiveStateSession`은 같은 결정론적 identity 규칙을 재사용하고 `DurableBrokerComposition`은 실행 중 각 phase append를 기다립니다. 명시적 경로는 mock 전용이고 제품 비활성 상태이며 broker 직접 실행과 외부 cancellation은 저장하지 않습니다.
+이 mapper는 계속 완료된 outcome을 입력으로 받습니다. `LiveStateSession`은 같은 결정론적 identity 규칙을 재사용하고 `DurableBrokerComposition`은 execution과 외부 cancellation append를 작업 시점에 기다립니다. 외부 cancellation은 runtime query 전에 `cancelling/query`를 기록하고 cleanup까지 cancelled classification을 유지합니다. 명시적 경로는 mock 전용이고 제품 비활성 상태이며 broker 직접 execution과 cancellation은 저장하지 않습니다.
 
 ## 공통 adapter conformance suite
 
@@ -74,6 +74,6 @@ Concurrent coordinator가 같은 revision을 읽은 경우 compare-and-swap으�
 
 ## 증거와 남은 gate
 
-Dependency-free Python suite는 현재 test 86개를 포함합니다. Test 34개는 memory 및 SQLite adapter 공통 suite, outcome 및 phase-time mapping, partial replay, startup admission, 부분 write cleanup, 결정론적 crash 경계 네 곳, cancellation recovery, 경쟁 claim, cleanup retry 수렴, schema 및 lock 동작, 별도 process hard exit를 검사합니다. Test는 격리된 SQLite file만 열며 runtime socket, network connection, 제품 runtime, solver는 열지 않습니다.
+Dependency-free Python suite는 현재 test 94개를 포함합니다. Test 42개는 memory 및 SQLite adapter 공통 suite, outcome 및 phase-time mapping, partial replay, startup admission, 부분 write cleanup, recovery crash 경계 4곳, cancellation crash 경계 5곳, cancellation recovery, 경쟁 claim, 외부 cancellation CAS 중재, cleanup retry 수렴, schema 및 lock 동작, 별도 process hard exit를 검사합니다. Test는 격리된 SQLite file만 열며 runtime socket, network connection, 제품 runtime, solver는 열지 않습니다.
 
-다음 state 마일스톤은 durable external cancellation과 restart-safe cancellation arbitration입니다. Backup 및 restore, power-loss 자격 검증, distributed fencing, 제품 활성화, 제품 Docker 및 Podman adapter는 계속 gate 상태입니다.
+다음 state 마일스톤은 execution, cancellation, recovery 사이의 durable operation ownership 및 fencing입니다. Backup 및 restore, power-loss 자격 검증, multi-host coordination, 제품 활성화, 제품 Docker 및 Podman adapter는 계속 gate 상태입니다.
