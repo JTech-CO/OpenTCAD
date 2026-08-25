@@ -95,6 +95,12 @@ class CancellationTracingStore:
             raise StateStoreError(StateStoreErrorCode.STORE_UNAVAILABLE)
         return await self.delegate.append(event, expected_revision=expected_revision)
 
+    async def verify_ownership(self, ownership, *, expected_revision=None):
+        return await self.delegate.verify_ownership(
+            ownership,
+            expected_revision=expected_revision,
+        )
+
     async def scan_recoverable(self, *, after=None, limit=100):
         return await self.delegate.scan_recoverable(after=after, limit=limit)
 
@@ -120,6 +126,12 @@ class BarrierLoadStore:
 
     async def append(self, event: DurableJobEvent, *, expected_revision: int):
         return await self.delegate.append(event, expected_revision=expected_revision)
+
+    async def verify_ownership(self, ownership, *, expected_revision=None):
+        return await self.delegate.verify_ownership(
+            ownership,
+            expected_revision=expected_revision,
+        )
 
     async def scan_recoverable(self, *, after=None, limit=100):
         return await self.delegate.scan_recoverable(after=after, limit=limit)
@@ -200,6 +212,7 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
                 operation_sequence=sequence,
                 state=state,
                 phase=phase,
+                fencing_token=2,
             ),
             expected_revision=revision - 1,
         )
@@ -343,14 +356,20 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
 
         mapped = BrokerStateMapper().map_outcome(
             outcome,
-            StateMappingContext(operation_id, RuntimeKind.MOCK),
+            StateMappingContext(
+                operation_id,
+                RuntimeKind.MOCK,
+                final.ownership.owner_id,
+                final.ownership.fencing_token,
+            ),
         )
         with closing(sqlite3.connect(database)) as connection:
             rows = tuple(
                 connection.execute(
                     "SELECT event_id, state, phase, operation_sequence, "
-                    "classification, cleanup_complete FROM job_events "
-                    "WHERE operation_id = ? ORDER BY operation_sequence",
+                    "classification, cleanup_complete, owner_id, fencing_token "
+                    "FROM job_events WHERE operation_id = ? "
+                    "ORDER BY operation_sequence",
                     (operation_id,),
                 ),
             )
@@ -366,6 +385,8 @@ class DurableCancellationContractTests(unittest.IsolatedAsyncioTestCase):
                     if event.classification is not None
                     else None,
                     int(event.cleanup_complete),
+                    event.owner_id,
+                    event.fencing_token,
                 )
                 for event in mapped.events
             ),

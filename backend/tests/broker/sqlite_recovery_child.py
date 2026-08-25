@@ -21,7 +21,12 @@ HARD_EXIT_CODE = 91
 
 
 class UnreachableReconciler:
-    async def reconcile(self, job_id: str | None = None) -> ReconciliationReport:
+    async def reconcile(
+        self,
+        job_id: str | None = None,
+        *,
+        ownership_guard=None,
+    ) -> ReconciliationReport:
         raise AssertionError("hard exit must happen before reconciliation")
 
 

@@ -33,6 +33,8 @@ def event(
     phase: RuntimePhase,
     *,
     operation: int = 1,
+    owner: int | None = None,
+    fencing_token: int = 1,
     code: ErrorCode | None = None,
     classification: TerminalClassification | None = None,
 ) -> DurableJobEvent:
@@ -41,6 +43,8 @@ def event(
         event_id=uuid_at(100_000 + event_number),
         operation_id=uuid_at(200_000 + operation),
         operation_sequence=event_number,
+        owner_id=uuid_at(300_000 + (operation if owner is None else owner)),
+        fencing_token=fencing_token,
         state=state,
         phase=phase,
         code=code,
@@ -98,6 +102,8 @@ class DurableStateContractTests(unittest.IsolatedAsyncioTestCase):
             event_id=first_event.event_id,
             operation_id=uuid_at(300_001),
             operation_sequence=1,
+            owner_id=uuid_at(400_001),
+            fencing_token=2,
             state=BrokerState.PREPARING,
             phase=RuntimePhase.IMAGE,
         )
@@ -112,8 +118,15 @@ class DurableStateContractTests(unittest.IsolatedAsyncioTestCase):
             expected_revision=0,
         )
         candidates = (
-            event(4, 41, BrokerState.PREPARING, RuntimePhase.IMAGE, operation=41),
-            event(4, 42, BrokerState.CANCELLING, RuntimePhase.KILL, operation=42),
+            event(4, 41, BrokerState.PREPARING, RuntimePhase.IMAGE),
+            event(
+                4,
+                42,
+                BrokerState.CANCELLING,
+                RuntimePhase.KILL,
+                operation=42,
+                fencing_token=2,
+            ),
         )
         results = await asyncio.gather(
             *(store.append(item, expected_revision=1) for item in candidates),
@@ -208,6 +221,8 @@ class DurableStateContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("retry", names)
         self.assertIn("backend", names)
         self.assertIn("classification", names)
+        self.assertIn("owner_id", names)
+        self.assertIn("fencing_token", names)
         public = json.dumps(public_event.as_dict(), sort_keys=True)
         self.assertNotIn("detail", public)
         self.assertNotIn("payload", public)
@@ -218,6 +233,8 @@ class DurableStateContractTests(unittest.IsolatedAsyncioTestCase):
                 event_id=uuid_at(100_101),
                 operation_id=uuid_at(200_101),
                 operation_sequence=1,
+                owner_id=uuid_at(300_101),
+                fencing_token=1,
                 state=BrokerState.CANCELLED,
                 phase=RuntimePhase.CLEANUP,
                 cleanup_complete=False,

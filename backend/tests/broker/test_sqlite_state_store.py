@@ -57,7 +57,12 @@ class CompleteReconciler:
         self.expected_job_id = expected_job_id
         self.calls = 0
 
-    async def reconcile(self, job_id: str | None = None) -> ReconciliationReport:
+    async def reconcile(
+        self,
+        job_id: str | None = None,
+        *,
+        ownership_guard=None,
+    ) -> ReconciliationReport:
         if job_id != self.expected_job_id:
             raise AssertionError("recovery must reconcile the exact durable job")
         self.calls += 1
@@ -80,7 +85,7 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
     def tearDown(self) -> None:
         self._temporary.cleanup()
 
-    async def test_schema_v1_is_wal_append_only_redacted_and_inactive(self) -> None:
+    async def test_schema_v2_is_wal_append_only_redacted_and_inactive(self) -> None:
         for invalid in (":memory:", "file:state.sqlite3?mode=memory", 7):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(TypeError):
@@ -112,12 +117,92 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("detail", columns)
         self.assertNotIn("payload", columns)
         self.assertNotIn("host_path", columns)
+        self.assertIn("owner_id", columns)
+        self.assertIn("fencing_token", columns)
         self.assertEqual(
             SQLITE_STATE_RETENTION_POLICY,
             "append-only-no-automatic-deletion",
         )
         self.assertFalse(SQLITE_STATE_PRODUCT_ENABLED)
         self.assertNotIn(str(self._database), repr(store))
+
+    async def test_schema_v1_forward_migration_preserves_owner_generations(self) -> None:
+        job_id = uuid_at(10_250)
+        operation_one = uuid_at(20_250)
+        operation_two = uuid_at(20_251)
+        with closing(sqlite3.connect(self._database)) as connection:
+            connection.execute(
+                """
+                CREATE TABLE job_events (
+                    job_id TEXT NOT NULL,
+                    revision INTEGER NOT NULL CHECK (revision >= 1),
+                    event_id TEXT NOT NULL UNIQUE,
+                    operation_id TEXT NOT NULL,
+                    operation_sequence INTEGER NOT NULL CHECK (operation_sequence >= 1),
+                    state TEXT NOT NULL,
+                    phase TEXT NOT NULL,
+                    code TEXT,
+                    retry TEXT,
+                    backend TEXT,
+                    classification TEXT,
+                    cleanup_complete INTEGER NOT NULL CHECK (cleanup_complete IN (0, 1)),
+                    PRIMARY KEY (job_id, revision),
+                    UNIQUE (job_id, operation_id, operation_sequence)
+                )
+                """,
+            )
+            connection.executemany(
+                "INSERT INTO job_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    (
+                        job_id, 1, uuid_at(30_250), operation_one, 1,
+                        "validating", "validate", None, None, "mock", None, 0,
+                    ),
+                    (
+                        job_id, 2, uuid_at(30_251), operation_one, 2,
+                        "preparing", "image", None, None, "mock", None, 0,
+                    ),
+                    (
+                        job_id, 3, uuid_at(30_252), operation_two, 1,
+                        "cancelling", "query", None, None, "mock", None, 0,
+                    ),
+                ),
+            )
+            connection.execute("PRAGMA user_version = 1")
+            connection.commit()
+
+        store = SQLiteJobStateStore(self._database)
+        page = await store.scan_recoverable(limit=1)
+        migrated = page.items[0]
+        self.assertEqual(
+            (migrated.revision, migrated.state, migrated.ownership.operation_id),
+            (3, BrokerState.CANCELLING, operation_two),
+        )
+        self.assertEqual(migrated.ownership.fencing_token, 2)
+        self.assertEqual(
+            await store.verify_ownership(
+                migrated.ownership,
+                expected_revision=3,
+            ),
+            migrated,
+        )
+        with closing(sqlite3.connect(self._database)) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            rows = tuple(
+                connection.execute(
+                    "SELECT operation_id, owner_id, fencing_token "
+                    "FROM job_events ORDER BY revision",
+                ),
+            )
+        self.assertEqual(version, SQLITE_STATE_SCHEMA_VERSION)
+        self.assertEqual(
+            rows,
+            (
+                (operation_one, operation_one, 1),
+                (operation_one, operation_one, 1),
+                (operation_two, operation_two, 2),
+            ),
+        )
 
     async def test_locked_writer_maps_to_redacted_store_unavailable(self) -> None:
         store = SQLiteJobStateStore(self._database, busy_timeout_ms=25)
@@ -157,12 +242,12 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unknown_or_mismatched_schema_fails_closed(self) -> None:
         with closing(sqlite3.connect(self._database)) as connection:
-            connection.execute("PRAGMA user_version = 2")
+            connection.execute("PRAGMA user_version = 3")
             connection.commit()
         mismatched = Path(self._temporary.name) / "mismatched.sqlite3"
         with closing(sqlite3.connect(mismatched)) as connection:
             connection.execute("CREATE TABLE job_events (job_id TEXT)")
-            connection.execute("PRAGMA user_version = 1")
+            connection.execute("PRAGMA user_version = 2")
             connection.commit()
 
         for database in (self._database, mismatched):
@@ -233,7 +318,7 @@ class SQLiteStateStoreContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reconciler.calls, 1)
         self.assertEqual(report.items[0].status, RecoveryStatus.RECOVERED_FAILED)
         self.assertEqual(report.items[0].code, ErrorCode.STALE_STATE)
-        self.assertEqual((final.state, final.revision), (BrokerState.FAILED, 5))
+        self.assertEqual((final.state, final.revision), (BrokerState.FAILED, 6))
         self.assertFalse(final.recoverable)
 
 

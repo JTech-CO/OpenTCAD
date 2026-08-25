@@ -15,11 +15,11 @@ Cancellation follows this order:
 1. Startup recovery must have completed and admission must be open.
 2. The composition loads the exact `JobIdentity` from `DurableJobStateStore` before contacting the runtime.
 3. Missing state, terminal state, and an existing `cancelling` or `cleaning` state are rejected with stable composition errors.
-4. A caller-specific operation UUID opens a `LiveStateSession` at the loaded revision.
-5. The session appends `cancelling/query` with compare-and-swap. This committed event is the durable cancellation intent and arbitration token.
+4. A caller-specific logical operation UUID and fresh internal owner UUID open a `LiveStateSession` at the loaded revision with the next fencing token.
+5. The session appends `cancelling/query` with compare-and-swap. This committed event is both durable cancellation intent and ownership takeover.
 6. Only the CAS winner may query or mutate runtime objects. A competing operation ID receives `cancellation-conflict` and makes no runtime call.
 
-The process-local job lease avoids duplicate work inside one broker. Correctness across independent broker instances comes from store CAS, not from that lease. The current contract does not claim a distributed lease, ownership epoch, or multi-host fencing.
+The process-local job lease avoids duplicate work inside one broker. Correctness across independent broker instances comes from store CAS and the committed owner generation, not from that lease. The current contract provides cooperative ownership epochs but does not claim owner liveness, lease expiry, a distributed lease, runtime-enforced fencing, or multi-host fencing.
 
 ## Persisted lifecycle
 
@@ -39,7 +39,7 @@ The complete-outcome mapper treats every `CancellationOutcome` as cancellation i
 ## Write failures and public results
 
 - If the intent append fails, runtime contact is forbidden. Store unavailability is reported as `store-unavailable`; a CAS or transition loss is reported as `cancellation-conflict`.
-- If a later phase append fails, cancellation progress stops, but fail-safe cleanup continues. The public outcome is `failed` with normalized `invalid-state`, while the last committed prefix remains recoverable.
+- If a later phase append fails for ordinary store unavailability, cancellation progress stops but fail-safe cleanup continues. If the owner or revision was superseded, the public outcome is `failed:operation-fenced`, stale cleanup is skipped, and the current owner's prefix remains authoritative and recoverable.
 - If the terminal append fails after runtime cancellation and cleanup, the public outcome is still `failed`. A cancelled runtime result alone is not enough to report durable completion.
 - Restart recovery never synthesizes `succeeded`. A committed cancellation intent closes as `cancelled`; an unacknowledged running prefix closes as `failed:stale-state`.
 
@@ -61,6 +61,6 @@ The checkpoint exception is a deterministic same-process crash surrogate for con
 
 ## Verification and remaining gates
 
-Eight focused tests cover admission refusal, SQLite ordering and mapper equivalence, already-absent convergence, two independent broker callers with one CAS winner, intent-write failure, later phase-write failure, terminal-write failure, and all five restart checkpoints. The complete dependency-free Python suite contains 94 tests and opens no product runtime socket, network connection, or solver.
+Eight focused cancellation tests cover admission refusal, SQLite ordering and owner-aware mapper equivalence, already-absent convergence, two independent broker callers with one CAS winner, intent-write failure, later phase-write failure, terminal-write failure, and all five restart checkpoints. Five additional ownership competition tests cover cancellation takeover and stale-owner fencing. The complete dependency-free Python suite contains 102 tests and opens no product runtime socket, network connection, or solver.
 
-The next state boundary is durable operation ownership and fencing across execution, cancellation, and recovery, still without product runtime authority. Product service transport, worker integration, Docker and Podman adapters, runtime detection, backup and restore, power-loss qualification, multi-host coordination, runtime sockets, and solver execution remain blocked or pending.
+The implemented takeover rules are detailed in [durable operation ownership and fencing](durable-operation-ownership.md). Owner liveness, lease expiry, runtime-enforced token propagation, product service transport, worker integration, Docker and Podman adapters, runtime detection, backup and restore, power-loss qualification, multi-host coordination, runtime sockets, and solver execution remain blocked or pending.

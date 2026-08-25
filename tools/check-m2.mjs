@@ -68,6 +68,7 @@ const expectedErrorCodes = [
   "input-archive-rejected",
   "output-archive-rejected",
   "artifact-rejected",
+  "operation-fenced",
 ];
 
 const expectedSourceFiles = [
@@ -103,6 +104,7 @@ const expectedSourceFiles = [
   "backend/tests/broker/test_cancellation_redaction.py",
   "backend/tests/broker/test_cleanup_concurrency.py",
   "backend/tests/broker/test_durable_cancellation.py",
+  "backend/tests/broker/test_operation_ownership.py",
   "backend/tests/broker/test_lifecycle_control.py",
   "backend/tests/broker/test_orchestrator.py",
   "backend/tests/broker/test_output_archive.py",
@@ -126,6 +128,7 @@ const expectedSourceFiles = [
   "docs/en/m2/sqlite-durable-state.md",
   "docs/en/m2/live-state-composition.md",
   "docs/en/m2/durable-cancellation-arbitration.md",
+  "docs/en/m2/durable-operation-ownership.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -136,6 +139,7 @@ const expectedSourceFiles = [
   "docs/ko/m2/sqlite-durable-state.md",
   "docs/ko/m2/live-state-composition.md",
   "docs/ko/m2/durable-cancellation-arbitration.md",
+  "docs/ko/m2/durable-operation-ownership.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -238,6 +242,16 @@ requireValue(manifest.securityBoundary.candidateDurableExternalCancellationProdu
 requireValue(manifest.securityBoundary.cancellationIntentBeforeRuntimeQuery === true, "Cancellation intent must precede runtime query.");
 requireValue(manifest.securityBoundary.cancellationArbitrationCAS === true, "Cancellation arbitration must use CAS.");
 requireValue(manifest.securityBoundary.restartSafeCancellationTested === true, "Restart-safe cancellation must be tested.");
+requireValue(manifest.securityBoundary.candidateDurableOperationOwnershipImplemented === true, "Candidate durable ownership must be recorded.");
+requireValue(manifest.securityBoundary.candidateDurableOperationOwnershipProductEnabled === false, "Candidate durable ownership must remain product-disabled.");
+requireValue(manifest.securityBoundary.ownershipFencingStoreEnforced === true, "Store-enforced fencing must be recorded.");
+requireValue(manifest.securityBoundary.staleOwnerRuntimeMutationGuarded === true, "Stale runtime mutation guards must be recorded.");
+requireValue(manifest.securityBoundary.staleOwnerTerminalWriteRejected === true, "Stale terminal writes must be rejected.");
+requireValue(manifest.securityBoundary.recoveryTakeoverFencingTested === true, "Recovery takeover fencing must be tested.");
+requireValue(manifest.securityBoundary.schemaV1MigrationTested === true, "SQLite v1 migration must be tested.");
+requireValue(manifest.securityBoundary.ownershipFencingRuntimeEnforced === false, "Runtime-enforced fencing must remain unclaimed.");
+requireValue(manifest.securityBoundary.ownerLivenessImplemented === false, "Owner liveness must remain unclaimed.");
+requireValue(manifest.securityBoundary.leaseExpiryImplemented === false, "Lease expiry must remain unclaimed.");
 requireValue(manifest.securityBoundary.productExternalCancellationWiring === false, "Product external cancellation wiring must remain absent.");
 requireValue(manifest.securityBoundary.startupRecoveryAdmissionGateImplemented === true, "Startup recovery admission must be recorded.");
 requireValue(manifest.securityBoundary.productRuntimeAcceptedByComposition === false, "The composition must reject product runtimes.");
@@ -309,7 +323,7 @@ const expectedWorkItems = new Map([
   ["RUN-004", "blocked-entry-gate"],
   ["RUN-005", "blocked-entry-gate"],
   ["RUN-006", "not-started"],
-  ["RUN-007", "candidate-durable-cancellation-tested"],
+  ["RUN-007", "candidate-durable-ownership-tested"],
 ]);
 requireValue(workItems.size === expectedWorkItems.size, "M2 work item set drifted.");
 for (const [id, status] of expectedWorkItems) {
@@ -321,9 +335,9 @@ const expectedBrokerWorkItems = [
   ["BRK-001", "foundation-tested"],
   ["BRK-003", "mock-lifecycle-tested"],
   ["BRK-004", "canonical-input-output-archive-tested"],
-  ["BRK-006", "candidate-restart-safe-cancellation-tested"],
-  ["BRK-007", "candidate-durable-cancellation-tested"],
-  ["BRK-008", "candidate-durable-cancellation-state-tested"],
+  ["BRK-006", "candidate-fenced-recovery-tested"],
+  ["BRK-007", "candidate-fenced-cancellation-tested"],
+  ["BRK-008", "candidate-owner-state-tested"],
 ];
 requireValue(brokerWorkItems.size === expectedBrokerWorkItems.length, "M2 broker work item set drifted.");
 for (const [id, status] of expectedBrokerWorkItems) {
@@ -349,7 +363,7 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 94, "Runtime and broker test count must be 94.");
+requireValue(manifest.testContract.testCount === 102, "Runtime and broker test count must be 102.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
 requireValue(manifest.testContract.brokerOrchestrationTests === 8, "Broker orchestration test count must be 8.");
@@ -359,17 +373,19 @@ requireValue(manifest.testContract.lifecycleCancellationTests === 3, "Lifecycle 
 requireValue(manifest.testContract.lifecycleCancellationCheckpoints === 11, "Lifecycle cancellation checkpoint count must be 11.");
 requireValue(manifest.testContract.cleanupConcurrencyTests === 3, "Cleanup concurrency test count must be 3.");
 requireValue(manifest.testContract.durableStateTests === 7, "Durable state interface test count must be 7.");
-requireValue(manifest.testContract.durableAdapterConformanceTests === 6, "Adapter conformance test count must be 6.");
+requireValue(manifest.testContract.durableAdapterConformanceTests === 7, "Adapter conformance test count must be 7.");
 requireValue(manifest.testContract.stateMappingTests === 5, "State mapping test count must be 5.");
 requireValue(manifest.testContract.crashRecoveryTests === 4, "Crash recovery test count must be 4.");
 requireValue(manifest.testContract.crashInjectionCheckpoints === 4, "Crash injection checkpoint count must be 4.");
 requireValue(manifest.testContract.stateStoreUsesDatabase === true, "The candidate suite must use SQLite.");
-requireValue(manifest.testContract.sqliteAdapterConformanceTests === 6, "SQLite conformance test count must be 6.");
-requireValue(manifest.testContract.sqliteSpecificContractTests === 4, "SQLite-specific contract test count must be 4.");
+requireValue(manifest.testContract.sqliteAdapterConformanceTests === 7, "SQLite conformance test count must be 7.");
+requireValue(manifest.testContract.sqliteSpecificContractTests === 5, "SQLite-specific contract test count must be 5.");
 requireValue(manifest.testContract.externalProcessHardExitTests === 1, "Hard-exit process test count must be 1.");
 requireValue(manifest.testContract.stateCompositionTests === 9, "Live-state composition test count must be 9.");
 requireValue(manifest.testContract.durableCancellationTests === 8, "Durable cancellation test count must be 8.");
 requireValue(manifest.testContract.durableCancellationCrashCheckpoints === 5, "Durable cancellation checkpoint count must be 5.");
+requireValue(manifest.testContract.operationOwnershipTests === 5, "Operation ownership test count must be 5.");
+requireValue(manifest.testContract.operationOwnershipTestPath === "backend/tests/broker/test_operation_ownership.py", "Ownership test path drifted.");
 requireValue(manifest.testContract.usesMockBackend === true, "Composition tests must use the mock backend.");
 requireValue(manifest.testContract.usesProductRuntime === false, "Composition tests must not use a product runtime.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
@@ -479,6 +495,11 @@ requireValue(brokerSQLiteState.includes('connection.execute("BEGIN IMMEDIATE")')
 requireValue(brokerSQLiteState.includes("PRAGMA user_version"), "SQLite candidate must version its schema.");
 requireValue(brokerSQLiteState.includes("cls._validate_schema(connection)"), "Every SQLite connection must validate the exact schema.");
 requireValue(brokerSQLiteState.includes("SQLITE_STATE_RETENTION_POLICY"), "SQLite retention policy must be explicit.");
+requireValue(brokerSQLiteState.includes("SQLITE_STATE_SCHEMA_VERSION = 2"), "SQLite candidate must use schema v2.");
+requireValue(brokerSQLiteState.includes("SQLITE_STATE_PREVIOUS_SCHEMA_VERSION = 1"), "SQLite candidate must recognize schema v1.");
+requireValue(brokerSQLiteState.includes("def _migrate_v1("), "SQLite candidate must define v1 migration.");
+requireValue(brokerSQLiteState.includes("DENSE_RANK() OVER"), "SQLite migration must derive owner generations deterministically.");
+requireValue(brokerSQLiteState.includes("async def verify_ownership("), "SQLite candidate must verify ownership.");
 requireValue(brokerSQLiteState.includes("SQLITE_STATE_PRODUCT_ENABLED = False"), "SQLite candidate must remain inactive.");
 
 requireValue(brokerArchive.includes('mode="r:"'), "Archive validator must reject compression.");
@@ -510,10 +531,16 @@ for (const operation of manifest.durableStateContract.operations) {
   requireValue(brokerState.includes(`async def ${operation}(`), `Durable state protocol is missing ${operation}.`);
 }
 requireValue(brokerState.includes("expected_revision"), "State append must require an expected revision.");
-for (const field of ["operation_sequence", "retry", "backend", "classification"]) {
+for (const field of ["operation_sequence", "owner_id", "fencing_token", "retry", "backend", "classification"]) {
   requireValue(brokerState.includes(`    ${field}:`), `Durable event is missing ${field}.`);
 }
 requireValue(brokerState.includes("StateStoreErrorCode.REVISION_CONFLICT"), "State CAS conflict must be stable.");
+requireValue(brokerState.includes("StateStoreErrorCode.OWNERSHIP_CONFLICT"), "Ownership conflict must be stable.");
+requireValue(brokerState.includes("class DurableOperationOwnership"), "Durable ownership model must be defined.");
+requireValue(brokerState.includes("class DurableOperationGuard"), "Durable ownership guard must be defined.");
+requireValue(brokerState.includes("async def verify_ownership("), "Durable state protocol must verify ownership.");
+requireValue(brokerState.includes("def validate_operation_ownership("), "Shared ownership transition validation must be defined.");
+requireValue(brokerState.includes("previous.fencing_token + 1"), "Takeover must increment the fencing token exactly once.");
 requireValue(!brokerState.includes("raw_detail"), "Durable event source must not expose raw detail.");
 requireValue(brokerState.includes("_operation_slots"), "State adapter must reject operation-slot reuse.");
 requireValue(brokerStateMapping.includes("class BrokerStateMapper"), "Broker state mapper must be defined.");
@@ -522,15 +549,21 @@ requireValue(brokerStateMapping.includes("class StateEventRecorder"), "State bat
 requireValue(brokerLiveState.includes("class LiveStateSession"), "Live state session must be defined.");
 requireValue(brokerLiveState.includes("uuid5("), "Live state IDs must use deterministic UUID v5 values.");
 requireValue(brokerLiveState.includes("await self._store.append("), "Live state writes must await the durable store.");
+requireValue(brokerLiveState.includes("await self._store.verify_ownership("), "Live state must verify exact ownership.");
 requireValue(brokerLiveState.includes("if self._failed:"), "A failed live-state session must stop later writes.");
 requireValue(brokerStateComposition.includes("BROKER_STATE_COMPOSITION_PRODUCT_ENABLED = False"), "Live-state composition must remain inactive.");
 requireValue(brokerStateComposition.includes("broker.runtime_kind is not RuntimeKind.MOCK"), "Live-state composition must reject product runtimes.");
 requireValue(brokerStateComposition.includes("class DurableBrokerComposition"), "Durable broker composition must be defined.");
 requireValue(brokerStateComposition.includes("remaining = await self._store.scan_recoverable(limit=1)"), "Startup must perform a final recovery scan.");
 requireValue(brokerStateComposition.indexOf("current = await self._store.load(identity)") < brokerStateComposition.indexOf("session = LiveStateSession("), "Admission must load existing state before opening a live session.");
+requireValue(brokerStateComposition.includes("str(uuid4())"), "Every composition admission must create a fresh owner attempt.");
+requireValue(brokerStateComposition.includes("current.ownership.fencing_token + 1"), "Cancellation takeover must increment the fencing token.");
 requireValue(brokerOrchestrator.indexOf("BrokerState.VALIDATING") < brokerOrchestrator.indexOf("probe = await self._backend.probe()"), "Validating state must precede the runtime probe.");
 requireValue(brokerOrchestrator.includes("await self._event("), "Broker phase events must be awaited.");
 requireValue(brokerRecovery.includes("class CrashRecoveryCoordinator"), "Crash recovery coordinator must be defined.");
+requireValue(brokerRecovery.includes("owner_id = str(uuid4())"), "Every recovery claim must create a fresh owner attempt.");
+requireValue(brokerRecovery.includes("class DurableOperationGuard") || brokerRecovery.includes("DurableOperationGuard("), "Recovery must use a durable ownership guard.");
+requireValue(brokerRecovery.includes("RecoveryStatus.OWNERSHIP_CONFLICT"), "Recovery must report ownership conflicts.");
 for (const checkpoint of manifest.crashRestartRecoveryContract.checkpoints) {
   requireValue(brokerRecovery.includes(`= "${checkpoint}"`), `Recovery source is missing ${checkpoint}.`);
 }
@@ -554,7 +587,10 @@ requireValue(manifest.crashRestartRecoveryContract.recoversAsSucceeded === false
 requireValue(manifest.crashRestartRecoveryContract.startupAdmissionTested === true, "Startup recovery admission must be tested.");
 requireValue(manifest.crashRestartRecoveryContract.finalRecoverableRescanTested === true, "Startup must verify an empty recovery tail.");
 requireValue(manifest.sqliteDurableStateContract.adapter === "python-stdlib-sqlite3", "SQLite adapter identity drifted.");
-requireValue(manifest.sqliteDurableStateContract.schemaVersion === 1, "SQLite schema version drifted.");
+requireValue(manifest.sqliteDurableStateContract.schemaVersion === 2, "SQLite schema version drifted.");
+requireValue(manifest.sqliteDurableStateContract.previousSchemaVersion === 1, "SQLite previous schema version drifted.");
+requireValue(manifest.sqliteDurableStateContract.v1MigrationTested === true, "SQLite v1 migration must be tested.");
+requireValue(manifest.sqliteDurableStateContract.migrationPreservesRows === true, "SQLite migration must preserve rows.");
 requireValue(manifest.sqliteDurableStateContract.localFileOnly === true, "SQLite candidate must remain local-file-only.");
 requireValue(manifest.sqliteDurableStateContract.memoryDatabaseAccepted === false, "SQLite memory databases must remain forbidden.");
 requireValue(manifest.sqliteDurableStateContract.uriDatabaseAccepted === false, "SQLite URI databases must remain forbidden.");
@@ -646,6 +682,42 @@ const cancellationIntentAppend = brokerStateComposition.indexOf("await session.r
 const cancellationRuntimeEntry = brokerStateComposition.indexOf("return await self._broker._cancel_with_state_session_locked(");
 requireValue(cancellationIntentAppend >= 0 && cancellationIntentAppend < cancellationRuntimeEntry, "Cancellation intent append must precede runtime entry.");
 requireValue(brokerOrchestrator.includes("intent_persisted=state_session is not None"), "Durable cancellation outcome must retain intent admission.");
+requireValue(brokerOrchestrator.includes("ErrorCode.OPERATION_FENCED"), "Broker must normalize stale ownership.");
+requireValue(brokerOrchestrator.includes("await self._assert_owned("), "Broker runtime boundaries must assert ownership.");
+
+const ownershipContract = manifest.operationOwnershipContract;
+requireValue(ownershipContract.productEnabled === false, "Operation ownership must remain product-disabled.");
+requireValue(ownershipContract.acceptedRuntime === "mock", "Operation ownership must remain mock-only.");
+requireValue(ownershipContract.ownerIdType === "uuid", "Owner attempts must use UUIDs.");
+requireValue(ownershipContract.initialExecutionToken === 1, "Execution fencing must start at token 1.");
+requireValue(ownershipContract.takeoverTokenIncrement === 1, "Takeover fencing must increment by 1.");
+requireValue(sameArray(ownershipContract.takeoverStates, ["cancelling", "cleaning"]), "Ownership takeover states drifted.");
+requireValue(ownershipContract.stablePublicCode === "operation-fenced", "Ownership public error drifted.");
+for (const key of [
+  "eventsPersistOwnerAndToken",
+  "appendEnforcesOwnership",
+  "verifyOwnershipImplemented",
+  "verifyOwnershipExpectedRevision",
+  "executionCancellationRecoveryCompetitionTested",
+  "cooperativeApplicationFence",
+]) {
+  requireValue(ownershipContract[key] === true, `${key} must remain true.`);
+}
+for (const key of [
+  "staleOwnerAppendAccepted",
+  "staleOwnerRuntimeMutationAccepted",
+  "staleOwnerCleanupAccepted",
+  "staleOwnerTerminalAppendAccepted",
+  "runtimeEnforced",
+  "verificationAndRuntimeCallAtomic",
+  "inFlightCallRevocation",
+  "ownerLiveness",
+  "leaseExpiry",
+  "multiHost",
+]) {
+  requireValue(ownershipContract[key] === false, `${key} must remain false.`);
+}
+
 for (const code of manifest.liveStateCompositionContract.compositionErrorCodes) {
   requireValue(brokerStateComposition.includes(`= "${code}"`), `Composition source is missing ${code}.`);
 }
@@ -661,6 +733,7 @@ for (const path of [
   "docs/en/m2/sqlite-durable-state.md",
   "docs/en/m2/live-state-composition.md",
   "docs/en/m2/durable-cancellation-arbitration.md",
+  "docs/en/m2/durable-operation-ownership.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -671,6 +744,7 @@ for (const path of [
   "docs/ko/m2/sqlite-durable-state.md",
   "docs/ko/m2/live-state-composition.md",
   "docs/ko/m2/durable-cancellation-arbitration.md",
+  "docs/ko/m2/durable-operation-ownership.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

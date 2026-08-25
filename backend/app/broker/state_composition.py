@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from enum import StrEnum
-from uuid import UUID, uuid5
+from uuid import UUID, uuid4, uuid5
 
 from backend.app.runtime.errors import RuntimePhase
 from backend.app.runtime.models import JobIdentity, RuntimeKind
@@ -209,6 +209,8 @@ class DurableBrokerComposition:
             self._store,
             identity,
             context.operation_id,
+            str(uuid4()),
+            1,
             self._broker.runtime_kind,
         )
         return await self._broker._execute_with_state_session(
@@ -258,6 +260,8 @@ class DurableBrokerComposition:
                 self._store,
                 identity,
                 context.operation_id,
+                str(uuid4()),
+                current.ownership.fencing_token + 1,
                 self._broker.runtime_kind,
                 expected_revision=current.revision,
             )

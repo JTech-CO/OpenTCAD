@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
-from uuid import UUID, uuid5
+from uuid import UUID, uuid4, uuid5
 
 from backend.app.runtime.errors import (
     ErrorCode,
@@ -19,7 +19,10 @@ from .models import BrokerError, BrokerState, ReconciliationReport
 from .state import (
     DurableJobEvent,
     DurableJobStateStore,
+    DurableOperationGuard,
     JobStateSnapshot,
+    OperationOwnershipError,
+    OperationOwnershipGuard,
     StateStoreError,
     StateStoreErrorCode,
 )
@@ -37,6 +40,7 @@ class RecoveryStatus(StrEnum):
     RECOVERED_CANCELLED = "recovered-cancelled"
     CLEANUP_PENDING = "cleanup-pending"
     REVISION_CONFLICT = "revision-conflict"
+    OWNERSHIP_CONFLICT = "ownership-conflict"
 
 
 class RecoveryInterrupted(Exception):
@@ -163,7 +167,12 @@ class RecoveryReport:
 
 @runtime_checkable
 class RecoveryReconciler(Protocol):
-    async def reconcile(self, job_id: str | None = None) -> ReconciliationReport: ...
+    async def reconcile(
+        self,
+        job_id: str | None = None,
+        *,
+        ownership_guard: OperationOwnershipGuard | None = None,
+    ) -> ReconciliationReport: ...
 
 
 class CrashRecoveryCoordinator:
@@ -202,19 +211,21 @@ class CrashRecoveryCoordinator:
             raise RecoveryInterrupted(checkpoint)
 
     @staticmethod
-    def _event_id(recovery_id: str, identity: JobIdentity, suffix: str) -> str:
-        return str(uuid5(UUID(recovery_id), f"{identity.job_id}:{suffix}"))
+    def _event_id(owner_id: str, identity: JobIdentity, suffix: str) -> str:
+        return str(uuid5(UUID(owner_id), f"{identity.job_id}:{suffix}"))
 
     def _claim_event(
         self,
-        request: RecoveryRequest,
         snapshot: JobStateSnapshot,
+        owner_id: str,
     ) -> DurableJobEvent:
         return DurableJobEvent(
             identity=snapshot.identity,
-            event_id=self._event_id(request.recovery_id, snapshot.identity, "claim"),
-            operation_id=request.recovery_id,
+            event_id=self._event_id(owner_id, snapshot.identity, "claim"),
+            operation_id=owner_id,
             operation_sequence=1,
+            owner_id=owner_id,
+            fencing_token=snapshot.ownership.fencing_token + 1,
             state=BrokerState.CLEANING,
             phase=RuntimePhase.CLEANUP,
             backend=self._backend,
@@ -227,7 +238,6 @@ class CrashRecoveryCoordinator:
 
     def _result_event(
         self,
-        request: RecoveryRequest,
         claimed: JobStateSnapshot,
         *,
         cancellation_intent: bool,
@@ -237,12 +247,14 @@ class CrashRecoveryCoordinator:
             return DurableJobEvent(
                 identity=claimed.identity,
                 event_id=self._event_id(
-                    request.recovery_id,
+                    claimed.ownership.owner_id,
                     claimed.identity,
                     "pending",
                 ),
-                operation_id=request.recovery_id,
+                operation_id=claimed.ownership.operation_id,
                 operation_sequence=2,
+                owner_id=claimed.ownership.owner_id,
+                fencing_token=claimed.ownership.fencing_token,
                 state=BrokerState.CLEANING,
                 phase=cleanup_error.phase,
                 code=cleanup_error.code,
@@ -254,12 +266,14 @@ class CrashRecoveryCoordinator:
             return DurableJobEvent(
                 identity=claimed.identity,
                 event_id=self._event_id(
-                    request.recovery_id,
+                    claimed.ownership.owner_id,
                     claimed.identity,
                     "terminal",
                 ),
-                operation_id=request.recovery_id,
+                operation_id=claimed.ownership.operation_id,
                 operation_sequence=2,
+                owner_id=claimed.ownership.owner_id,
+                fencing_token=claimed.ownership.fencing_token,
                 state=BrokerState.CANCELLED,
                 phase=RuntimePhase.CLEANUP,
                 backend=self._backend,
@@ -269,12 +283,14 @@ class CrashRecoveryCoordinator:
         return DurableJobEvent(
             identity=claimed.identity,
             event_id=self._event_id(
-                request.recovery_id,
+                claimed.ownership.owner_id,
                 claimed.identity,
                 "terminal",
             ),
-            operation_id=request.recovery_id,
+            operation_id=claimed.ownership.operation_id,
             operation_sequence=2,
+            owner_id=claimed.ownership.owner_id,
+            fencing_token=claimed.ownership.fencing_token,
             state=BrokerState.FAILED,
             phase=RuntimePhase.CLEANUP,
             code=ErrorCode.STALE_STATE,
@@ -308,9 +324,10 @@ class CrashRecoveryCoordinator:
                 or snapshot.last_event.classification
                 is TerminalClassification.CANCELLED
             )
+            owner_id = str(uuid4())
             try:
                 claimed = await self._store.append(
-                    self._claim_event(request, snapshot),
+                    self._claim_event(snapshot, owner_id),
                     expected_revision=snapshot.revision,
                 )
             except StateStoreError as error:
@@ -332,8 +349,18 @@ class CrashRecoveryCoordinator:
                 identity,
             )
             cleanup_error: BrokerError | None = None
+            guard = DurableOperationGuard(
+                self._store,
+                claimed.ownership,
+                claimed.revision,
+            )
             try:
-                reconciliation = await self._reconciler.reconcile(identity.job_id)
+                await guard.assert_owned(RuntimePhase.QUERY)
+                reconciliation = await self._reconciler.reconcile(
+                    identity.job_id,
+                    ownership_guard=guard,
+                )
+                await guard.assert_owned(RuntimePhase.QUERY)
                 if not isinstance(reconciliation, ReconciliationReport):
                     raise TypeError("Recovery reconciler returned the wrong type.")
                 if not reconciliation.complete:
@@ -343,6 +370,22 @@ class CrashRecoveryCoordinator:
                         RetryDisposition.INFRASTRUCTURE,
                         self._backend.value,
                     )
+            except OperationOwnershipError as error:
+                if error.code not in {
+                    StateStoreErrorCode.OWNERSHIP_CONFLICT,
+                    StateStoreErrorCode.REVISION_CONFLICT,
+                    StateStoreErrorCode.EVENT_CONFLICT,
+                }:
+                    raise StateStoreError(error.code) from None
+                recovered.append(
+                    RecoveryItem(
+                        identity,
+                        RecoveryStatus.OWNERSHIP_CONFLICT,
+                        claimed.revision,
+                        ErrorCode.OPERATION_FENCED,
+                    ),
+                )
+                continue
             except RuntimeBackendError as error:
                 cleanup_error = BrokerError.from_exception(error)
 
@@ -352,7 +395,6 @@ class CrashRecoveryCoordinator:
                 identity,
             )
             result_event = self._result_event(
-                request,
                 claimed,
                 cancellation_intent=cancellation_intent,
                 cleanup_error=cleanup_error,
@@ -363,14 +405,24 @@ class CrashRecoveryCoordinator:
                     expected_revision=claimed.revision,
                 )
             except StateStoreError as error:
-                if error.code is not StateStoreErrorCode.REVISION_CONFLICT:
+                if error.code not in {
+                    StateStoreErrorCode.REVISION_CONFLICT,
+                    StateStoreErrorCode.OWNERSHIP_CONFLICT,
+                }:
                     raise
+                ownership_conflict = (
+                    error.code is StateStoreErrorCode.OWNERSHIP_CONFLICT
+                )
                 recovered.append(
                     RecoveryItem(
                         identity,
-                        RecoveryStatus.REVISION_CONFLICT,
+                        RecoveryStatus.OWNERSHIP_CONFLICT
+                        if ownership_conflict
+                        else RecoveryStatus.REVISION_CONFLICT,
                         claimed.revision,
-                        ErrorCode.STALE_STATE,
+                        ErrorCode.OPERATION_FENCED
+                        if ownership_conflict
+                        else ErrorCode.STALE_STATE,
                     ),
                 )
                 continue

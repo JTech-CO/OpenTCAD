@@ -25,19 +25,22 @@ from .models import BrokerState
 from .state import (
     TERMINAL_STATES,
     DurableJobEvent,
+    DurableOperationOwnership,
     JobStateSnapshot,
     RecoverableStatePage,
     StateStoreError,
     StateStoreErrorCode,
+    validate_operation_ownership,
     validate_state_transition,
 )
 
 
-SQLITE_STATE_SCHEMA_VERSION = 1
+SQLITE_STATE_SCHEMA_VERSION = 2
+SQLITE_STATE_PREVIOUS_SCHEMA_VERSION = 1
 SQLITE_STATE_RETENTION_POLICY = "append-only-no-automatic-deletion"
 SQLITE_STATE_PRODUCT_ENABLED = False
 
-_CREATE_JOB_EVENTS = """
+_CREATE_JOB_EVENTS_V1 = """
 CREATE TABLE job_events (
     job_id TEXT NOT NULL,
     revision INTEGER NOT NULL CHECK (revision >= 1),
@@ -56,12 +59,35 @@ CREATE TABLE job_events (
 )
 """.strip()
 
+_CREATE_JOB_EVENTS = """
+CREATE TABLE job_events (
+    job_id TEXT NOT NULL,
+    revision INTEGER NOT NULL CHECK (revision >= 1),
+    event_id TEXT NOT NULL UNIQUE,
+    operation_id TEXT NOT NULL,
+    operation_sequence INTEGER NOT NULL CHECK (operation_sequence >= 1),
+    owner_id TEXT NOT NULL,
+    fencing_token INTEGER NOT NULL CHECK (fencing_token >= 1),
+    state TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    code TEXT,
+    retry TEXT,
+    backend TEXT,
+    classification TEXT,
+    cleanup_complete INTEGER NOT NULL CHECK (cleanup_complete IN (0, 1)),
+    PRIMARY KEY (job_id, revision),
+    UNIQUE (job_id, operation_id, operation_sequence)
+)
+""".strip()
+
 _ROW_COLUMNS = (
     "job_id",
     "revision",
     "event_id",
     "operation_id",
     "operation_sequence",
+    "owner_id",
+    "fencing_token",
     "state",
     "phase",
     "code",
@@ -128,7 +154,7 @@ class SQLiteJobStateStore:
         self._schema_ready = False
 
     def __repr__(self) -> str:
-        return "SQLiteJobStateStore(schema_version=1, product_enabled=False)"
+        return "SQLiteJobStateStore(schema_version=2, product_enabled=False)"
 
     def _connect(self) -> sqlite3.Connection:
         try:
@@ -192,6 +218,56 @@ class SQLiteJobStateStore:
             raise _store_unavailable()
 
     @classmethod
+    def _migrate_v1(cls, connection: sqlite3.Connection) -> None:
+        schema_sql = cls._schema_sql(connection)
+        if schema_sql is None or _normalize_sql(schema_sql) != _normalize_sql(
+            _CREATE_JOB_EVENTS_V1,
+        ):
+            raise _store_unavailable()
+        connection.execute("ALTER TABLE job_events RENAME TO job_events_v1")
+        connection.execute(_CREATE_JOB_EVENTS)
+        connection.execute(
+            f"""
+            INSERT INTO job_events ({_SELECT_COLUMNS})
+            WITH ownership AS (
+                SELECT job_id, operation_id, MIN(revision) AS first_revision
+                FROM job_events_v1
+                GROUP BY job_id, operation_id
+            ),
+            ranked AS (
+                SELECT
+                    job_id,
+                    operation_id,
+                    DENSE_RANK() OVER (
+                        PARTITION BY job_id ORDER BY first_revision
+                    ) AS fencing_token
+                FROM ownership
+            )
+            SELECT
+                legacy.job_id,
+                legacy.revision,
+                legacy.event_id,
+                legacy.operation_id,
+                legacy.operation_sequence,
+                legacy.operation_id,
+                ranked.fencing_token,
+                legacy.state,
+                legacy.phase,
+                legacy.code,
+                legacy.retry,
+                legacy.backend,
+                legacy.classification,
+                legacy.cleanup_complete
+            FROM job_events_v1 AS legacy
+            INNER JOIN ranked
+                ON ranked.job_id = legacy.job_id
+                AND ranked.operation_id = legacy.operation_id
+            ORDER BY legacy.job_id, legacy.revision
+            """,
+        )
+        connection.execute("DROP TABLE job_events_v1")
+
+    @classmethod
     def _initialize_schema(cls, connection: sqlite3.Connection) -> None:
         mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()
         if mode is None or str(mode[0]).casefold() != "wal":
@@ -204,8 +280,15 @@ class SQLiteJobStateStore:
                 existing = cls._schema_sql(connection)
                 if existing is None:
                     connection.execute(_CREATE_JOB_EVENTS)
+                elif _normalize_sql(existing) == _normalize_sql(_CREATE_JOB_EVENTS_V1):
+                    cls._migrate_v1(connection)
                 elif _normalize_sql(existing) != _normalize_sql(_CREATE_JOB_EVENTS):
                     raise _store_unavailable()
+                connection.execute(
+                    f"PRAGMA user_version = {SQLITE_STATE_SCHEMA_VERSION}",
+                )
+            elif version == SQLITE_STATE_PREVIOUS_SCHEMA_VERSION:
+                cls._migrate_v1(connection)
                 connection.execute(
                     f"PRAGMA user_version = {SQLITE_STATE_SCHEMA_VERSION}",
                 )
@@ -230,6 +313,8 @@ class SQLiteJobStateStore:
                 event_id=row["event_id"],
                 operation_id=row["operation_id"],
                 operation_sequence=row["operation_sequence"],
+                owner_id=row["owner_id"],
+                fencing_token=row["fencing_token"],
                 state=BrokerState(row["state"]),
                 phase=RuntimePhase(row["phase"]),
                 code=_optional_enum(ErrorCode, row["code"]),
@@ -259,6 +344,8 @@ class SQLiteJobStateStore:
             event.event_id,
             event.operation_id,
             event.operation_sequence,
+            event.owner_id,
+            event.fencing_token,
             event.state.value,
             event.phase.value,
             event.code.value if event.code is not None else None,
@@ -343,6 +430,7 @@ class SQLiteJobStateStore:
                     None if current is None else current.state,
                     event.state,
                 )
+                validate_operation_ownership(current, event)
                 next_revision = revision + 1
                 placeholders = ", ".join("?" for _ in _ROW_COLUMNS)
                 connection.execute(
@@ -383,6 +471,43 @@ class SQLiteJobStateStore:
         ):
             _invalid_event()
         return await asyncio.to_thread(self._append_sync, event, expected_revision)
+
+    def _verify_ownership_sync(
+        self,
+        ownership: DurableOperationOwnership,
+        expected_revision: int | None,
+    ) -> JobStateSnapshot:
+        current = self._load_sync(ownership.identity)
+        if (
+            current is None
+            or current.ownership != ownership
+            or (
+                expected_revision is not None
+                and current.revision != expected_revision
+            )
+        ):
+            raise StateStoreError(StateStoreErrorCode.OWNERSHIP_CONFLICT)
+        return current
+
+    async def verify_ownership(
+        self,
+        ownership: DurableOperationOwnership,
+        *,
+        expected_revision: int | None = None,
+    ) -> JobStateSnapshot:
+        if not isinstance(ownership, DurableOperationOwnership):
+            _invalid_event()
+        if expected_revision is not None and (
+            not isinstance(expected_revision, int)
+            or isinstance(expected_revision, bool)
+            or expected_revision < 1
+        ):
+            _invalid_event()
+        return await asyncio.to_thread(
+            self._verify_ownership_sync,
+            ownership,
+            expected_revision,
+        )
 
     def _scan_sync(
         self,

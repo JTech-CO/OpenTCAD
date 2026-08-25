@@ -45,6 +45,11 @@ from .models import (
     ReconciliationReport,
 )
 from .output_archive import output_archive_limits, validate_canonical_output_archive
+from .state import (
+    OperationOwnershipError,
+    OperationOwnershipGuard,
+    StateStoreErrorCode,
+)
 
 
 DiagnosticSink = Callable[[InternalDiagnostic], None]
@@ -135,16 +140,55 @@ class SandboxBroker:
             self._diagnostic_sink(diagnostic)
         return diagnostic.public_error
 
+    @staticmethod
+    def _is_fenced_store_code(code: StateStoreErrorCode) -> bool:
+        return code in {
+            StateStoreErrorCode.OWNERSHIP_CONFLICT,
+            StateStoreErrorCode.REVISION_CONFLICT,
+            StateStoreErrorCode.EVENT_CONFLICT,
+        }
+
     def _capture_state_write_error(
         self,
         error: LiveStateWriteError,
     ) -> BrokerError:
         return BrokerError(
-            ErrorCode.INVALID_STATE,
+            ErrorCode.OPERATION_FENCED
+            if self._is_fenced_store_code(error.code)
+            else ErrorCode.INVALID_STATE,
             error.phase,
             RetryDisposition.INFRASTRUCTURE,
             self._backend.name.value,
         )
+
+    def _capture_ownership_error(
+        self,
+        error: OperationOwnershipError,
+    ) -> BrokerError:
+        return BrokerError(
+            ErrorCode.OPERATION_FENCED
+            if self._is_fenced_store_code(error.code)
+            else ErrorCode.INVALID_STATE,
+            error.phase,
+            RetryDisposition.INFRASTRUCTURE,
+            self._backend.name.value,
+        )
+
+    def _fenced_cleanup_error(self) -> BrokerError:
+        return BrokerError(
+            ErrorCode.OPERATION_FENCED,
+            RuntimePhase.CLEANUP,
+            RetryDisposition.INFRASTRUCTURE,
+            self._backend.name.value,
+        )
+
+    @staticmethod
+    async def _assert_owned(
+        guard: OperationOwnershipGuard | None,
+        phase: RuntimePhase,
+    ) -> None:
+        if guard is not None:
+            await guard.assert_owned(phase)
 
     @staticmethod
     def _live_classification(
@@ -201,16 +245,19 @@ class SandboxBroker:
         *,
         started: bool,
         terminal: bool,
+        ownership_guard: OperationOwnershipGuard | None = None,
     ) -> BrokerError | None:
         first_error: BrokerError | None = None
         if container is not None:
             if started and not terminal:
                 try:
+                    await self._assert_owned(ownership_guard, RuntimePhase.KILL)
                     await self._backend.kill(container, TerminationReason.SHUTDOWN)
                 except RuntimeBackendError as error:
                     if error.code is not ErrorCode.CONTAINER_NOT_FOUND:
                         first_error = self._capture_error(identity, error)
             try:
+                await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
                 await self._backend.remove_container(container)
             except RuntimeBackendError as error:
                 if error.code is not ErrorCode.CONTAINER_NOT_FOUND:
@@ -219,6 +266,7 @@ class SandboxBroker:
                         first_error = captured
         if volume is not None:
             try:
+                await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
                 await self._backend.remove_volume(volume)
             except RuntimeBackendError as error:
                 if error.code is not ErrorCode.VOLUME_NOT_FOUND:
@@ -227,8 +275,13 @@ class SandboxBroker:
                         first_error = captured
         return first_error
 
-    async def _verify_no_managed(self, identity: JobIdentity) -> BrokerError | None:
+    async def _verify_no_managed(
+        self,
+        identity: JobIdentity,
+        ownership_guard: OperationOwnershipGuard | None = None,
+    ) -> BrokerError | None:
         try:
+            await self._assert_owned(ownership_guard, RuntimePhase.QUERY)
             remaining = await self._backend.list_managed(identity.job_id)
             handles = (*remaining.containers, *remaining.volumes)
             if any(handle.job_id != identity.job_id for handle in handles):
@@ -257,17 +310,25 @@ class SandboxBroker:
         *,
         started: bool,
         terminal: bool,
+        ownership_guard: OperationOwnershipGuard | None = None,
     ) -> BrokerError | None:
         async with self._cleanup_coordinator.lease(identity):
-            first_error = await self._cleanup_unlocked(
-                identity,
-                container,
-                volume,
-                started=started,
-                terminal=terminal,
-            )
-            verification_error = await self._verify_no_managed(identity)
-            return first_error or verification_error
+            try:
+                first_error = await self._cleanup_unlocked(
+                    identity,
+                    container,
+                    volume,
+                    started=started,
+                    terminal=terminal,
+                    ownership_guard=ownership_guard,
+                )
+                verification_error = await self._verify_no_managed(
+                    identity,
+                    ownership_guard,
+                )
+                return first_error or verification_error
+            except OperationOwnershipError as error:
+                return self._capture_ownership_error(error)
 
     async def execute(
         self,
@@ -321,6 +382,7 @@ class SandboxBroker:
         container: ContainerHandle | None = None
         started = False
         terminal = False
+        ownership_lost = False
 
         try:
             await self._event(
@@ -330,6 +392,7 @@ class SandboxBroker:
                 state_session=state_session,
             )
             self._checkpoint(cancellation, LifecycleCheckpoint.PROBE)
+            await self._assert_owned(state_session, RuntimePhase.PROBE)
             probe = await self._backend.probe()
             if probe.health is not RuntimeHealth.AVAILABLE or probe.capabilities is None:
                 raise RuntimeBackendError(
@@ -361,14 +424,19 @@ class SandboxBroker:
                 state_session=state_session,
             )
             self._checkpoint(cancellation, LifecycleCheckpoint.IMAGE)
+            await self._assert_owned(state_session, RuntimePhase.IMAGE)
             await self._backend.ensure_image(request.spec.image)
             self._checkpoint(cancellation, LifecycleCheckpoint.VOLUME)
+            await self._assert_owned(state_session, RuntimePhase.VOLUME)
             volume = await self._backend.create_volume(validated_spec.identity)
             self._checkpoint(cancellation, LifecycleCheckpoint.INPUT_STAGE)
+            await self._assert_owned(state_session, RuntimePhase.INPUT)
             await self._backend.stage_inputs(volume, validated_spec, validated_archive)
             self._checkpoint(cancellation, LifecycleCheckpoint.CONTAINER_CREATE)
+            await self._assert_owned(state_session, RuntimePhase.CREATE)
             container = await self._backend.create_container(validated_spec, volume)
             self._checkpoint(cancellation, LifecycleCheckpoint.START)
+            await self._assert_owned(state_session, RuntimePhase.START)
             await self._backend.start(container)
             started = True
 
@@ -379,6 +447,7 @@ class SandboxBroker:
                 state_session=state_session,
             )
             self._checkpoint(cancellation, LifecycleCheckpoint.WAIT)
+            await self._assert_owned(state_session, RuntimePhase.WAIT)
             result = await self._backend.wait(container)
             terminal = True
             if result.classification is TerminalClassification.SUCCEEDED:
@@ -390,6 +459,7 @@ class SandboxBroker:
                     classification=result.classification,
                 )
                 self._checkpoint(cancellation, LifecycleCheckpoint.ARTIFACT_COLLECTION)
+                await self._assert_owned(state_session, RuntimePhase.ARTIFACT)
                 raw_archive = await self._backend.collect_artifacts(container)
                 limits = output_archive_limits(
                     request.spec.limits.artifact_bytes,
@@ -407,14 +477,15 @@ class SandboxBroker:
             cancellation_checkpoint = interruption.checkpoint
             artifacts = ()
             artifact_archive = None
-            await self._event(
-                events,
-                BrokerState.CANCELLING,
-                interruption.checkpoint.phase,
-                state_session=state_session,
-            )
-            if started and not terminal and container is not None:
-                try:
+            try:
+                await self._event(
+                    events,
+                    BrokerState.CANCELLING,
+                    interruption.checkpoint.phase,
+                    state_session=state_session,
+                )
+                if started and not terminal and container is not None:
+                    await self._assert_owned(state_session, RuntimePhase.KILL)
                     result = await self._backend.kill(
                         container,
                         TerminationReason.CANCELLATION,
@@ -427,37 +498,60 @@ class SandboxBroker:
                             backend=self._backend.name.value,
                             detail="runtime-returned-noncancelled-result",
                         )
-                except RuntimeBackendError as error:
-                    primary_error = self._capture_error(identity, error)
-            else:
-                result = None
+                else:
+                    result = None
+            except LiveStateWriteError as error:
+                primary_error = self._capture_state_write_error(error)
+                ownership_lost = self._is_fenced_store_code(error.code)
+            except OperationOwnershipError as error:
+                primary_error = self._capture_ownership_error(error)
+                ownership_lost = self._is_fenced_store_code(error.code)
+            except RuntimeBackendError as error:
+                primary_error = self._capture_error(identity, error)
         except LiveStateWriteError as error:
             primary_error = self._capture_state_write_error(error)
+            ownership_lost = self._is_fenced_store_code(error.code)
+        except OperationOwnershipError as error:
+            primary_error = self._capture_ownership_error(error)
+            ownership_lost = self._is_fenced_store_code(error.code)
         except RuntimeBackendError as error:
             primary_error = self._capture_error(identity, error)
         finally:
-            try:
-                await self._event(
-                    events,
-                    BrokerState.CLEANING,
-                    RuntimePhase.CLEANUP,
-                    state_session=state_session,
-                    classification=self._live_classification(
-                        result,
-                        cancellation_checkpoint,
-                        primary_error,
-                    ),
-                )
-            except LiveStateWriteError as error:
-                if primary_error is None:
-                    primary_error = self._capture_state_write_error(error)
-            cleanup_error = await self._cleanup(
-                identity,
-                container,
-                volume,
-                started=started,
-                terminal=terminal,
-            )
+            if ownership_lost:
+                cleanup_error = self._fenced_cleanup_error()
+            else:
+                try:
+                    await self._event(
+                        events,
+                        BrokerState.CLEANING,
+                        RuntimePhase.CLEANUP,
+                        state_session=state_session,
+                        classification=self._live_classification(
+                            result,
+                            cancellation_checkpoint,
+                            primary_error,
+                        ),
+                    )
+                except LiveStateWriteError as error:
+                    if primary_error is None:
+                        primary_error = self._capture_state_write_error(error)
+                    ownership_lost = self._is_fenced_store_code(error.code)
+                if ownership_lost:
+                    cleanup_error = self._fenced_cleanup_error()
+                else:
+                    cleanup_error = await self._cleanup(
+                        identity,
+                        container,
+                        volume,
+                        started=started,
+                        terminal=terminal,
+                        ownership_guard=(
+                            state_session
+                            if state_session is not None
+                            and state_session.last_snapshot is not None
+                            else None
+                        ),
+                    )
 
         succeeded = (
             result is not None
@@ -620,10 +714,12 @@ class SandboxBroker:
         volume: VolumeHandle | None = None
         terminal = False
         converged_without_runtime = False
+        ownership_lost = False
 
         if intent_event is None:
             await self._event(events, BrokerState.VALIDATING, RuntimePhase.QUERY)
         try:
+            await self._assert_owned(state_session, RuntimePhase.QUERY)
             managed = await self._backend.list_managed(identity.job_id)
             handles = (*managed.containers, *managed.volumes)
             if any(handle.job_id != identity.job_id for handle in handles):
@@ -659,6 +755,7 @@ class SandboxBroker:
                     RuntimePhase.KILL,
                     state_session=state_session,
                 )
+                await self._assert_owned(state_session, RuntimePhase.KILL)
                 result = await self._backend.kill(
                     container,
                     TerminationReason.CANCELLATION,
@@ -673,6 +770,10 @@ class SandboxBroker:
                     )
         except LiveStateWriteError as error:
             primary_error = self._capture_state_write_error(error)
+            ownership_lost = self._is_fenced_store_code(error.code)
+        except OperationOwnershipError as error:
+            primary_error = self._capture_ownership_error(error)
+            ownership_lost = self._is_fenced_store_code(error.code)
         except RuntimeBackendError as error:
             primary_error = self._capture_error(identity, error)
         finally:
@@ -683,42 +784,68 @@ class SandboxBroker:
                 if state_session is not None
                 else None
             )
-            try:
-                await self._event(
-                    events,
-                    BrokerState.CLEANING,
-                    RuntimePhase.CLEANUP,
-                    state_session=state_session,
-                    classification=classification,
-                )
-            except LiveStateWriteError as error:
-                if primary_error is None:
-                    primary_error = self._capture_state_write_error(error)
-            if (
-                state_session is not None
-                and not state_session.failed
-                and state_session.last_snapshot is not None
-                and state_session.last_snapshot.state is BrokerState.CLEANING
-            ):
-                cancellation_checkpoint(
-                    crash_signal,
-                    DurableCancellationCheckpoint.AFTER_CLEANING_STATE,
-                    identity,
-                )
-            first_cleanup_error = await self._cleanup_unlocked(
-                identity,
-                container,
-                volume,
-                started=container is not None,
-                terminal=terminal,
-            )
-            verification_error = await self._verify_no_managed(identity)
-            cleanup_error = first_cleanup_error or verification_error
-            cancellation_checkpoint(
-                crash_signal,
-                DurableCancellationCheckpoint.AFTER_CLEANUP,
-                identity,
-            )
+            if ownership_lost:
+                cleanup_error = self._fenced_cleanup_error()
+            else:
+                try:
+                    await self._event(
+                        events,
+                        BrokerState.CLEANING,
+                        RuntimePhase.CLEANUP,
+                        state_session=state_session,
+                        classification=classification,
+                    )
+                except LiveStateWriteError as error:
+                    if primary_error is None:
+                        primary_error = self._capture_state_write_error(error)
+                    ownership_lost = self._is_fenced_store_code(error.code)
+                if ownership_lost:
+                    cleanup_error = self._fenced_cleanup_error()
+                else:
+                    if (
+                        state_session is not None
+                        and not state_session.failed
+                        and state_session.last_snapshot is not None
+                        and state_session.last_snapshot.state is BrokerState.CLEANING
+                    ):
+                        cancellation_checkpoint(
+                            crash_signal,
+                            DurableCancellationCheckpoint.AFTER_CLEANING_STATE,
+                            identity,
+                        )
+                    try:
+                        first_cleanup_error = await self._cleanup_unlocked(
+                            identity,
+                            container,
+                            volume,
+                            started=container is not None,
+                            terminal=terminal,
+                            ownership_guard=(
+                                state_session
+                                if state_session is not None
+                                and state_session.last_snapshot is not None
+                                else None
+                            ),
+                        )
+                        verification_error = await self._verify_no_managed(
+                            identity,
+                            state_session
+                            if state_session is not None
+                            and state_session.last_snapshot is not None
+                            else None,
+                        )
+                        cleanup_error = first_cleanup_error or verification_error
+                    except OperationOwnershipError as error:
+                        if primary_error is None:
+                            primary_error = self._capture_ownership_error(error)
+                        ownership_lost = self._is_fenced_store_code(error.code)
+                        cleanup_error = self._fenced_cleanup_error()
+                    if not ownership_lost:
+                        cancellation_checkpoint(
+                            crash_signal,
+                            DurableCancellationCheckpoint.AFTER_CLEANUP,
+                            identity,
+                        )
 
         runtime_cancelled = (
             result is not None
@@ -797,7 +924,12 @@ class SandboxBroker:
             intent_persisted=state_session is not None,
         )
 
-    async def _reconcile_locked(self, identity: JobIdentity) -> ReconciliationReport:
+    async def _reconcile_locked(
+        self,
+        identity: JobIdentity,
+        ownership_guard: OperationOwnershipGuard | None = None,
+    ) -> ReconciliationReport:
+        await self._assert_owned(ownership_guard, RuntimePhase.QUERY)
         managed = await self._backend.list_managed(identity.job_id)
         errors: list[BrokerError] = []
         containers_removed = 0
@@ -815,6 +947,7 @@ class SandboxBroker:
         else:
             for container in managed.containers:
                 try:
+                    await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
                     await self._backend.remove_container(container)
                 except RuntimeBackendError as error:
                     if error.code is ErrorCode.CONTAINER_NOT_FOUND:
@@ -824,6 +957,7 @@ class SandboxBroker:
                         errors.append(self._capture_error(identity, error))
                         continue
                     try:
+                        await self._assert_owned(ownership_guard, RuntimePhase.KILL)
                         await self._backend.kill(container, TerminationReason.SHUTDOWN)
                     except RuntimeBackendError as kill_error:
                         if kill_error.code is ErrorCode.CONTAINER_NOT_FOUND:
@@ -832,6 +966,7 @@ class SandboxBroker:
                         errors.append(self._capture_error(identity, kill_error))
                         continue
                     try:
+                        await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
                         await self._backend.remove_container(container)
                     except RuntimeBackendError as retry_error:
                         if retry_error.code is not ErrorCode.CONTAINER_NOT_FOUND:
@@ -841,6 +976,7 @@ class SandboxBroker:
 
             for volume in managed.volumes:
                 try:
+                    await self._assert_owned(ownership_guard, RuntimePhase.CLEANUP)
                     await self._backend.remove_volume(volume)
                 except RuntimeBackendError as error:
                     if error.code is not ErrorCode.VOLUME_NOT_FOUND:
@@ -848,6 +984,7 @@ class SandboxBroker:
                         continue
                 volumes_removed += 1
 
+        await self._assert_owned(ownership_guard, RuntimePhase.QUERY)
         remaining = await self._backend.list_managed(identity.job_id)
         return ReconciliationReport(
             containers_found=len(managed.containers),
@@ -859,12 +996,24 @@ class SandboxBroker:
             errors=tuple(errors),
         )
 
-    async def reconcile(self, job_id: str | None = None) -> ReconciliationReport:
+    async def reconcile(
+        self,
+        job_id: str | None = None,
+        *,
+        ownership_guard: OperationOwnershipGuard | None = None,
+    ) -> ReconciliationReport:
+        if ownership_guard is not None and not isinstance(
+            ownership_guard,
+            OperationOwnershipGuard,
+        ):
+            raise TypeError("Reconciliation ownership guard has the wrong type.")
         if job_id is not None:
             identity = JobIdentity(job_id)
             async with self._cleanup_coordinator.lease(identity):
-                return await self._reconcile_locked(identity)
+                return await self._reconcile_locked(identity, ownership_guard)
 
+        if ownership_guard is not None:
+            raise TypeError("Global reconciliation cannot use one job ownership guard.")
         managed = await self._backend.list_managed()
         job_ids = sorted(
             {handle.job_id for handle in (*managed.containers, *managed.volumes)},
