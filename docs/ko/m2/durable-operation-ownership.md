@@ -30,7 +30,7 @@ Stale 또는 expired execution이나 cancellation이 renewal을 잃으면 Python
 
 비활성 SQLite 후보는 이제 schema version `3`을 사용합니다. Append-only `job_events` row는 commit된 각 lease duration을 보존하고 mutable `job_leases` row 하나가 현재 owner tuple과 절대 expiry를 저장합니다. `renew_ownership()`은 정확한 live lease row만 갱신하므로 heartbeat renewal은 job revision을 바꾸거나 durable event를 append하지 않습니다. Append, renew, verify, recovery scan은 memory double과 같은 expiry 및 ownership 규칙을 강제합니다.
 
-기존의 정확한 schema version `1` file은 event를 삭제하지 않고 transaction 하나에서 version `2`를 거쳐 version `3`으로 migration하며 정확한 version `2` file은 version `3`으로 바로 migration합니다. 과거 operation generation은 보존하고 현재 lease는 보수적으로 expired 상태로 만들어 upgrade 뒤 recovery가 진행할 수 있게 합니다. 알 수 없는 이후 version이나 event 또는 lease table 불일치는 계속 실패 폐쇄합니다. 자동 downgrade, compaction, backup, restore는 구현하지 않았습니다.
+기존의 정확한 schema version `1` file은 event를 삭제하지 않고 transaction 하나에서 version `2`를 거쳐 version `3`으로 migration하며 정확한 version `2` file은 version `3`으로 바로 migration합니다. 과거 operation generation은 보존하고 현재 lease는 보수적으로 expired 상태로 만들어 upgrade 뒤 recovery가 진행할 수 있게 합니다. 알 수 없는 이후 version이나 event 또는 lease table 불일치는 계속 실패 폐쇄합니다. 자동 downgrade와 compaction은 구현하지 않았습니다. 후보 pair backup 및 신규 target restore는 별도 [조정된 offline snapshot 계약](sqlite-offline-snapshot-restore.md)에 정의하며 제품 scheduling, 인증, durable rollback floor 저장은 없습니다.
 
 ## 경쟁 상태 증거
 
@@ -42,7 +42,7 @@ Stale 또는 expired execution이나 cancellation이 renewal을 잃으면 Python
 4. Recovery가 runtime query 전 cancellation을 takeover하면 recovery만 mock runtime을 변경합니다.
 5. 더 새로운 recovery가 이전 reconciler를 runtime object 변경 전에 fence 처리합니다.
 
-Owner lease test 4개는 revision을 바꾸지 않는 heartbeat renewal, expired in-flight Python awaitable 취소, stale 및 ambiguous owner 거부, cross-job 거부를 증명합니다. 재사용 가능한 runtime-fence suite는 공통 adapter case 5개와 authority, parser, post-mutation 집중 case 3개를 추가합니다. 정확한 mock object label 저장, adapter instance 사이의 공유 authority, takeover 제한, operation 후 stale 결과 차단, cleanup 수렴을 증명합니다. 전체 dependency-free Python suite는 test 133개를 포함합니다. 제품 runtime, network service, runtime socket, solver를 호출하지 않습니다.
+Owner lease test 4개는 revision을 바꾸지 않는 heartbeat renewal, expired in-flight Python awaitable 취소, stale 및 ambiguous owner 거부, cross-job 거부를 증명합니다. 재사용 가능한 runtime-fence suite는 공통 adapter case 5개와 authority, parser, post-mutation 집중 case 3개를 추가합니다. 정확한 mock object label 저장, adapter instance 사이의 공유 authority, takeover 제한, operation 후 stale 결과 차단, cleanup 수렴을 증명합니다. 전체 dependency-free Python suite는 test 140개를 포함합니다. 제품 runtime, network service, runtime socket, solver를 호출하지 않습니다.
 
 ## 정확한 한계와 다음 경계
 

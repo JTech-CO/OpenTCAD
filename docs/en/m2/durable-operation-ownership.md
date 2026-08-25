@@ -30,7 +30,7 @@ If a stale or expired execution or cancellation loses renewal, its Python awaita
 
 The inactive SQLite candidate now uses schema version `3`. Append-only `job_events` rows retain each committed lease duration, while one mutable `job_leases` row stores the current owner tuple and absolute expiry. `renew_ownership()` updates only that exact live lease row, so heartbeat renewal does not change a job revision or append a durable event. Append, renew, verify, and recovery scan enforce the same expiry and ownership rules as the memory double.
 
-Existing exact schema version `1` files migrate through version `2` to version `3` in one transaction without deleting events; exact version `2` files migrate directly to version `3`. Historical operation generations are preserved and receive a conservatively expired current lease so recovery may make progress after upgrade. Unknown forward versions and mismatched event or lease tables still fail closed. Automatic downgrade, compaction, backup, and restore are not implemented.
+Existing exact schema version `1` files migrate through version `2` to version `3` in one transaction without deleting events; exact version `2` files migrate directly to version `3`. Historical operation generations are preserved and receive a conservatively expired current lease so recovery may make progress after upgrade. Unknown forward versions and mismatched event or lease tables still fail closed. Automatic downgrade and compaction are not implemented. Candidate pair backup and fresh-target restore are now defined by the separate [coordinated offline snapshot contract](sqlite-offline-snapshot-restore.md), while product scheduling, authentication, and durable rollback-floor storage remain absent.
 
 ## Competition evidence
 
@@ -42,7 +42,7 @@ Five focused tests exercise cross-operation ownership:
 4. Recovery takes over a cancellation before its runtime query, so only recovery mutates the mock runtime.
 5. A newer recovery fences an older reconciler before the older owner can mutate runtime objects.
 
-Four owner-lease tests prove revision-neutral heartbeat renewal, cancellation of an expired in-flight Python awaitable, stale and ambiguous owner rejection, and cross-job rejection. The reusable runtime-fence suite adds five common adapter cases plus three focused authority, parser, and post-mutation cases. These prove exact mock-object label persistence, shared authority across adapter instances, takeover restrictions, post-operation stale-result suppression, and cleanup convergence. The complete dependency-free Python suite contains 133 tests. It invokes no product runtime, network service, runtime socket, or solver.
+Four owner-lease tests prove revision-neutral heartbeat renewal, cancellation of an expired in-flight Python awaitable, stale and ambiguous owner rejection, and cross-job rejection. The reusable runtime-fence suite adds five common adapter cases plus three focused authority, parser, and post-mutation cases. These prove exact mock-object label persistence, shared authority across adapter instances, takeover restrictions, post-operation stale-result suppression, and cleanup convergence. The complete dependency-free Python suite contains 140 tests. It invokes no product runtime, network service, runtime socket, or solver.
 
 ## Exact limitation and next boundary
 

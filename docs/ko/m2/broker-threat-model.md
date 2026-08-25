@@ -29,7 +29,8 @@
 | 리소스 또는 출력 서비스 거부 | CPU, 메모리, PID, 시간, 출력, 파일 수, 산출물, tmpfs 상한 고정 | 모델과 정책이 선언 상한을 강제하며 런타임 집행은 대기 |
 | 잡 간 접근 | 서버 UUID label, opaque handle, 정확한 잡 소유권, 관리 볼륨 격리, 정확한 산출물 manifest | mock lifecycle이 소유권을 강제하며 런타임 격리는 대기 |
 | 남은 상태 또는 orphan 재사용 | 기존 label 객체를 거부하고 정확한 identity를 사용하며 job별 cleanup을 직렬화하고 제한된 durable lease와 heartbeat를 사용하며 cancellation 또는 expired-owner recovery 전에 owner generation을 증가시키고 runtime 변경을 정확한 job, owner, token에 bind하며 container 다음 volume 순서로 정리한 뒤 orphan 0을 조회 | Ownership 경쟁 case 5개, lease 및 runtime fencing case 4개, guard를 적용한 concurrent mock reconciliation, recovery restart 경계 4곳, cancellation restart 경계 5곳, SQLite hard-exit takeover 증거가 있으며 제품 runtime의 native fencing, runtime 기반 reconciliation, clock-skew policy, power-loss recovery는 대기 |
-| 상태 혼동과 안전하지 않은 재시도 | 연속 broker event를 결정론적 event 및 operation slot으로 mapping하고 owner UUID, fencing token, lease duration, current expiry, 원자적 revision CAS, revision-neutral renewal, 허용 takeover state, terminal 불변성, 정확한 live ownership 검사, 제한된 recovery scan을 저장 | Owner-aware complete-outcome 및 phase-time mapping, partial replay, memory 및 SQLite adapter 공통 conformance case 10개, live-owner recovery 거부, cancellation 선점, schema-v1 및 schema-v2 migration, lock redaction, restart recovery test가 있으며 retention compaction, backup, 제품 native fencing, bounded clock skew, multi-host coordination은 대기 |
+| 상태 혼동과 안전하지 않은 재시도 | 연속 broker event를 결정론적 event 및 operation slot으로 mapping하고 owner UUID, fencing token, lease duration, current expiry, 원자적 revision CAS, revision-neutral renewal, 허용 takeover state, terminal 불변성, 정확한 live ownership 검사, 제한된 recovery scan을 저장 | Owner-aware complete-outcome 및 phase-time mapping, partial replay, memory 및 SQLite adapter 공통 conformance case 10개, live-owner recovery 거부, cancellation 선점, schema-v1 및 schema-v2 migration, lock redaction, restart recovery, 제품 비활성 조정 offline pair snapshot이 있으며 retention compaction, 제품 backup scheduling, 인증된 metadata, durable rollback floor 저장, 제품 native fencing, bounded clock skew, multi-host coordination은 대기 |
+| Snapshot 치환, rollback, 부분 restore | 명시적 offline assertion, 고정 file, canonical metadata, hash, 정확한 schema, state-authority generation 일관성, 정확한 source identity, 신뢰된 최소 sequence, 신규 directory 공개 요구 | 후보는 torn, extra, tampered, mixed, identity 불일치, floor 미만, 기존 target case를 거부하지만 인증, durable floor 저장, 실행 중 service 조정, power-loss 증거는 대기 |
 | 진단 정보 노출 | secret과 호스트 경로를 제거하고 정규화된 capability와 error record만 노출 | 공개 event는 raw detail과 비정규 backend 값을 제외하며 raw detail은 repr에서 숨긴 내부 diagnostic에만 존재 |
 | backend 의미 차이 | Docker와 Podman 정책을 각각 매핑하고 계약 및 장애 테스트로 동등한 통제를 입증 | capability 어휘는 있으며 adapter는 차단 |
 
@@ -49,6 +50,7 @@
 - 위조 이미지 응답, 누락 capability, 예상하지 않은 런타임 version, rootless drift, Docker와 Podman flag 차이
 - lifecycle 각 단계의 취소, 브로커 재시작, 런타임 재시작, 호스트 재시작, 부분 정리, 남은 label, 동시 정리
 - 출력 flood, 산출물 바꿔치기, 잡 간 handle 재사용, 중복 잡 제출, 진단 secret 주입
+- Snapshot file 치환, 중복 JSON key, source-instance 불일치, sequence rollback, mixed state-authority generation, 중단된 공개, 기존 target restore
 - 현재의 20회 혼합 반복, 결정론적 memory 기반 crash 경계, SQLite process hard-exit 증거와 별도로 label container 및 volume 0을 증명해야 하는 제품 runtime, host restart, power-loss, distributed-ownership 행렬
 
 ## 승인 게이트
@@ -57,4 +59,4 @@
 
 ## 롤백
 
-`backend/app/runtime/`, M2 manifest, M2 문서를 제거하면 제품은 엔진 없는 정적 상태로 돌아갑니다. Contract test는 격리된 임시 SQLite file만 만들고 제거하며 제품은 runtime object, image, database, project, 수치 baseline을 만들지 않습니다.
+`backend/app/runtime/`, M2 manifest, M2 문서를 제거하면 제품은 엔진 없는 정적 상태로 돌아갑니다. Contract test는 격리된 임시 SQLite file, snapshot bundle, restore directory만 만들고 제거하며 제품은 runtime object, image, database, project, 수치 baseline을 만들지 않습니다.
