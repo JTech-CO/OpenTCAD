@@ -86,6 +86,7 @@ const expectedSourceFiles = [
   "backend/app/runtime/protocol.py",
   "backend/app/runtime/fencing.py",
   "backend/app/runtime/fence_authority.py",
+  "backend/app/runtime/sqlite_fence_authority.py",
   "backend/app/runtime/mock_backend.py",
   "backend/app/broker/__init__.py",
   "backend/app/broker/archive.py",
@@ -103,20 +104,25 @@ const expectedSourceFiles = [
   "backend/app/broker/sqlite_state.py",
   "backend/app/broker/state_mapping.py",
   "backend/app/broker/recovery.py",
+  "backend/app/broker/runtime_fence_activation.py",
   "backend/app/broker/state_composition.py",
   "backend/pyproject.toml",
   "backend/tests/runtime/support.py",
   "backend/tests/runtime/fence_conformance.py",
+  "backend/tests/runtime/fence_authority_conformance.py",
   "backend/tests/runtime/test_identity.py",
   "backend/tests/runtime/test_mock_backend.py",
   "backend/tests/runtime/test_name_collisions.py",
   "backend/tests/runtime/test_policy.py",
   "backend/tests/runtime/test_runtime_fence_conformance.py",
+  "backend/tests/runtime/sqlite_fence_authority_child.py",
+  "backend/tests/runtime/test_sqlite_fence_authority.py",
   "backend/tests/broker/test_archive.py",
   "backend/tests/broker/lease_support.py",
   "backend/tests/broker/test_cancellation_redaction.py",
   "backend/tests/broker/test_cleanup_concurrency.py",
   "backend/tests/broker/test_durable_cancellation.py",
+  "backend/tests/broker/test_durable_fence_activation.py",
   "backend/tests/broker/test_operation_ownership.py",
   "backend/tests/broker/test_owner_lease_runtime_fencing.py",
   "backend/tests/broker/test_lifecycle_control.py",
@@ -145,6 +151,7 @@ const expectedSourceFiles = [
   "docs/en/m2/durable-operation-ownership.md",
   "docs/en/m2/owner-lease-runtime-fencing.md",
   "docs/en/m2/native-runtime-fence-conformance.md",
+  "docs/en/m2/durable-runtime-fence-authority.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -158,6 +165,7 @@ const expectedSourceFiles = [
   "docs/ko/m2/durable-operation-ownership.md",
   "docs/ko/m2/owner-lease-runtime-fencing.md",
   "docs/ko/m2/native-runtime-fence-conformance.md",
+  "docs/ko/m2/durable-runtime-fence-authority.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ];
@@ -278,6 +286,12 @@ requireValue(manifest.securityBoundary.candidateRuntimeFenceAuthorityProductEnab
 requireValue(manifest.securityBoundary.nativeObjectFenceLabelsPersistedInMock === true, "Mock native-object fence labels must be recorded.");
 requireValue(manifest.securityBoundary.runtimeFenceConformanceSuiteImplemented === true, "Runtime fence conformance suite must be recorded.");
 requireValue(manifest.securityBoundary.runtimeFencePostMutationVerificationTested === true, "Post-mutation runtime fence verification must be recorded.");
+requireValue(manifest.securityBoundary.candidateCrossProcessRuntimeFenceAuthorityImplemented === true, "Cross-process runtime fence authority candidate must be recorded.");
+requireValue(manifest.securityBoundary.candidateCrossProcessRuntimeFenceAuthorityProductEnabled === false, "Cross-process authority candidate must remain product-disabled.");
+requireValue(manifest.securityBoundary.runtimeFenceAuthorityCrossProcessDurabilityTested === true, "Cross-process authority durability must be tested.");
+requireValue(manifest.securityBoundary.runtimeFenceActivationBridgeImplemented === true, "Store-to-runtime activation bridge must be recorded.");
+requireValue(manifest.securityBoundary.runtimeFenceActivationGapRecoveryTested === true, "Activation-gap restart recovery must be tested.");
+requireValue(manifest.securityBoundary.storeRuntimeActivationAtomic === false, "Store and authority commits must remain explicitly non-atomic.");
 requireValue(manifest.securityBoundary.productExternalCancellationWiring === false, "Product external cancellation wiring must remain absent.");
 requireValue(manifest.securityBoundary.startupRecoveryAdmissionGateImplemented === true, "Startup recovery admission must be recorded.");
 requireValue(manifest.securityBoundary.productRuntimeAcceptedByComposition === false, "The composition must reject product runtimes.");
@@ -398,7 +412,7 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 121, "Runtime and broker test count must be 121.");
+requireValue(manifest.testContract.testCount === 133, "Runtime and broker test count must be 133.");
 requireValue(manifest.testContract.runtimeTestProcessTimeoutMs === 120000, "Runtime test process timeout must be 120000 ms.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
@@ -416,7 +430,7 @@ requireValue(manifest.testContract.crashInjectionCheckpoints === 4, "Crash injec
 requireValue(manifest.testContract.stateStoreUsesDatabase === true, "The candidate suite must use SQLite.");
 requireValue(manifest.testContract.sqliteAdapterConformanceTests === 10, "SQLite conformance test count must be 10.");
 requireValue(manifest.testContract.sqliteSpecificContractTests === 6, "SQLite-specific contract test count must be 6.");
-requireValue(manifest.testContract.externalProcessHardExitTests === 1, "Hard-exit process test count must be 1.");
+requireValue(manifest.testContract.externalProcessHardExitTests === 2, "Hard-exit process test count must be 2.");
 requireValue(manifest.testContract.stateCompositionTests === 9, "Live-state composition test count must be 9.");
 requireValue(manifest.testContract.durableCancellationTests === 8, "Durable cancellation test count must be 8.");
 requireValue(manifest.testContract.durableCancellationCrashCheckpoints === 5, "Durable cancellation checkpoint count must be 5.");
@@ -429,6 +443,15 @@ requireValue(manifest.testContract.runtimeFenceCommonCases === 5, "Runtime fence
 requireValue(manifest.testContract.runtimeFenceConformanceSuitePath === "backend/tests/runtime/fence_conformance.py", "Runtime fence conformance suite path drifted.");
 requireValue(manifest.testContract.runtimeFenceConformanceTestPath === "backend/tests/runtime/test_runtime_fence_conformance.py", "Runtime fence concrete test path drifted.");
 requireValue(manifest.testContract.runtimeFenceAuthorityImplementation === "backend/app/runtime/fence_authority.py", "Runtime fence authority implementation path drifted.");
+requireValue(manifest.testContract.runtimeFenceAuthorityCommonCases === 4, "Runtime fence authority common case count must be 4.");
+requireValue(manifest.testContract.sqliteRuntimeFenceAuthorityTests === 8, "SQLite runtime fence authority test count must be 8.");
+requireValue(manifest.testContract.durableFenceActivationTests === 4, "Durable fence activation test count must be 4.");
+requireValue(manifest.testContract.runtimeFenceAuthorityConformanceSuitePath === "backend/tests/runtime/fence_authority_conformance.py", "Runtime authority conformance suite path drifted.");
+requireValue(manifest.testContract.sqliteRuntimeFenceAuthorityTestPath === "backend/tests/runtime/test_sqlite_fence_authority.py", "SQLite authority test path drifted.");
+requireValue(manifest.testContract.sqliteRuntimeFenceHardExitHelperPath === "backend/tests/runtime/sqlite_fence_authority_child.py", "SQLite authority hard-exit helper path drifted.");
+requireValue(manifest.testContract.durableFenceActivationTestPath === "backend/tests/broker/test_durable_fence_activation.py", "Durable activation test path drifted.");
+requireValue(manifest.testContract.sqliteRuntimeFenceAuthorityImplementation === "backend/app/runtime/sqlite_fence_authority.py", "SQLite authority implementation path drifted.");
+requireValue(manifest.testContract.runtimeFenceActivationImplementation === "backend/app/broker/runtime_fence_activation.py", "Runtime activation bridge path drifted.");
 requireValue(manifest.testContract.usesMockBackend === true, "Composition tests must use the mock backend.");
 requireValue(manifest.testContract.usesProductRuntime === false, "Composition tests must not use a product runtime.");
 requireValue(manifest.testContract.usesRuntime === false, "Contract tests must not use a runtime.");
@@ -484,9 +507,13 @@ const brokerDiagnostics = await readFile(join(root, "backend/app/broker/diagnost
 const brokerLifecycle = await readFile(join(root, "backend/app/broker/lifecycle.py"), "utf8");
 const runtimeFencing = await readFile(join(root, "backend/app/runtime/fencing.py"), "utf8");
 const runtimeFenceAuthority = await readFile(join(root, "backend/app/runtime/fence_authority.py"), "utf8");
+const runtimeSQLiteFenceAuthority = await readFile(join(root, "backend/app/runtime/sqlite_fence_authority.py"), "utf8");
 const runtimeMockBackend = await readFile(join(root, "backend/app/runtime/mock_backend.py"), "utf8");
 const runtimeFenceConformance = await readFile(join(root, "backend/tests/runtime/fence_conformance.py"), "utf8");
+const runtimeFenceAuthorityConformance = await readFile(join(root, "backend/tests/runtime/fence_authority_conformance.py"), "utf8");
 const runtimeFenceConformanceTests = await readFile(join(root, "backend/tests/runtime/test_runtime_fence_conformance.py"), "utf8");
+const runtimeSQLiteFenceAuthorityTests = await readFile(join(root, "backend/tests/runtime/test_sqlite_fence_authority.py"), "utf8");
+const brokerDurableFenceActivationTests = await readFile(join(root, "backend/tests/broker/test_durable_fence_activation.py"), "utf8");
 const runtimeTestRunner = await readFile(join(root, "tools/run-python-tests.mjs"), "utf8");
 requireValue(runtimeTestRunner.includes("timeout: 120_000"), "Runtime test runner timeout drifted.");
 const brokerLease = await readFile(join(root, "backend/app/broker/lease.py"), "utf8");
@@ -498,6 +525,7 @@ const brokerSQLiteState = await readFile(join(root, "backend/app/broker/sqlite_s
 const brokerStateMapping = await readFile(join(root, "backend/app/broker/state_mapping.py"), "utf8");
 const brokerRecovery = await readFile(join(root, "backend/app/broker/recovery.py"), "utf8");
 const brokerStateComposition = await readFile(join(root, "backend/app/broker/state_composition.py"), "utf8");
+const brokerRuntimeFenceActivation = await readFile(join(root, "backend/app/broker/runtime_fence_activation.py"), "utf8");
 const implementation = [
   protocol,
   models,
@@ -520,6 +548,7 @@ const implementation = [
   brokerState,
   brokerStateMapping,
   brokerRecovery,
+  brokerRuntimeFenceActivation,
   brokerStateComposition,
 ].join("\n");
 for (const [label, pattern] of [
@@ -560,6 +589,23 @@ requireValue(brokerSQLiteState.includes("async def verify_ownership("), "SQLite 
 requireValue(brokerSQLiteState.includes("CREATE TABLE job_leases"), "SQLite candidate must persist current lease control.");
 requireValue(brokerSQLiteState.includes("SQLITE_STATE_PRODUCT_ENABLED = False"), "SQLite candidate must remain inactive.");
 
+requireValue(runtimeSQLiteFenceAuthority.includes("import sqlite3"), "SQLite runtime authority must use the standard-library driver.");
+for (const [label, pattern] of [
+  ["product runtime socket", /docker\.sock|podman\.sock|\/var\/run\//u],
+  ["external database driver", /\bpsycopg\b|\basyncpg\b/u],
+  ["subprocess execution", /\bsubprocess\b|os\.system/u],
+]) {
+  requireValue(!pattern.test(runtimeSQLiteFenceAuthority), "SQLite runtime authority contains forbidden " + label + ".");
+}
+requireValue(runtimeSQLiteFenceAuthority.includes("SQLITE_RUNTIME_FENCE_SCHEMA_VERSION = 1"), "SQLite runtime authority schema version drifted.");
+requireValue(runtimeSQLiteFenceAuthority.includes("SQLITE_RUNTIME_FENCE_PRODUCT_ENABLED = False"), "SQLite runtime authority must remain product-disabled.");
+requireValue(runtimeSQLiteFenceAuthority.includes("PRAGMA journal_mode = WAL"), "SQLite runtime authority must enable WAL.");
+requireValue(runtimeSQLiteFenceAuthority.includes("PRAGMA synchronous = FULL"), "SQLite runtime authority must require FULL synchronization.");
+requireValue(runtimeSQLiteFenceAuthority.includes('connection.execute("BEGIN IMMEDIATE")'), "SQLite runtime activation must serialize with BEGIN IMMEDIATE.");
+requireValue(runtimeSQLiteFenceAuthority.includes("CREATE TABLE runtime_fences"), "SQLite runtime authority table is missing.");
+requireValue(runtimeSQLiteFenceAuthority.includes("def _decode_row("), "SQLite runtime authority must validate persisted owner tuples fail-closed.");
+requireValue(runtimeSQLiteFenceAuthority.includes("runtime-fence-authority-unavailable"), "SQLite runtime authority failure detail drifted.");
+
 requireValue(brokerArchive.includes('mode="r:"'), "Archive validator must reject compression.");
 requireValue(brokerArchive.includes("compare_digest(canonical, payload)"), "Input archive validator must require canonical bytes.");
 requireValue(brokerOutputArchive.includes('mode="r:"'), "Output archive validator must reject compression.");
@@ -568,6 +614,7 @@ requireValue(brokerOutputArchive.includes("hash-mismatch"), "Output archive vali
 requireValue(models.includes("class JobIdentity"), "Runtime model must define JobIdentity.");
 requireValue(models.includes('return ("tcad.job_id", self.job_id)'), "JobIdentity label drifted.");
 requireValue(protocol.includes("def bind_job(self, fence: RuntimeFencingContext)"), "Job lifecycle must require a runtime fencing context.");
+requireValue(protocol.includes("def fence_authority(self) -> RuntimeFenceAuthority"), "Runtime backend must expose its fence authority.");
 requireValue(runtimeFencing.includes("class RuntimeFencingContext"), "Runtime fencing context must be defined.");
 for (const label of ["tcad.job_id", "tcad.owner_id", "tcad.fencing_token"]) {
   requireValue(runtimeFencing.includes(label), `Runtime fencing context is missing label ${label}.`);
@@ -575,10 +622,15 @@ for (const label of ["tcad.job_id", "tcad.owner_id", "tcad.fencing_token"]) {
 requireValue(runtimeFenceAuthority.includes("class RuntimeFenceAuthority(Protocol)"), "Runtime fence authority protocol must be defined.");
 requireValue(runtimeFenceAuthority.includes("class InMemoryRuntimeFenceAuthority"), "Process-local reference authority must be defined.");
 requireValue(runtimeFenceAuthority.includes("RUNTIME_FENCE_AUTHORITY_PRODUCT_ENABLED = False"), "Runtime fence authority must remain product-disabled.");
+requireValue(runtimeFenceAuthorityConformance.includes("class RuntimeFenceAuthorityConformanceMixin"), "Reusable runtime authority conformance suite must be defined.");
+requireValue(runtimeSQLiteFenceAuthorityTests.includes("class SQLiteRuntimeFenceAuthorityConformanceTests"), "SQLite authority must run the common suite.");
+requireValue(runtimeSQLiteFenceAuthorityTests.includes("test_hard_exit_activation_survives_and_fences_parent"), "SQLite authority hard-exit durability test is missing.");
+requireValue(brokerDurableFenceActivationTests.includes("test_claim_activation_gap_recovers_with_next_durable_generation"), "Activation-gap restart recovery test is missing.");
 requireValue(runtimeFencing.includes("def from_labels("), "Runtime fencing labels must be parsed fail-closed.");
 requireValue(runtimeFencing.includes("def enforce_runtime_object_fence("), "Runtime object fence enforcement must be defined.");
 requireValue(runtimeFencing.includes("TAKEOVER_OBJECT_PHASES"), "Runtime object takeover phases must be explicit.");
 requireValue(runtimeMockBackend.includes("fence_authority"), "Strict mock runtime must receive a fence authority.");
+requireValue(runtimeMockBackend.includes("def fence_authority(self) -> RuntimeFenceAuthority"), "Strict mock runtime must expose the injected authority.");
 requireValue(runtimeMockBackend.includes("await self._backend._activate_fence("), "Bound runtime calls must activate their fence before the operation.");
 requireValue(runtimeMockBackend.includes("await self._backend._verify_fence("), "Bound runtime calls must verify their fence after the operation.");
 requireValue(runtimeMockBackend.includes("fence_labels"), "Managed mock objects must persist fence labels.");
@@ -617,6 +669,8 @@ requireValue(brokerState.includes("StateStoreErrorCode.LEASE_EXPIRED"), "Lease e
 requireValue(brokerState.includes("StateStoreErrorCode.LEASE_ACTIVE"), "Live lease refusal must be stable.");
 requireValue(brokerState.includes("class DurableOperationOwnership"), "Durable ownership model must be defined.");
 requireValue(brokerState.includes("class DurableOperationGuard"), "Durable ownership guard must be defined.");
+requireValue(brokerState.includes("class OperationFenceActivator(Protocol)"), "Operation fence activator protocol must be defined.");
+requireValue(brokerState.includes("await self.fence_activator.activate_owned("), "Durable operation guard must activate exact runtime ownership.");
 requireValue(brokerState.includes("async def renew_ownership("), "Durable state protocol must renew ownership.");
 requireValue(brokerState.includes("async def verify_ownership("), "Durable state protocol must verify ownership.");
 requireValue(brokerState.includes("async def run_with_lease_heartbeat("), "Durable ownership guard must heartbeat guarded awaits.");
@@ -632,10 +686,18 @@ requireValue(brokerLiveState.includes("class LiveStateSession"), "Live state ses
 requireValue(brokerLiveState.includes("uuid5("), "Live state IDs must use deterministic UUID v5 values.");
 requireValue(brokerLiveState.includes("await self._store.append("), "Live state writes must await the durable store.");
 requireValue(brokerLiveState.includes("await self._store.renew_ownership("), "Live state must renew exact ownership.");
+requireValue(brokerLiveState.includes("await self._fence_activator.activate_owned("), "Live state must bridge durable ownership to runtime authority.");
 requireValue(brokerLiveState.includes("if self._failed:"), "A failed live-state session must stop later writes.");
 requireValue(brokerStateComposition.includes("BROKER_STATE_COMPOSITION_PRODUCT_ENABLED = False"), "Live-state composition must remain inactive.");
 requireValue(brokerStateComposition.includes("broker.runtime_kind is not RuntimeKind.MOCK"), "Live-state composition must reject product runtimes.");
 requireValue(brokerStateComposition.includes("class DurableBrokerComposition"), "Durable broker composition must be defined.");
+requireValue(brokerStateComposition.includes("DurableRuntimeFenceActivator("), "Composition must create one store-to-runtime activation bridge.");
+requireValue(brokerRecovery.includes("self._fence_activator"), "Recovery must receive the same activation bridge.");
+requireValue(brokerRuntimeFenceActivation.includes("class DurableRuntimeFenceActivator"), "Durable runtime fence activator implementation is missing.");
+requireValue(brokerRuntimeFenceActivation.includes("await self.store.verify_ownership("), "Activation bridge must verify store ownership before and after activation.");
+requireValue(brokerRuntimeFenceActivation.includes("await self.authority.activate("), "Activation bridge must activate the runtime authority.");
+requireValue(brokerRuntimeFenceActivation.includes("await self.authority.verify("), "Activation bridge must reverify the runtime authority.");
+requireValue(brokerRuntimeFenceActivation.includes("RUNTIME_FENCE_ACTIVATION_PRODUCT_ENABLED = False"), "Activation bridge must remain product-disabled.");
 requireValue(brokerStateComposition.includes("remaining = await self._store.scan_recoverable(limit=1)"), "Startup must perform a final recovery scan.");
 requireValue(brokerStateComposition.indexOf("current = await self._store.load(identity)") < brokerStateComposition.indexOf("session = LiveStateSession("), "Admission must load existing state before opening a live session.");
 requireValue(brokerStateComposition.includes("str(uuid4())"), "Every composition admission must create a fresh owner attempt.");
@@ -793,6 +855,7 @@ requireValue(ownershipContract.initialExecutionToken === 1, "Execution fencing m
 requireValue(ownershipContract.takeoverTokenIncrement === 1, "Takeover fencing must increment by 1.");
 requireValue(sameArray(ownershipContract.takeoverStates, ["cancelling", "cleaning"]), "Ownership takeover states drifted.");
 requireValue(ownershipContract.stablePublicCode === "operation-fenced", "Ownership public error drifted.");
+requireValue(ownershipContract.runtimeAuthorityScope === "process-local-reference-plus-local-cross-process-sqlite", "Ownership runtime authority scope drifted.");
 requireValue(sameArray(ownershipContract.runtimeFenceLabels, ["tcad.job_id", "tcad.owner_id", "tcad.fencing_token"]), "Runtime fence labels drifted.");
 for (const key of [
   "eventsPersistOwnerAndToken",
@@ -811,6 +874,9 @@ for (const key of [
   "runtimeRejectsLowerToken",
   "runtimeRejectsSameTokenDifferentOwner",
   "runtimeRejectsCrossJobContext",
+  "candidateCrossProcessAuthority",
+  "storeToRuntimeActivationDoubleChecked",
+  "activationGapRecoveryTested",
 ]) {
   requireValue(ownershipContract[key] === true, `${key} must remain true.`);
 }
@@ -848,6 +914,9 @@ for (const key of [
   "strictMockRejectsLowerToken",
   "strictMockRejectsSameTokenDifferentOwner",
   "strictMockRejectsCrossJobContext",
+  "candidateCrossProcessAuthority",
+  "storeToRuntimeActivationDoubleChecked",
+  "activationGapRecoveryTested",
 ]) {
   requireValue(leaseContract[key] === true, "Lease contract true field drifted: " + key + ".");
 }
@@ -866,18 +935,47 @@ const authorityContract = manifest.runtimeFenceAuthorityContract;
 requireValue(authorityContract.productEnabled === false, "Runtime fence authority must remain product-disabled.");
 requireValue(authorityContract.acceptedRuntime === "mock", "Runtime fence authority evidence must remain mock-only.");
 requireValue(authorityContract.referenceScope === "process-local", "Reference runtime fence authority must remain process-local.");
+requireValue(authorityContract.candidateScope === "local-cross-process-sqlite", "Candidate runtime fence authority scope drifted.");
+requireValue(authorityContract.candidateImplementationPath === "backend/app/runtime/sqlite_fence_authority.py", "Candidate runtime fence authority path drifted.");
+requireValue(authorityContract.schemaVersion === 1, "Candidate runtime fence authority schema drifted.");
 requireValue(authorityContract.stableRejectionCode === "operation-fenced", "Runtime fence authority rejection code drifted.");
 for (const key of [
   "activationBeforeOperation",
   "verificationAfterOperation",
   "highestGenerationPerJob",
   "sharedAcrossAdapterInstances",
+  "crossProcessDurable",
+  "separateProcessHardExitTested",
   "staleCompletedResultSuppressed",
 ]) {
   requireValue(authorityContract[key] === true, "Runtime authority true field drifted: " + key + ".");
 }
-for (const key of ["crossProcessDurable", "storeCommitAndActivationAtomic", "nativeInFlightRevocationProven"]) {
+for (const key of ["candidateProductEnabled", "storeCommitAndActivationAtomic", "nativeInFlightRevocationProven", "productCrossProcessDurable"]) {
   requireValue(authorityContract[key] === false, "Runtime authority false field drifted: " + key + ".");
+}
+
+const activationContract = manifest.runtimeFenceActivationRecoveryContract;
+requireValue(activationContract.implementationPath === "backend/app/broker/runtime_fence_activation.py", "Activation recovery implementation path drifted.");
+requireValue(activationContract.acceptedRuntime === "mock", "Activation recovery evidence must remain mock-only.");
+requireValue(sameArray(activationContract.paths, ["execution", "cancellation", "recovery"]), "Activation recovery path list drifted.");
+for (const key of [
+  "preActivationStoreVerify",
+  "postActivationStoreVerify",
+  "postActivationAuthorityVerify",
+  "stateAheadOfAuthorityGapRecoverable",
+  "recoveryClaimsNextToken",
+  "abandonedGenerationRejected",
+  "hardExitGapTested",
+]) {
+  requireValue(activationContract[key] === true, "Activation recovery true field drifted: " + key + ".");
+}
+for (const key of [
+  "productEnabled",
+  "stateAndAuthorityCommitAtomic",
+  "authoritySynthesizesBrokerState",
+  "productWiring",
+]) {
+  requireValue(activationContract[key] === false, "Activation recovery false field drifted: " + key + ".");
 }
 
 const nativeFenceContract = manifest.nativeObjectFenceConformanceContract;
@@ -927,6 +1025,7 @@ for (const path of [
   "docs/en/m2/durable-operation-ownership.md",
   "docs/en/m2/owner-lease-runtime-fencing.md",
   "docs/en/m2/native-runtime-fence-conformance.md",
+  "docs/en/m2/durable-runtime-fence-authority.md",
   "docs/ko/m2/README.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
@@ -940,6 +1039,7 @@ for (const path of [
   "docs/ko/m2/durable-operation-ownership.md",
   "docs/ko/m2/owner-lease-runtime-fencing.md",
   "docs/ko/m2/native-runtime-fence-conformance.md",
+  "docs/ko/m2/durable-runtime-fence-authority.md",
   "docs/CODEMAPS/README.md",
   "docs/CODEMAPS/backend.md",
 ]) {

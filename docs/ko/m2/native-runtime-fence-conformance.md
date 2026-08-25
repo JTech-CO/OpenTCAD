@@ -8,11 +8,11 @@
 
 ## 계약 경계
 
-`RuntimeFenceAuthority`는 모든 job-bound runtime operation 전후에 확인하는 adapter 독립 권한 경계입니다. 제공되는 `InMemoryRuntimeFenceAuthority`는 conformance test를 위한 공유형 process-local 기준 구현입니다. Canonical job UUID마다 활성화된 가장 높은 owner generation을 기록합니다. 더 낮은 token, 활성화되지 않은 token, 같은 token과 다른 owner의 조합은 stable `operation-fenced`로 실패합니다.
+`RuntimeFenceAuthority`는 모든 job-bound runtime operation 전후에 확인하는 adapter 독립 권한 경계입니다. `InMemoryRuntimeFenceAuthority`는 object adapter conformance를 위한 공유형 process-local 기준 구현으로 유지합니다. 비활성 `SQLiteRuntimeFenceAuthority`는 같은 protocol을 구현해 local process 간 durability를 제공하고 별도의 재사용 가능한 authority suite를 갖습니다. 두 구현 모두 canonical job UUID마다 활성화된 가장 높은 owner generation을 기록합니다. 더 낮은 token, 활성화되지 않은 token, 같은 token과 다른 owner의 조합은 stable `operation-fenced`로 실패합니다.
 
 각 bound 호출은 adapter operation에 진입하기 직전에 `RuntimeFencingContext`를 활성화하고 operation이 반환된 직후 같은 context를 다시 확인합니다. 두 번째 검사는 이전 native 요청이 진행 중일 때 더 새로운 owner가 활성화되면 stale 성공 결과가 호출자에게 전달되는 것을 막습니다.
 
-이 authority는 process 사이에서 durable하지 않습니다. Durable store commit과 runtime 활성화도 하나의 원자적 동작이 아닙니다.
+SQLite authority는 local process 사이에서 durable하고 memory 기준 구현은 그렇지 않습니다. Durable broker state commit과 runtime authority 활성화는 분리된 비원자적 동작으로 유지합니다. 활성화 및 restart 계약은 [durable runtime fence authority 및 활성화 복구](durable-runtime-fence-authority.md)에 있습니다.
 
 ## Managed object metadata
 
@@ -48,4 +48,4 @@ Adapter는 object 생성 시점뿐 아니라 모든 operation에서 object label
 
 ## 제품 게이트
 
-향후 Docker 또는 Podman adapter는 같은 authority, label 저장, 정규화 inspection, operation별 object 강제, operation 전 활성화, operation 후 verification을 구현하고 공통 suite를 변경 없이 통과해야 합니다. 제품 승격에는 승인된 불변 engine profile, 승인된 M2 진입 문서, native platform 장애 증거, process 간 durable authority 설계, 명시적인 in-flight 취소 또는 수렴 증거도 필요합니다. 이 작업은 runtime socket을 열지 않으며 제품 실행 권한을 부여하지 않습니다.
+향후 Docker 또는 Podman adapter는 같은 authority 노출, label 저장, 정규화 inspection, operation별 object 강제, operation 전 활성화, operation 후 verification을 구현하고 object 및 authority 공통 suite를 변경 없이 통과해야 합니다. 제품 승격에는 승인된 불변 engine profile, 승인된 M2 진입 문서, native platform 장애 증거, 자격 검증된 process 간 authority 연결, 명시적인 in-flight 취소 또는 수렴 증거도 필요합니다. 이 작업은 runtime socket을 열지 않으며 제품 실행 권한을 부여하지 않습니다.

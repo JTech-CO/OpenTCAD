@@ -18,6 +18,7 @@ from .state import (
     DurableJobStateStore,
     DurableOperationOwnership,
     JobStateSnapshot,
+    OperationFenceActivator,
     OperationOwnershipError,
     StateStoreError,
     StateStoreErrorCode,
@@ -110,6 +111,7 @@ class LiveStateSession:
         *,
         expected_revision: int = 0,
         lease_policy: OwnerLeasePolicy = OwnerLeasePolicy(),
+        fence_activator: OperationFenceActivator | None = None,
     ) -> None:
         if not isinstance(store, DurableJobStateStore):
             raise TypeError("LiveStateSession requires DurableJobStateStore.")
@@ -125,6 +127,11 @@ class LiveStateSession:
             raise TypeError("LiveStateSession requires RuntimeKind.")
         if not isinstance(lease_policy, OwnerLeasePolicy):
             raise TypeError("LiveStateSession requires OwnerLeasePolicy.")
+        if fence_activator is not None and not isinstance(
+            fence_activator,
+            OperationFenceActivator,
+        ):
+            raise TypeError("LiveStateSession activator is invalid.")
         if (
             not isinstance(expected_revision, int)
             or isinstance(expected_revision, bool)
@@ -144,6 +151,7 @@ class LiveStateSession:
         self._operation_namespace = parsed
         self._backend = backend
         self._lease_policy = lease_policy
+        self._fence_activator = fence_activator
         self._revision = expected_revision
         self._next_sequence = 1
         self._failed = False
@@ -219,6 +227,12 @@ class LiveStateSession:
                 expected_revision=self._revision,
                 lease_duration_ms=self._lease_policy.duration_ms,
             )
+            if self._fence_activator is not None:
+                await self._fence_activator.activate_owned(
+                    self._ownership,
+                    expected_revision=self._revision,
+                    phase=phase,
+                )
             self._last_snapshot = renewed
         except StateStoreError as error:
             self._failed = True

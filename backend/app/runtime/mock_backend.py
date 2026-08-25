@@ -239,6 +239,10 @@ class MockRuntimeBackend:
     def name(self) -> RuntimeKind:
         return RuntimeKind.MOCK
 
+    @property
+    def fence_authority(self) -> RuntimeFenceAuthority:
+        return self._fence_authority
+
     def bind_job(self, fence: RuntimeFencingContext) -> _MockRuntimeJobBackend:
         if not isinstance(fence, RuntimeFencingContext):
             raise RuntimeBackendError(

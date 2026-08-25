@@ -22,6 +22,7 @@ from .state import (
     DurableJobStateStore,
     DurableOperationGuard,
     JobStateSnapshot,
+    OperationFenceActivator,
     OperationOwnershipError,
     OperationOwnershipGuard,
     StateStoreError,
@@ -186,6 +187,7 @@ class CrashRecoveryCoordinator:
         reconciler: RecoveryReconciler,
         backend: RuntimeKind,
         lease_policy: OwnerLeasePolicy = OwnerLeasePolicy(),
+        fence_activator: OperationFenceActivator | None = None,
     ) -> None:
         if not isinstance(store, DurableJobStateStore):
             raise TypeError("CrashRecoveryCoordinator requires DurableJobStateStore.")
@@ -195,10 +197,16 @@ class CrashRecoveryCoordinator:
             raise TypeError("CrashRecoveryCoordinator requires RuntimeKind.")
         if not isinstance(lease_policy, OwnerLeasePolicy):
             raise TypeError("CrashRecoveryCoordinator requires OwnerLeasePolicy.")
+        if fence_activator is not None and not isinstance(
+            fence_activator,
+            OperationFenceActivator,
+        ):
+            raise TypeError("CrashRecoveryCoordinator activator is invalid.")
         self._store = store
         self._reconciler = reconciler
         self._backend = backend
         self._lease_policy = lease_policy
+        self._fence_activator = fence_activator
 
     @staticmethod
     def _checkpoint(
@@ -373,6 +381,7 @@ class CrashRecoveryCoordinator:
                 claimed.ownership,
                 claimed.revision,
                 self._lease_policy,
+                self._fence_activator,
             )
             try:
                 await guard.assert_owned(RuntimePhase.QUERY)

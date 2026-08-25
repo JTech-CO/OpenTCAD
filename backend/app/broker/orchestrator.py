@@ -11,6 +11,7 @@ from backend.app.runtime.errors import (
     RuntimeBackendError,
     RuntimePhase,
 )
+from backend.app.runtime.fence_authority import RuntimeFenceAuthority
 from backend.app.runtime.fencing import RuntimeFencingContext
 from backend.app.runtime.models import (
     ArtifactRecord,
@@ -96,6 +97,10 @@ class SandboxBroker:
     @property
     def runtime_kind(self) -> RuntimeKind:
         return self._backend.name
+
+    @property
+    def runtime_fence_authority(self) -> RuntimeFenceAuthority:
+        return self._backend.fence_authority
 
     @staticmethod
     async def _event(

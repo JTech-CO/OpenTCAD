@@ -101,6 +101,14 @@ class DurableOperationOwnership:
             "fencing_token": self.fencing_token,
         }
 
+    @property
+    def runtime_fence(self) -> RuntimeFencingContext:
+        return RuntimeFencingContext(
+            self.identity,
+            self.owner_id,
+            self.fencing_token,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class DurableJobEvent:
@@ -352,6 +360,17 @@ class OperationOwnershipError(Exception):
 
 
 @runtime_checkable
+class OperationFenceActivator(Protocol):
+    async def activate_owned(
+        self,
+        ownership: DurableOperationOwnership,
+        *,
+        expected_revision: int,
+        phase: RuntimePhase,
+    ) -> RuntimeFencingContext: ...
+
+
+@runtime_checkable
 class OperationOwnershipGuard(Protocol):
     @property
     def runtime_fence(self) -> RuntimeFencingContext: ...
@@ -371,6 +390,7 @@ class DurableOperationGuard:
     ownership: DurableOperationOwnership
     expected_revision: int
     lease_policy: OwnerLeasePolicy = OwnerLeasePolicy()
+    fence_activator: OperationFenceActivator | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.store, DurableJobStateStore):
@@ -385,6 +405,11 @@ class DurableOperationGuard:
             raise TypeError("DurableOperationGuard expected revision is invalid.")
         if not isinstance(self.lease_policy, OwnerLeasePolicy):
             raise TypeError("DurableOperationGuard requires OwnerLeasePolicy.")
+        if self.fence_activator is not None and not isinstance(
+            self.fence_activator,
+            OperationFenceActivator,
+        ):
+            raise TypeError("DurableOperationGuard activator is invalid.")
 
     @property
     def runtime_fence(self) -> RuntimeFencingContext:
@@ -403,6 +428,12 @@ class DurableOperationGuard:
                 expected_revision=self.expected_revision,
                 lease_duration_ms=self.lease_policy.duration_ms,
             )
+            if self.fence_activator is not None:
+                await self.fence_activator.activate_owned(
+                    self.ownership,
+                    expected_revision=self.expected_revision,
+                    phase=phase,
+                )
         except StateStoreError as error:
             raise OperationOwnershipError(error.code, phase) from None
 
