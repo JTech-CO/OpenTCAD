@@ -5,7 +5,8 @@
 - Status: local offline candidate tested, product disabled
 - Payloads: broker state schema v3 and runtime fence authority schema v1
 - Publication: manifest-last snapshot directory and restore-record-last fresh directory
-- Live backup, product service wiring, and power-loss qualification: not implemented
+- Live backup: unsupported; authenticated application-service wrapper: implemented but product disabled
+- Durable publication barriers: implemented; abrupt power-loss qualification: not achieved
 
 ## Boundary
 
@@ -27,7 +28,7 @@ A published bundle is one directory with exactly three regular, non-link files:
 
 The schema-v1 manifest has fixed keys, canonical JSON encoding, a canonical snapshot UUID, caller-supplied source-instance UUID, positive signed 64-bit sequence, quiescence UUID, exact schema versions, byte lengths, SHA-256 values, and state/authority job counts. Duplicate JSON keys, noncanonical encoding, extra files, links, missing files, payloads larger than 1 GiB, size or hash drift, integrity-check failure, and schema drift fail closed.
 
-SHA-256 detects accidental or unsophisticated payload substitution; it is not a signature or authenticity proof. A future product format needs authenticated metadata and a protected source-instance identity.
+SHA-256 alone is not a signature or authenticity proof. The separate [authenticated backup-control contract](authenticated-backup-control.md) now wraps and signs the canonical manifest with HMAC-SHA256 while leaving this low-level three-file format unchanged.
 
 ## Pair coherence
 
@@ -37,9 +38,9 @@ This semantic rule detects an older state database paired with a newer authority
 
 ## Restore and rollback policy
 
-Restore requires three caller-held trust anchors: the exact snapshot UUID, exact source-instance UUID, and a minimum accepted snapshot sequence. Identity mismatch and a sequence below the floor fail closed. OpenTCAD does not yet persist or replicate that floor, so the caller must retain it outside the bundle. This is a rollback-check interface, not a complete rollback-protection service.
+Restore requires three caller-held trust anchors: the exact snapshot UUID, exact source-instance UUID, and a minimum accepted snapshot sequence. Identity mismatch and a sequence below the floor fail closed. The low-level manager still accepts a caller floor. The separate backup-control DB now persists and advances a per-source floor before authenticated import; privileged rollback of that external control DB remains outside the guarantee.
 
-The target must be a new directory. Existing targets are never overwritten. The manager validates the bundle before copying, restores both databases into a sibling staging directory, validates the restored pair again, writes canonical `restore.json`, and renames the whole directory into place. The result exposes fixed state and authority paths that the existing adapters can reopen. Startup recovery then handles expired leases and any allowed state-ahead-of-authority gap with the next fencing token.
+The target must be a new directory. Existing targets are never overwritten. The manager validates the bundle before copying, restores both databases into a sibling staging directory, validates the restored pair again, writes canonical `restore.json`, flushes all files, and publishes the whole directory with a platform durability barrier. The result exposes fixed state and authority paths that the existing adapters can reopen. Startup recovery then handles expired leases and any allowed state-ahead-of-authority gap with the next fencing token.
 
 ## Crash seams and evidence
 
@@ -49,4 +50,4 @@ Seven focused tests cover offline gating and redaction, canonical round trip, re
 
 ## Product gate
 
-The candidate does not capture native runtime objects, coordinate a running broker, authenticate a bundle, maintain a durable restore floor, repair corruption, overwrite a live installation, qualify filesystem directory rename under power loss, or provide multi-host coordination. Product Docker and Podman adapters, the local launcher, backup scheduling and retention, authenticated export, restore admission, native-object reconciliation, and platform-specific abrupt-power-loss matrices remain gated. The M3 backup skeleton still owns user-facing commands and lifecycle integration.
+The low-level manager still does not capture native runtime objects, coordinate a running broker, authenticate transport callers, repair corruption, overwrite a live installation, or provide multi-host coordination. The separate application-service candidate adds maintenance admission, authenticated export/import, durable floor storage, interval schedule state, and platform publication barriers, but current broker operations do not auto-register and no actual abrupt-power-loss evidence exists. Product Docker and Podman quiescence, local launcher and command wiring, OS key storage, automatic wake-up, retention UX, native-object reconciliation, and platform power-cut matrices remain gated. M3 still owns product wiring for user-facing commands and lifecycle integration.

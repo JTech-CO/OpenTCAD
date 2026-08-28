@@ -44,4 +44,4 @@ Database는 후보 test artifact로 남습니다. 명시적인 mock 전용 compo
 
 ## 다음 게이트
 
-구현된 store ownership 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 runtime의 native token 저장과 강제, distributed coordination, clock-skew policy, 제품 backup scheduling 및 인증된 restore, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.
+구현된 store ownership 규칙은 [durable operation ownership 및 fencing](durable-operation-ownership.md)과 [owner lease, liveness, runtime fencing](owner-lease-runtime-fencing.md)에 설명합니다. 제품 runtime의 native token 저장과 강제, distributed coordination, clock-skew policy, broker 통합 backup admission 및 보호된 credential storage, power-loss 자격 검증, 제품 Docker 및 Podman adapter, runtime socket, solver 실행은 별도 gate 작업으로 남습니다.

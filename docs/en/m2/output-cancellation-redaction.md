@@ -34,7 +34,7 @@ Public broker errors contain only stable code, phase, retry disposition, and a n
 
 ## Verified controls
 
-The dependency-free suite now contains 140 tests. In addition to the output, identity, and redaction controls above, it exercises all eleven execution cancellation checkpoints, wrong-identity and malformed signals, concurrent cleanup serialization, already-absent convergence, durable-state revision CAS, event idempotency, transition safety, recovery scanning, redacted owner UUID and fencing-token persistence, startup admission, phase-time persistence, stale-owner outcomes, revision-neutral lease renewal, expiry rejection, strict runtime fencing, and partial-write cleanup. See the [lifecycle cancellation, cleanup, and state contract](lifecycle-cleanup-state.md).
+The dependency-free suite now contains 154 tests. In addition to the output, identity, and redaction controls above, it exercises all eleven execution cancellation checkpoints, wrong-identity and malformed signals, concurrent cleanup serialization, already-absent convergence, durable-state revision CAS, event idempotency, transition safety, recovery scanning, redacted owner UUID and fencing-token persistence, startup admission, phase-time persistence, stale-owner outcomes, revision-neutral lease renewal, expiry rejection, strict runtime fencing, and partial-write cleanup. See the [lifecycle cancellation, cleanup, and state contract](lifecycle-cleanup-state.md).
 
 ## Remaining boundary
 

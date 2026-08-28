@@ -45,7 +45,7 @@ Authority는 전용 local file, schema version 1, WAL, `synchronous=FULL`, 정�
 
 `RuntimeFenceAuthorityConformanceMixin`은 정확한 replay, 단조 증가 대체, 같은 token의 owner 불일치, concurrent generation 직렬화를 위한 공통 case 4개를 제공합니다. SQLite concrete suite는 정확한 WAL 및 FULL schema 검사, reopen durability, redacted lock 및 schema 실패, 별도 process hard-exit persistence를 추가합니다. Bridge test 4개는 정확한 commit ownership, 활성화 경계에 삽입된 takeover, composition execution 연결, state가 authority보다 앞선 restart gap을 검사합니다.
 
-전체 runtime 및 broker suite는 test 140개를 포함합니다. Runtime socket을 열거나 solver를 시작하지 않으며 격리된 임시 SQLite file만 사용합니다.
+전체 runtime 및 broker suite는 test 154개를 포함합니다. Runtime socket을 열거나 solver를 시작하지 않으며 격리된 임시 SQLite file만 사용합니다.
 
 ## 제품 게이트
 

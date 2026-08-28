@@ -45,7 +45,7 @@ A separate Python process commits authority token 2 and calls `os._exit`; a reop
 
 `RuntimeFenceAuthorityConformanceMixin` supplies four unchanged cases for exact replay, monotonic replacement, same-token owner ambiguity, and concurrent generation serialization. The SQLite concrete suite adds exact WAL/FULL schema checks, reopen durability, redacted lock and schema failures, and separate-process hard-exit persistence. Four bridge tests cover exact committed ownership, an interleaved takeover at the activation seam, composition execution wiring, and the state-ahead-of-authority restart gap.
 
-The full runtime and broker suite contains 140 tests. It opens no runtime socket, starts no solver, and uses only isolated temporary SQLite files.
+The full runtime and broker suite contains 154 tests. It opens no runtime socket, starts no solver, and uses only isolated temporary SQLite files.
 
 ## Product gate
 
