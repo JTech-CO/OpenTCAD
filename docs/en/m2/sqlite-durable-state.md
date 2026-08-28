@@ -44,4 +44,4 @@ The database remains a candidate test artifact. An explicit mock-only compositio
 
 ## Next gate
 
-The implemented store ownership rules are detailed in [durable operation ownership and fencing](durable-operation-ownership.md) and [owner lease, liveness, and runtime fencing](owner-lease-runtime-fencing.md). Native product-runtime token persistence and enforcement, distributed coordination, clock-skew policy, product backup scheduling and authenticated restore, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.
+The implemented store ownership rules are detailed in [durable operation ownership and fencing](durable-operation-ownership.md) and [owner lease, liveness, and runtime fencing](owner-lease-runtime-fencing.md). Native product-runtime token persistence and enforcement, distributed coordination, clock-skew policy, broker-integrated backup admission and protected credential storage, power-loss qualification, product Docker and Podman adapters, runtime sockets, and solver execution remain separate gated work.

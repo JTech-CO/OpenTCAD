@@ -90,10 +90,13 @@ const expectedSourceFiles = [
   "backend/app/runtime/mock_backend.py",
   "backend/app/broker/__init__.py",
   "backend/app/broker/archive.py",
+  "backend/app/broker/backup_control.py",
+  "backend/app/broker/backup_service.py",
   "backend/app/broker/cancellation.py",
   "backend/app/broker/cancellation_arbitration.py",
   "backend/app/broker/cleanup.py",
   "backend/app/broker/diagnostics.py",
+  "backend/app/broker/durability.py",
   "backend/app/broker/lifecycle.py",
   "backend/app/broker/lease.py",
   "backend/app/broker/live_state.py",
@@ -119,6 +122,9 @@ const expectedSourceFiles = [
   "backend/tests/runtime/sqlite_fence_authority_child.py",
   "backend/tests/runtime/test_sqlite_fence_authority.py",
   "backend/tests/broker/test_archive.py",
+  "backend/tests/broker/backup_service_child.py",
+  "backend/tests/broker/test_backup_control.py",
+  "backend/tests/broker/test_backup_service.py",
   "backend/tests/broker/lease_support.py",
   "backend/tests/broker/test_cancellation_redaction.py",
   "backend/tests/broker/test_cleanup_concurrency.py",
@@ -142,6 +148,7 @@ const expectedSourceFiles = [
   "tools/check-m2.mjs",
   "tools/run-python-tests.mjs",
   "docs/en/m2/README.md",
+  "docs/en/m2/authenticated-backup-control.md",
   "docs/en/m2/runtime-backend-adr.md",
   "docs/en/m2/broker-threat-model.md",
   "docs/en/m2/broker-archive-foundation.md",
@@ -157,6 +164,7 @@ const expectedSourceFiles = [
   "docs/en/m2/durable-runtime-fence-authority.md",
   "docs/en/m2/sqlite-offline-snapshot-restore.md",
   "docs/ko/m2/README.md",
+  "docs/ko/m2/authenticated-backup-control.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",
@@ -303,8 +311,23 @@ requireValue(manifest.securityBoundary.offlineSnapshotLiveWritesSupported === fa
 requireValue(manifest.securityBoundary.snapshotRestoreFreshTargetOnly === true, "Snapshot restore must require a fresh target.");
 requireValue(manifest.securityBoundary.snapshotHardExitPublicationTested === true, "Snapshot publication hard-exit seams must be tested.");
 requireValue(manifest.securityBoundary.productBackupServiceImplemented === false, "Product backup service must remain absent.");
-requireValue(manifest.securityBoundary.durableRestoreFloorImplemented === false, "Durable restore floor must remain absent.");
-requireValue(manifest.securityBoundary.snapshotBundleAuthenticated === false, "Snapshot bundle authentication must remain unclaimed.");
+requireValue(manifest.securityBoundary.candidateAuthenticatedBackupServiceImplemented === true, "Authenticated backup application-service candidate must be recorded.");
+requireValue(manifest.securityBoundary.candidateAuthenticatedBackupServiceProductEnabled === false, "Authenticated backup candidate must remain product-disabled.");
+requireValue(manifest.securityBoundary.maintenanceModeCoordinatorImplemented === true, "Maintenance mode coordination must be recorded.");
+requireValue(manifest.securityBoundary.maintenanceModeCoordinatorProductEnabled === false, "Maintenance coordination must remain product-disabled.");
+requireValue(manifest.securityBoundary.productMaintenanceAdmissionWiringImplemented === false, "Product operation admission wiring must remain absent.");
+requireValue(manifest.securityBoundary.durableRestoreFloorImplemented === true, "Candidate durable restore floor must be recorded.");
+requireValue(manifest.securityBoundary.durableRestoreFloorProductEnabled === false, "Candidate restore floor must remain product-disabled.");
+requireValue(manifest.securityBoundary.restoreFloorControlDatabaseRollbackProtected === false, "Control-database rollback protection must remain unclaimed.");
+requireValue(manifest.securityBoundary.snapshotBundleAuthenticated === false, "The inner snapshot bundle must remain unauthenticated by itself.");
+requireValue(manifest.securityBoundary.authenticatedExportBundleImplemented === true, "Authenticated outer export bundles must be recorded.");
+requireValue(manifest.securityBoundary.authenticatedExportBundleEncrypted === false, "Backup encryption must remain unclaimed.");
+requireValue(manifest.securityBoundary.scheduledBackupPolicyImplemented === true, "Durable scheduled-backup policy must be recorded.");
+requireValue(manifest.securityBoundary.automaticScheduledBackupWakeupImplemented === false, "Automatic scheduler wake-up must remain absent.");
+requireValue(manifest.securityBoundary.automaticBackupRetentionDeletionImplemented === false, "Automatic backup deletion must remain absent.");
+requireValue(manifest.securityBoundary.durableDirectoryPublicationImplemented === true, "Platform-aware durable directory publication must be recorded.");
+requireValue(manifest.securityBoundary.backupServiceHardExitRecoveryTested === true, "Backup service hard-exit recovery must be recorded.");
+requireValue(manifest.securityBoundary.abruptPowerLossQualificationPassed === false, "Abrupt power-loss qualification must remain unclaimed.");
 requireValue(manifest.securityBoundary.productExternalCancellationWiring === false, "Product external cancellation wiring must remain absent.");
 requireValue(manifest.securityBoundary.startupRecoveryAdmissionGateImplemented === true, "Startup recovery admission must be recorded.");
 requireValue(manifest.securityBoundary.productRuntimeAcceptedByComposition === false, "The composition must reject product runtimes.");
@@ -425,7 +448,7 @@ requireValue(manifest.redactionContract.publicUnknownBackend === false, "Unknown
 requireValue(manifest.redactionContract.internalRawFieldsReprVisible === false, "Internal raw fields must remain repr-hidden.");
 
 requireValue(manifest.testContract.command === "npm run test:runtime", "Runtime test command drifted.");
-requireValue(manifest.testContract.testCount === 140, "Runtime and broker test count must be 140.");
+requireValue(manifest.testContract.testCount === 154, "Runtime and broker test count must be 154.");
 requireValue(manifest.testContract.runtimeTestProcessTimeoutMs === 120000, "Runtime test process timeout must be 120000 ms.");
 requireValue(manifest.testContract.archiveDefenseTests === 6, "Input archive defense test count must be 6.");
 requireValue(manifest.testContract.outputArchiveDefenseTests === 3, "Output archive defense test count must be 3.");
@@ -443,7 +466,7 @@ requireValue(manifest.testContract.crashInjectionCheckpoints === 4, "Crash injec
 requireValue(manifest.testContract.stateStoreUsesDatabase === true, "The candidate suite must use SQLite.");
 requireValue(manifest.testContract.sqliteAdapterConformanceTests === 10, "SQLite conformance test count must be 10.");
 requireValue(manifest.testContract.sqliteSpecificContractTests === 6, "SQLite-specific contract test count must be 6.");
-requireValue(manifest.testContract.externalProcessHardExitTests === 4, "Hard-exit process case count must be 4.");
+requireValue(manifest.testContract.externalProcessHardExitTests === 8, "Hard-exit process case count must be 8.");
 requireValue(manifest.testContract.stateCompositionTests === 9, "Live-state composition test count must be 9.");
 requireValue(manifest.testContract.durableCancellationTests === 8, "Durable cancellation test count must be 8.");
 requireValue(manifest.testContract.durableCancellationCrashCheckpoints === 5, "Durable cancellation checkpoint count must be 5.");
@@ -465,6 +488,17 @@ requireValue(manifest.testContract.sqliteOfflineSnapshotHardExitCases === 2, "SQ
 requireValue(manifest.testContract.sqliteOfflineSnapshotImplementation === "backend/app/broker/sqlite_snapshot.py", "SQLite offline snapshot implementation path drifted.");
 requireValue(manifest.testContract.sqliteOfflineSnapshotTestPath === "backend/tests/broker/test_sqlite_snapshot.py", "SQLite offline snapshot test path drifted.");
 requireValue(manifest.testContract.sqliteOfflineSnapshotHardExitHelperPath === "backend/tests/broker/sqlite_snapshot_child.py", "SQLite offline snapshot helper path drifted.");
+requireValue(manifest.testContract.backupControlTests === 7, "Backup control test count must be 7.");
+requireValue(manifest.testContract.backupControlTestPath === "backend/tests/broker/test_backup_control.py", "Backup control test path drifted.");
+requireValue(manifest.testContract.authenticatedBackupServiceTests === 7, "Authenticated backup service test count must be 7.");
+requireValue(manifest.testContract.authenticatedBackupServiceCheckpoints === 9, "Authenticated backup checkpoint count must be 9.");
+requireValue(manifest.testContract.authenticatedBackupHardExitCases === 4, "Authenticated backup hard-exit case count must be 4.");
+requireValue(manifest.testContract.authenticatedBackupServiceTestPath === "backend/tests/broker/test_backup_service.py", "Authenticated backup service test path drifted.");
+requireValue(manifest.testContract.authenticatedBackupHardExitHelperPath === "backend/tests/broker/backup_service_child.py", "Authenticated backup hard-exit helper path drifted.");
+requireValue(manifest.testContract.durablePublicationCutPoints === 10, "Durable publication cut-point count must be 10.");
+requireValue(manifest.testContract.powerLossMinimumRepetitionsPerCut === 10, "Power-loss repetition floor must be 10.");
+requireValue(manifest.testContract.actualAbruptPowerLossTests === 0, "No abrupt-power test may be claimed without external evidence.");
+requireValue(manifest.testContract.powerLossQualification === "not-run-external-lab-required", "Power-loss qualification status drifted.");
 requireValue(manifest.testContract.runtimeFenceAuthorityConformanceSuitePath === "backend/tests/runtime/fence_authority_conformance.py", "Runtime authority conformance suite path drifted.");
 requireValue(manifest.testContract.sqliteRuntimeFenceAuthorityTestPath === "backend/tests/runtime/test_sqlite_fence_authority.py", "SQLite authority test path drifted.");
 requireValue(manifest.testContract.sqliteRuntimeFenceHardExitHelperPath === "backend/tests/runtime/sqlite_fence_authority_child.py", "SQLite authority hard-exit helper path drifted.");
@@ -543,6 +577,11 @@ const brokerState = await readFile(join(root, "backend/app/broker/state.py"), "u
 const brokerSQLiteState = await readFile(join(root, "backend/app/broker/sqlite_state.py"), "utf8");
 const brokerSQLiteSnapshot = await readFile(join(root, "backend/app/broker/sqlite_snapshot.py"), "utf8");
 const brokerSQLiteSnapshotTests = await readFile(join(root, "backend/tests/broker/test_sqlite_snapshot.py"), "utf8");
+const brokerBackupControl = await readFile(join(root, "backend/app/broker/backup_control.py"), "utf8");
+const brokerBackupService = await readFile(join(root, "backend/app/broker/backup_service.py"), "utf8");
+const brokerDurability = await readFile(join(root, "backend/app/broker/durability.py"), "utf8");
+const brokerBackupControlTests = await readFile(join(root, "backend/tests/broker/test_backup_control.py"), "utf8");
+const brokerBackupServiceTests = await readFile(join(root, "backend/tests/broker/test_backup_service.py"), "utf8");
 const brokerStateMapping = await readFile(join(root, "backend/app/broker/state_mapping.py"), "utf8");
 const brokerRecovery = await readFile(join(root, "backend/app/broker/recovery.py"), "utf8");
 const brokerStateComposition = await readFile(join(root, "backend/app/broker/state_composition.py"), "utf8");
@@ -626,12 +665,69 @@ requireValue(brokerSQLiteSnapshot.includes('state.execute("BEGIN IMMEDIATE")'), 
 requireValue(brokerSQLiteSnapshot.includes('authority.execute("BEGIN IMMEDIATE")'), "SQLite snapshot must lock authority second.");
 requireValue(brokerSQLiteSnapshot.indexOf('state.execute("BEGIN IMMEDIATE")') < brokerSQLiteSnapshot.indexOf('authority.execute("BEGIN IMMEDIATE")'), "SQLite snapshot lock order drifted.");
 requireValue(brokerSQLiteSnapshot.includes("source_connection.backup(target"), "SQLite snapshot must use the SQLite backup API.");
-requireValue(brokerSQLiteSnapshot.includes("stage.rename(destination_path)"), "SQLite snapshot and restore must publish a complete directory.");
+requireValue(brokerSQLiteSnapshot.includes("publish_directory(stage, destination_path)"), "SQLite snapshot and restore must use durable directory publication.");
 requireValue(brokerSQLiteSnapshot.includes("fence.fencing_token > snapshot.ownership.fencing_token"), "SQLite snapshot must reject authority ahead of state.");
 requireValue(brokerSQLiteSnapshot.includes("class SQLiteSnapshotRestorePolicy"), "SQLite snapshot restore policy is missing.");
 requireValue(brokerSQLiteSnapshot.includes("class SQLiteSnapshotQuiescence"), "SQLite snapshot quiescence assertion is missing.");
 requireValue(brokerSQLiteSnapshotTests.includes("test_mixed_pair_with_authority_ahead_is_rejected_after_rehash"), "SQLite mixed-pair negative control is missing.");
 requireValue(brokerSQLiteSnapshotTests.includes("test_hard_exit_never_publishes_partial_bundle_or_restore"), "SQLite snapshot publication hard-exit test is missing.");
+
+requireValue(brokerBackupControl.includes("import sqlite3"), "Backup control must use the standard-library SQLite driver.");
+requireValue(brokerBackupControl.includes("SQLITE_BACKUP_CONTROL_SCHEMA_VERSION = 1"), "Backup control schema version drifted.");
+requireValue(brokerBackupControl.includes("SQLITE_BACKUP_CONTROL_PRODUCT_ENABLED = False"), "Backup control must remain product-disabled.");
+requireValue(brokerBackupControl.includes('SQLITE_BACKUP_CONTROL_RETENTION_POLICY = "monotonic-no-automatic-delete"'), "Backup retention policy drifted.");
+requireValue(brokerBackupControl.includes("PRAGMA journal_mode = WAL"), "Backup control must enable WAL.");
+requireValue(brokerBackupControl.includes("PRAGMA synchronous = FULL"), "Backup control must require FULL synchronization.");
+requireValue(brokerBackupControl.includes('connection.execute("BEGIN IMMEDIATE")'), "Backup control mutations must serialize with BEGIN IMMEDIATE.");
+for (const table of ["maintenance_state", "operation_admissions", "snapshot_sequences", "snapshot_reservations", "restore_floors", "backup_schedules"]) {
+  requireValue(brokerBackupControl.includes("CREATE TABLE " + table), "Backup control table is missing: " + table + ".");
+}
+requireValue(brokerBackupControl.includes("MIN_BACKUP_SCHEDULE_INTERVAL_MS = 60_000"), "Backup schedule minimum interval drifted.");
+requireValue(brokerBackupControl.includes("class SQLiteBackupControlStore"), "Backup control store is missing.");
+requireValue(brokerBackupControlTests.includes("test_expired_maintenance_takeover_fences_stale_owner"), "Maintenance fencing test is missing.");
+requireValue(brokerBackupControlTests.includes("self._store.end_maintenance(stale)"), "Expired maintenance reopen negative control is missing.");
+requireValue(brokerBackupControlTests.includes("self._store.complete_schedule(forged)"), "Altered schedule-claim negative control is missing.");
+requireValue(brokerBackupControlTests.includes("self._store.complete_schedule(replay)"), "Expired schedule-claim negative control is missing.");
+requireValue(brokerBackupControlTests.includes("test_restore_floor_persists_and_rejects_rollback_or_same_sequence_swap"), "Durable restore-floor negative control is missing.");
+requireValue(brokerBackupControlTests.includes("test_schedule_claim_reuses_pending_reservation_and_advances_without_drift"), "Scheduled backup retry/no-drift test is missing.");
+
+requireValue(brokerBackupService.includes("AUTHENTICATED_BACKUP_SERVICE_PRODUCT_ENABLED = False"), "Authenticated backup service must remain product-disabled.");
+requireValue(brokerBackupService.includes('AUTHENTICATED_BACKUP_ALGORITHM = "hmac-sha256"'), "Authenticated backup algorithm drifted.");
+requireValue(brokerBackupService.includes('_EXPORT_DOMAIN = b"OpenTCAD authenticated SQLite export v1\\x00"'), "Export MAC domain separation is missing.");
+requireValue(brokerBackupService.includes('_IMPORT_DOMAIN = b"OpenTCAD authenticated SQLite import v1\\x00"'), "Import MAC domain separation is missing.");
+requireValue(brokerBackupService.includes("hmac.compare_digest"), "Backup MAC verification must use constant-time comparison.");
+requireValue(brokerBackupService.includes("class ScheduledSQLiteBackupRunner"), "Scheduled backup runner is missing.");
+requireValue(brokerBackupService.includes('f"backup-{reservation.snapshot_sequence:020d}"'), "Scheduled backup path must use the durable sequence.");
+const exportService = brokerBackupService.slice(brokerBackupService.indexOf("    def create_export("), brokerBackupService.indexOf("    def import_export("));
+const importService = brokerBackupService.slice(brokerBackupService.indexOf("    def import_export("), brokerBackupService.indexOf("class ScheduledSQLiteBackupRunner"));
+for (const marker of ["begin_maintenance", "mark_offline", "verify_offline", "reserve_snapshot", "create_bundle", "_sign_export", "publish_directory", "mark_snapshot_exported"]) {
+  requireValue(exportService.includes(marker), "Authenticated export is missing " + marker + ".");
+}
+requireValue(exportService.indexOf("begin_maintenance") < exportService.indexOf("reserve_snapshot"), "Export maintenance must precede sequence reservation.");
+requireValue(exportService.indexOf("reserve_snapshot") < exportService.indexOf("create_bundle"), "Export sequence reservation must precede snapshot creation.");
+requireValue(exportService.indexOf("_sign_export") < exportService.indexOf("publish_directory"), "Export authentication record must precede publication.");
+for (const marker of ["validate_export", "begin_maintenance", "advance_restore_floor", "restore_bundle", "_sign_import", "publish_directory"]) {
+  requireValue(importService.includes(marker), "Authenticated import is missing " + marker + ".");
+}
+requireValue(importService.indexOf("validate_export") < importService.indexOf("begin_maintenance"), "Import authentication must precede maintenance mutation.");
+requireValue(importService.indexOf("begin_maintenance") < importService.indexOf("advance_restore_floor"), "Import maintenance must precede restore-floor advance.");
+requireValue(importService.indexOf("advance_restore_floor") < importService.indexOf("restore_bundle"), "Durable restore floor must advance before restore writes.");
+requireValue(importService.indexOf("_sign_import") < importService.indexOf("publish_directory"), "Import authentication record must precede publication.");
+requireValue(brokerBackupServiceTests.includes("test_tampering_unknown_key_and_extra_entry_fail_closed"), "Authenticated backup tamper controls are missing.");
+requireValue(brokerBackupServiceTests.includes("do-not-delete.txt"), "Caller-owned staging preservation control is missing.");
+requireValue(brokerBackupServiceTests.includes("test_four_process_hard_exits_preserve_publication_and_floor_invariants"), "Authenticated backup hard-exit controls are missing.");
+requireValue(brokerBackupServiceTests.includes("test_power_loss_evidence_never_infers_qualification_from_process_exit"), "Power-loss non-inference control is missing.");
+
+requireValue(brokerDurability.includes("DURABLE_PUBLICATION_PRODUCT_ENABLED = False"), "Durable publication must remain product-disabled.");
+requireValue(brokerDurability.includes("POWER_LOSS_MIN_REPETITIONS_PER_CUT = 10"), "Power-loss repetition floor drifted.");
+requireValue(brokerDurability.includes("MoveFileExW"), "Windows write-through publication is missing.");
+requireValue(brokerDurability.includes("fcntl.fcntl(stream.fileno(), 51)"), "macOS F_FULLFSYNC barrier is missing.");
+requireValue(brokerDurability.includes("os.fsync(descriptor)"), "POSIX parent-directory fsync is missing.");
+requireValue(brokerDurability.includes("not os.path.samefile(source.parent, target.parent)"), "Durable publication must require sibling paths.");
+requireValue(brokerDurability.includes("def is_link_like("), "Cross-platform link rejection helper is missing.");
+requireValue(brokerDurability.includes("is_junction"), "Windows junction rejection is missing.");
+requireValue(brokerDurability.includes("self.abrupt_power_cut"), "Power-loss evidence must require an abrupt cut marker.");
+requireValue(brokerDurability.includes("self.write_cache_configuration_recorded"), "Power-loss evidence must record write-cache configuration.");
 
 requireValue(runtimeSQLiteFenceAuthority.includes("import sqlite3"), "SQLite runtime authority must use the standard-library driver.");
 for (const [label, pattern] of [
@@ -1052,6 +1148,7 @@ for (const key of [
   "roundTripRecoveryTested",
   "mixedPairNegativeControl",
   "hardExitPublicationTested",
+  "durableDirectoryPublication",
 ]) {
   requireValue(snapshotContract[key] === true, "SQLite snapshot true field drifted: " + key + ".");
 }
@@ -1074,6 +1171,103 @@ for (const key of [
 }
 for (const code of snapshotContract.errorCodes) {
   requireValue(brokerSQLiteSnapshot.includes(`= "${code}"`), `SQLite snapshot source is missing stable code ${code}.`);
+}
+
+const backupContract = manifest.authenticatedBackupControlContract;
+requireValue(backupContract.serviceImplementationPath === "backend/app/broker/backup_service.py", "Authenticated backup service path drifted.");
+requireValue(backupContract.controlStoreImplementationPath === "backend/app/broker/backup_control.py", "Backup control path drifted.");
+requireValue(backupContract.exportFormat === "opentcad-authenticated-sqlite-export", "Authenticated export format drifted.");
+requireValue(backupContract.importFormat === "opentcad-authenticated-sqlite-import", "Authenticated import format drifted.");
+requireValue(backupContract.authenticationAlgorithm === "hmac-sha256", "Backup authentication algorithm drifted.");
+requireValue(backupContract.authenticationScope === "artifact-at-rest", "Backup authentication scope drifted.");
+requireValue(backupContract.controlJournalMode === "wal", "Backup control journal mode drifted.");
+requireValue(backupContract.controlSynchronous === "full", "Backup control synchronization drifted.");
+requireValue(backupContract.controlTransaction === "begin-immediate", "Backup control transaction drifted.");
+requireValue(sameArray(backupContract.maintenancePhases, ["open", "draining", "offline"]), "Maintenance phase vocabulary drifted.");
+requireValue(backupContract.retentionPolicy === "monotonic-no-automatic-delete", "Backup retention policy drifted.");
+requireValue(backupContract.scheduleMinimumIntervalMs === 60000, "Backup schedule minimum interval drifted.");
+requireValue(backupContract.hardExitCheckpoints.length === 9, "Backup hard-exit checkpoint list drifted.");
+for (const checkpoint of backupContract.hardExitCheckpoints) {
+  requireValue(brokerBackupService.includes('= "' + checkpoint + '"'), "Backup service source is missing " + checkpoint + ".");
+}
+for (const key of [
+  "canonicalJson",
+  "constantTimeMacComparison",
+  "retainedVerificationKeys",
+  "controlLocalFileOnly",
+  "maintenanceOwnerLease",
+  "operationAdmissionsLeased",
+  "snapshotSequenceMonotonic",
+  "snapshotReservationIdempotent",
+  "durableRestoreFloor",
+  "floorAdvancedBeforeRestore",
+  "scheduleStateDurable",
+  "scheduleClaimExactFieldsRequired",
+  "processHardExitTested",
+]) {
+  requireValue(backupContract[key] === true, "Authenticated backup true field drifted: " + key + ".");
+}
+for (const key of [
+  "productEnabled",
+  "duplicateJsonKeysAccepted",
+  "extraFilesAccepted",
+  "encryptionImplemented",
+  "transportAuthenticationImplemented",
+  "osKeyStoreIntegrated",
+  "newAdmissionDuringMaintenanceAccepted",
+  "expiredMaintenanceOwnerMayReopen",
+  "productAdmissionWiring",
+  "sameSequenceSnapshotSubstitutionAccepted",
+  "controlDatabaseRollbackProtected",
+  "automaticScheduleWakeup",
+  "expiredScheduleClaimMayComplete",
+  "unownedStagingDeleted",
+  "automaticRetentionDeletion",
+  "abruptPowerLossTested",
+]) {
+  requireValue(backupContract[key] === false, "Authenticated backup false field drifted: " + key + ".");
+}
+for (const code of backupContract.errorCodes) {
+  requireValue(brokerBackupService.includes('= "' + code + '"'), "Backup service source is missing stable code " + code + ".");
+}
+
+const publicationContract = manifest.durablePublicationContract;
+requireValue(publicationContract.implementationPath === "backend/app/broker/durability.py", "Durable publication path drifted.");
+requireValue(sameArray(publicationContract.platforms, ["windows", "macos", "linux"]), "Durable publication platform list drifted.");
+requireValue(sameArray(publicationContract.requiredPowerCutPoints, [
+  "control-commit",
+  "state-backup",
+  "authority-backup",
+  "authentication-record",
+  "export-publication",
+  "restore-floor-commit",
+  "state-restore",
+  "authority-restore",
+  "import-record",
+  "import-publication",
+]), "Power-loss cut-point list drifted.");
+requireValue(publicationContract.minimumRepetitionsPerCut === 10, "Power-loss repetition floor drifted.");
+for (const key of [
+  "sameParentFreshTargetOnly",
+  "fileDataSync",
+  "windowsMoveFileExWriteThrough",
+  "macosFullFsync",
+  "posixParentDirectoryFsync",
+  "processHardExitPublicationTested",
+]) {
+  requireValue(publicationContract[key] === true, "Durable publication true field drifted: " + key + ".");
+}
+for (const key of [
+  "productEnabled",
+  "symlinkInputsAccepted",
+  "windowsJunctionsAccepted",
+  "processExitCountsAsPowerLossEvidence",
+  "abruptPowerCutPerformed",
+  "writeCacheConfigurationRecorded",
+  "allRebootsCompleted",
+  "powerLossQualified",
+]) {
+  requireValue(publicationContract[key] === false, "Durable publication false field drifted: " + key + ".");
 }
 
 const nativeFenceContract = manifest.nativeObjectFenceConformanceContract;
@@ -1111,6 +1305,7 @@ for (const code of manifest.liveStateCompositionContract.compositionErrorCodes) 
 
 for (const path of [
   "docs/en/m2/README.md",
+  "docs/en/m2/authenticated-backup-control.md",
   "docs/en/m2/runtime-backend-adr.md",
   "docs/en/m2/broker-threat-model.md",
   "docs/en/m2/broker-archive-foundation.md",
@@ -1126,6 +1321,7 @@ for (const path of [
   "docs/en/m2/durable-runtime-fence-authority.md",
   "docs/en/m2/sqlite-offline-snapshot-restore.md",
   "docs/ko/m2/README.md",
+  "docs/ko/m2/authenticated-backup-control.md",
   "docs/ko/m2/runtime-backend-adr.md",
   "docs/ko/m2/broker-threat-model.md",
   "docs/ko/m2/broker-archive-foundation.md",

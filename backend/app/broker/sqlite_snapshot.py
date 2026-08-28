@@ -24,6 +24,7 @@ from backend.app.runtime.sqlite_fence_authority import (
     SQLiteRuntimeFenceAuthority,
 )
 
+from .durability import DurablePublicationError, publish_directory, sync_file
 from .sqlite_state import SQLITE_STATE_SCHEMA_VERSION, SQLiteJobStateStore
 from .state import JobStateSnapshot, StateStoreError, validate_state_transition
 
@@ -371,9 +372,17 @@ def _hash_file(path: Path) -> tuple[int, str]:
 
 
 def _fsync_file(path: Path) -> None:
-    with path.open("r+b") as stream:
-        stream.flush()
-        os.fsync(stream.fileno())
+    try:
+        sync_file(path)
+    except DurablePublicationError:
+        raise OSError("durability barrier failed") from None
+
+
+def _publish_directory(stage: Path, destination: Path) -> None:
+    try:
+        publish_directory(stage, destination)
+    except DurablePublicationError:
+        raise OSError("durable publication failed") from None
 
 
 def _open_read_only(path: Path) -> sqlite3.Connection:
@@ -891,7 +900,7 @@ class SQLiteOfflineSnapshotManager:
                     SQLiteSnapshotCheckpoint.AFTER_MANIFEST_WRITE,
                     request.snapshot_id,
                 )
-                stage.rename(destination_path)
+                _publish_directory(stage, destination_path)
                 published = True
                 _checkpoint(
                     crash_signal,
@@ -1081,7 +1090,7 @@ class SQLiteOfflineSnapshotManager:
                 SQLiteSnapshotCheckpoint.AFTER_RESTORE_RECORD_WRITE,
                 manifest.snapshot_id,
             )
-            stage.rename(destination_path)
+            _publish_directory(stage, destination_path)
             published = True
             _checkpoint(
                 crash_signal,

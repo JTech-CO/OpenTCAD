@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "milestone": "M2",
-  "recordedAt": "2026-08-26",
+  "recordedAt": "2026-08-29",
   "status": "gated-active",
   "scope": "engine-independent-broker-foundation-only",
   "issueIntake": {
@@ -151,8 +151,23 @@
     "snapshotRestoreFreshTargetOnly": true,
     "snapshotHardExitPublicationTested": true,
     "productBackupServiceImplemented": false,
-    "durableRestoreFloorImplemented": false,
-    "snapshotBundleAuthenticated": false
+    "durableRestoreFloorImplemented": true,
+    "snapshotBundleAuthenticated": false,
+    "candidateAuthenticatedBackupServiceImplemented": true,
+    "candidateAuthenticatedBackupServiceProductEnabled": false,
+    "maintenanceModeCoordinatorImplemented": true,
+    "maintenanceModeCoordinatorProductEnabled": false,
+    "productMaintenanceAdmissionWiringImplemented": false,
+    "durableRestoreFloorProductEnabled": false,
+    "restoreFloorControlDatabaseRollbackProtected": false,
+    "authenticatedExportBundleImplemented": true,
+    "authenticatedExportBundleEncrypted": false,
+    "scheduledBackupPolicyImplemented": true,
+    "automaticScheduledBackupWakeupImplemented": false,
+    "automaticBackupRetentionDeletionImplemented": false,
+    "durableDirectoryPublicationImplemented": true,
+    "backupServiceHardExitRecoveryTested": true,
+    "abruptPowerLossQualificationPassed": false
   },
   "contract": {
     "protocolOperations": [
@@ -248,7 +263,7 @@
     "policyTests": "backend/tests/runtime/test_policy.py",
     "lifecycleTests": "backend/tests/runtime/test_mock_backend.py",
     "pythonRange": ">=3.12,<3.15",
-    "testCount": 140,
+    "testCount": 154,
     "usesRuntime": false,
     "usesSolver": false,
     "usesNetwork": false,
@@ -289,7 +304,7 @@
     "adapterHandleReopenTested": true,
     "sqliteAdapterConformanceTests": 10,
     "sqliteSpecificContractTests": 6,
-    "externalProcessHardExitTests": 4,
+    "externalProcessHardExitTests": 8,
     "sqliteStateStoreTestPath": "backend/tests/broker/test_sqlite_state_store.py",
     "sqliteHardExitHelperPath": "backend/tests/broker/sqlite_recovery_child.py",
     "stateCompositionTests": 9,
@@ -331,7 +346,19 @@
     "sqliteOfflineSnapshotImplementation": "backend/app/broker/sqlite_snapshot.py",
     "sqliteOfflineSnapshotTestPath": "backend/tests/broker/test_sqlite_snapshot.py",
     "sqliteOfflineSnapshotHardExitHelperPath": "backend/tests/broker/sqlite_snapshot_child.py",
-    "coordinatedOfflineSnapshotRestore": "framework-verified"
+    "coordinatedOfflineSnapshotRestore": "framework-verified",
+    "backupControlTests": 7,
+    "backupControlTestPath": "backend/tests/broker/test_backup_control.py",
+    "authenticatedBackupServiceTests": 7,
+    "authenticatedBackupServiceCheckpoints": 9,
+    "authenticatedBackupHardExitCases": 4,
+    "authenticatedBackupServiceTestPath": "backend/tests/broker/test_backup_service.py",
+    "authenticatedBackupHardExitHelperPath": "backend/tests/broker/backup_service_child.py",
+    "durablePublicationCutPoints": 10,
+    "powerLossMinimumRepetitionsPerCut": 10,
+    "actualAbruptPowerLossTests": 0,
+    "powerLossQualification": "not-run-external-lab-required",
+    "authenticatedBackupControl": "framework-verified"
   },
   "sourceFiles": [
     {
@@ -381,13 +408,23 @@
     },
     {
       "path": "backend/app/broker/__init__.py",
-      "bytes": 6098,
-      "sha256": "5ed69f5479af8909adf1f7ceec29f03e7315142cb0db2dd6536c593644114720"
+      "bytes": 8921,
+      "sha256": "317505f17597476125b46d0d3b34a8eff80852135d8ae4a85ec820e037a7b315"
     },
     {
       "path": "backend/app/broker/archive.py",
       "bytes": 8475,
       "sha256": "510546c1a3a67350008f5f36f3263f0402aad60848a0baa8ea13fae567ccd282"
+    },
+    {
+      "path": "backend/app/broker/backup_control.py",
+      "bytes": 63444,
+      "sha256": "d2330a652e17152328b894ac5808fd618c30c058dcdeca6a8f6838619b16394f"
+    },
+    {
+      "path": "backend/app/broker/backup_service.py",
+      "bytes": 49226,
+      "sha256": "b374b8ae9c0ab01703e195918967c2346f5b510218ef00a2285fdf9b7f023a6e"
     },
     {
       "path": "backend/app/broker/cancellation.py",
@@ -408,6 +445,11 @@
       "path": "backend/app/broker/diagnostics.py",
       "bytes": 1561,
       "sha256": "248c44d747b2c1786bedc0e720d2f8a3015f732dc726eef337907c829c63d850"
+    },
+    {
+      "path": "backend/app/broker/durability.py",
+      "bytes": 8121,
+      "sha256": "3c544bbdee9c77d0c5fa7076f37442bfe8eeee6c43c092378d67eb5e8c83e69f"
     },
     {
       "path": "backend/app/broker/lifecycle.py",
@@ -451,8 +493,8 @@
     },
     {
       "path": "backend/app/broker/sqlite_snapshot.py",
-      "bytes": 42081,
-      "sha256": "81c0e8d9631b16dc848958c2db2960c4bd6443c9421d3aa9ce99fab9739b2eb4"
+      "bytes": 42440,
+      "sha256": "d0e15c5f64eb4cc0036ad4beda11692e66b90b90b90d94891200322ceb93e453"
     },
     {
       "path": "backend/app/broker/state_mapping.py",
@@ -533,6 +575,21 @@
       "path": "backend/tests/broker/test_archive.py",
       "bytes": 6638,
       "sha256": "b811c516fab5be441b06e63b9adc0a56dd2cce5a90d2560ea3ed7936d858d0ec"
+    },
+    {
+      "path": "backend/tests/broker/backup_service_child.py",
+      "bytes": 3075,
+      "sha256": "e7cb57a9932a1ab5fd6a25d70cf4156f607f5875ae4b9bbb639278b4b8f8e924"
+    },
+    {
+      "path": "backend/tests/broker/test_backup_control.py",
+      "bytes": 11568,
+      "sha256": "6bbc8c73861b07e21ee2dfb8a5fc81c50f6f2486629c883e4e1aa5d0882740b5"
+    },
+    {
+      "path": "backend/tests/broker/test_backup_service.py",
+      "bytes": 20522,
+      "sha256": "e660514642d343c7050469e224fe1108194583ba5885f43b0941aafe2e3f8813"
     },
     {
       "path": "backend/tests/broker/lease_support.py",
@@ -636,8 +693,8 @@
     },
     {
       "path": "tools/check-m2.mjs",
-      "bytes": 80180,
-      "sha256": "fc59f8125900a61c7fc460c12faee5c9ec81fbebc4d734d8cdaf610b6a5260bc"
+      "bytes": 96812,
+      "sha256": "8d44f704e7418cda86904cc1de721b45d8d199f4d6c8f0c69f41eef0d7de6dfa"
     },
     {
       "path": "tools/run-python-tests.mjs",
@@ -646,18 +703,23 @@
     },
     {
       "path": "docs/en/m2/README.md",
-      "bytes": 16005,
-      "sha256": "9ed6f01b52f06a985cef42f3a72733570f09da3017b2b6c82299cbfe99dcd99f"
+      "bytes": 17397,
+      "sha256": "8f114af26f645f9a7b013450bc4ba81c93ef77a2220f2aec114cce96ef4c0551"
+    },
+    {
+      "path": "docs/en/m2/authenticated-backup-control.md",
+      "bytes": 8376,
+      "sha256": "a2f21dcabdfe09c589e8e980394c212555df06d352389699f08c315da3fe7731"
     },
     {
       "path": "docs/en/m2/runtime-backend-adr.md",
-      "bytes": 5580,
-      "sha256": "adffa1f15a807d86f5ca8182d10645f8ef02480f7e960d5dfd4f73f0bab6bfc2"
+      "bytes": 5768,
+      "sha256": "3208c2e95cc2247b329d4455670aca28410d12985c7749ce1b61708244c6c2a8"
     },
     {
       "path": "docs/en/m2/broker-threat-model.md",
-      "bytes": 7657,
-      "sha256": "1ce8fc4f8294c315c860a7f7d9c096a5226ccea167a5fe6c030f35a85a215a07"
+      "bytes": 7845,
+      "sha256": "302e8cd59703c3a1a5ea868932747fd390146cd963dba3bd0e6935c6c1c1afa3"
     },
     {
       "path": "docs/en/m2/broker-archive-foundation.md",
@@ -667,42 +729,42 @@
     {
       "path": "docs/en/m2/output-cancellation-redaction.md",
       "bytes": 3587,
-      "sha256": "f1909c1020beae12e1b9ec7b26d2c06815d48245987f1713e6a5b8c7cc1bf015"
+      "sha256": "e1bff96a66bafefbecb712a917a6bfd84cd57c5eaf6a7efdc0964d3794daf030"
     },
     {
       "path": "docs/en/m2/lifecycle-cleanup-state.md",
-      "bytes": 7704,
-      "sha256": "d6d6255728096a1821e1293eda06f4679c8d8879e68c4a1dbd656b020e7b8bca"
+      "bytes": 7722,
+      "sha256": "99188d6cc983c0f5ae7b842cec99e8b11f54c98b8f368d6d544cd969b1a3eb8f"
     },
     {
       "path": "docs/en/m2/event-state-recovery.md",
-      "bytes": 9094,
-      "sha256": "a6a1aff8d042ca6d720a17c6874ea1925ed5e736aec01b447d4f88ea727a0570"
+      "bytes": 9112,
+      "sha256": "2459aeb0869b55a72e8ddb97380ec2c64aef163ff60e454aa01bb3f371a5d438"
     },
     {
       "path": "docs/en/m2/sqlite-durable-state.md",
-      "bytes": 6161,
-      "sha256": "ea3709435c72a36b9b831ffdb715a7d923f45fb98fe72c207a70fabd10457ea2"
+      "bytes": 6177,
+      "sha256": "59b0a9cb1c6cd1a6d1370625158840868e598eef50db6974686744241a6a6253"
     },
     {
       "path": "docs/en/m2/live-state-composition.md",
-      "bytes": 5893,
-      "sha256": "4d0788d23bcfb1ef9c22d0ed8fb64808982d6d120f3c4aef274e5f9dc64a0b70"
+      "bytes": 5911,
+      "sha256": "053b899cefd7a17cccf67f690519d380d6392f0ffed66e725ef4f40e40f4143a"
     },
     {
       "path": "docs/en/m2/durable-cancellation-arbitration.md",
-      "bytes": 6343,
-      "sha256": "da59a38015b1de05248c60ae2d9acaf59698788479391fbbbd8d505e2d9c5b85"
+      "bytes": 6361,
+      "sha256": "e7b3293466808661e9533dfd18a3eb2bfac596c12a10558a28b7c3278cd52940"
     },
     {
       "path": "docs/en/m2/durable-operation-ownership.md",
-      "bytes": 7173,
-      "sha256": "bcc993c441c83d20aa8e2bc51f8f9545966088a27a9e34bd8e1d7e68e6710c58"
+      "bytes": 7218,
+      "sha256": "4db304b81c57fa4f75d3f03acbf21607a296dbfc52139e9947a957e6df96bc07"
     },
     {
       "path": "docs/en/m2/owner-lease-runtime-fencing.md",
-      "bytes": 5728,
-      "sha256": "c305207dfb08a191f48d2c9b4da40910cbbb95c8eb42a3608699152817062a04"
+      "bytes": 5773,
+      "sha256": "e1d28b5f625736e35ae3f86ac3895084ce9cfda25d247d64d00421bdc6f9b46e"
     },
     {
       "path": "docs/en/m2/native-runtime-fence-conformance.md",
@@ -712,27 +774,32 @@
     {
       "path": "docs/en/m2/durable-runtime-fence-authority.md",
       "bytes": 5463,
-      "sha256": "0a2a9c0ec5ac22eb4e0ce28139bbc7f93891e2333adb39a5f142927fcddcaa5f"
+      "sha256": "a3a49c2bd90a8c21af15a63b6dcbd5c1a16666351c02e52087bac91a902be48c"
     },
     {
       "path": "docs/en/m2/sqlite-offline-snapshot-restore.md",
-      "bytes": 5983,
-      "sha256": "38c0c1e64d83400879cac002ba6cc3aa584cee767692ace964ccc03dd9cd382a"
+      "bytes": 6434,
+      "sha256": "1b8658ac992e6d49d912d7a8fee8a311900c114500fc979d57264bfbefde11c0"
     },
     {
       "path": "docs/ko/m2/README.md",
-      "bytes": 16677,
-      "sha256": "b6d03ab97bc96b9159e5099da5bf81eb989d609eb24f7eae4befc2023eb3b138"
+      "bytes": 18025,
+      "sha256": "2766f65fb1b0676c4067396d87539977b230a9ea08de2d1b9f5972cf4f02506d"
+    },
+    {
+      "path": "docs/ko/m2/authenticated-backup-control.md",
+      "bytes": 9020,
+      "sha256": "9a6f0059ffb048e68ae17d0aac1690fa1c878058588e1f4d686729d71ed5a138"
     },
     {
       "path": "docs/ko/m2/runtime-backend-adr.md",
-      "bytes": 5951,
-      "sha256": "ce467d2b1e51598c4d89eca5b3cd9def80c4f365e1ebc56f9f426c36954804f3"
+      "bytes": 6136,
+      "sha256": "cbc901adb894a97f87bd9d6576eaa40975512b502db9d3991f0773efc5f7e743"
     },
     {
       "path": "docs/ko/m2/broker-threat-model.md",
-      "bytes": 7969,
-      "sha256": "22f8b6c640ae01fa128f6c17e3faa07f89688f8f7435d8405d61e02b295ef2b5"
+      "bytes": 8156,
+      "sha256": "d4dc90299da582e0d0fa73e2c109b783e40b0fd9b32b2c7409c9789c49549046"
     },
     {
       "path": "docs/ko/m2/broker-archive-foundation.md",
@@ -742,42 +809,42 @@
     {
       "path": "docs/ko/m2/output-cancellation-redaction.md",
       "bytes": 3794,
-      "sha256": "bf98517fe40e28978043b718b57a23935d2e8ac6e526052f735c725e675f3465"
+      "sha256": "1d19489c78b655f92a366c3f407bd4275d831554c11b51d9ceb7af0925bda01e"
     },
     {
       "path": "docs/ko/m2/lifecycle-cleanup-state.md",
-      "bytes": 8170,
-      "sha256": "17533677d7bb5911df77cc8d93dcd4af5c7d750a8bf5dd4df711656360597b15"
+      "bytes": 8178,
+      "sha256": "1c6d955d11c9208966ba731fd6482caf3451e3f2ad45e482e5205d7fe3ad3185"
     },
     {
       "path": "docs/ko/m2/event-state-recovery.md",
-      "bytes": 9743,
-      "sha256": "a5861c5c90664dafd1771f399a18b581f3663f26d1140c510179f408f9b63faa"
+      "bytes": 9751,
+      "sha256": "42c267ed4dd24c51228280da28e5c154c103a8cff930b0d3a93e1b4c009c0a1c"
     },
     {
       "path": "docs/ko/m2/sqlite-durable-state.md",
-      "bytes": 6623,
-      "sha256": "a0e6544dc98cdf3ee08dea9bc45cb4443f69cc316b9f7f0fbd896f511d80651e"
+      "bytes": 6640,
+      "sha256": "18a1abe8e752478f59a5a22f398fba16516ce435d554cc82f5fb132f849ba0df"
     },
     {
       "path": "docs/ko/m2/live-state-composition.md",
-      "bytes": 6431,
-      "sha256": "ace438a537ee465bb43d100cc9d60f21555df63f78bf148b52703a6a73389f40"
+      "bytes": 6439,
+      "sha256": "099bc74d2d7d0ad2778f616243558a53197113eb7b3d041c240c930ca5916ffc"
     },
     {
       "path": "docs/ko/m2/durable-cancellation-arbitration.md",
-      "bytes": 6630,
-      "sha256": "fdb8cd970ba1c16cb6846f996f52420381bce8351684b1c7bacc00c2ac1f16b4"
+      "bytes": 6638,
+      "sha256": "0c12c1e9d10a97bdf4cae3fbc2637a1faee7d14413bc84fe0cd748b2787cfb16"
     },
     {
       "path": "docs/ko/m2/durable-operation-ownership.md",
-      "bytes": 7908,
-      "sha256": "bf7a7e846fd7848fcfeba2a61e47d8e41ba437146fc4f2b9dbe94203b1120668"
+      "bytes": 7952,
+      "sha256": "1e53ea94278ac46fc888ac9e005c8a0cb526167ece3658b60f5d309e82083fd7"
     },
     {
       "path": "docs/ko/m2/owner-lease-runtime-fencing.md",
-      "bytes": 6347,
-      "sha256": "72c01b1d626e8f2470177178d1d22f5326c68e5be68a742500afcc52bf9850e2"
+      "bytes": 6391,
+      "sha256": "09e0b3bb71c1d836084463ce802c862adac94f7ea95bf12358792f64403b8f4f"
     },
     {
       "path": "docs/ko/m2/native-runtime-fence-conformance.md",
@@ -787,12 +854,12 @@
     {
       "path": "docs/ko/m2/durable-runtime-fence-authority.md",
       "bytes": 6025,
-      "sha256": "f3fb1b0420afa4edfea2bf01215c3b2f2cb83b2d46efe5dea8e00f89eab83f7f"
+      "sha256": "c1a95da6e857bc6c5fc09e81c44cbfdb16699d705a6910f66f87e85a5fd856c4"
     },
     {
       "path": "docs/ko/m2/sqlite-offline-snapshot-restore.md",
-      "bytes": 6641,
-      "sha256": "84cd9a1669a9a4f469e8207f00a1c899a0394158c3f0a450ca6b311cd04f5eac"
+      "bytes": 7039,
+      "sha256": "3325724072cdad52afdc468bc0aa377f5a55c29e11569cfbc2a81edbc317bb6b"
     },
     {
       "path": "docs/CODEMAPS/README.md",
@@ -801,8 +868,8 @@
     },
     {
       "path": "docs/CODEMAPS/backend.md",
-      "bytes": 12393,
-      "sha256": "3cae0e8b90d9e3b9cce0b4a2410d382a8c0697e2338bea42d498353e9dc916a4"
+      "bytes": 13693,
+      "sha256": "b760f9e4aeec05a338417d82624ba3a4081573a8bb68f50592c903067cf7fc3f"
     }
   ],
   "exitCriteria": {
@@ -1459,6 +1526,116 @@
       "snapshot-rollback-rejected",
       "restore-target-exists",
       "restore-failed"
-    ]
+    ],
+    "durableDirectoryPublication": true
+  },
+  "authenticatedBackupControlContract": {
+    "serviceImplementationPath": "backend/app/broker/backup_service.py",
+    "controlStoreImplementationPath": "backend/app/broker/backup_control.py",
+    "hardExitHelperPath": "backend/tests/broker/backup_service_child.py",
+    "exportFormat": "opentcad-authenticated-sqlite-export",
+    "importFormat": "opentcad-authenticated-sqlite-import",
+    "schemaVersion": 1,
+    "authenticationAlgorithm": "hmac-sha256",
+    "authenticationScope": "artifact-at-rest",
+    "canonicalJson": true,
+    "duplicateJsonKeysAccepted": false,
+    "extraFilesAccepted": false,
+    "constantTimeMacComparison": true,
+    "retainedVerificationKeys": true,
+    "encryptionImplemented": false,
+    "transportAuthenticationImplemented": false,
+    "osKeyStoreIntegrated": false,
+    "productEnabled": false,
+    "controlSchemaVersion": 1,
+    "controlJournalMode": "wal",
+    "controlSynchronous": "full",
+    "controlTransaction": "begin-immediate",
+    "controlLocalFileOnly": true,
+    "maintenancePhases": [
+      "open",
+      "draining",
+      "offline"
+    ],
+    "maintenanceOwnerLease": true,
+    "operationAdmissionsLeased": true,
+    "newAdmissionDuringMaintenanceAccepted": false,
+    "productAdmissionWiring": false,
+    "snapshotSequenceMonotonic": true,
+    "snapshotReservationIdempotent": true,
+    "durableRestoreFloor": true,
+    "floorAdvancedBeforeRestore": true,
+    "sameSequenceSnapshotSubstitutionAccepted": false,
+    "controlDatabaseRollbackProtected": false,
+    "scheduleStateDurable": true,
+    "scheduleMinimumIntervalMs": 60000,
+    "automaticScheduleWakeup": false,
+    "retentionPolicy": "monotonic-no-automatic-delete",
+    "automaticRetentionDeletion": false,
+    "hardExitCheckpoints": [
+      "after-maintenance-offline",
+      "after-sequence-reserved",
+      "after-snapshot-created",
+      "after-export-record-write",
+      "after-export-publish",
+      "after-restore-floor-advance",
+      "after-pair-restore",
+      "after-import-record-write",
+      "after-import-publish"
+    ],
+    "hardExitCases": 4,
+    "processHardExitTested": true,
+    "abruptPowerLossTested": false,
+    "errorCodes": [
+      "authenticated-backup-invalid-request",
+      "authenticated-backup-destination-exists",
+      "authenticated-export-incomplete",
+      "backup-authentication-failed",
+      "backup-maintenance-failed",
+      "backup-control-unavailable",
+      "authenticated-export-snapshot-failed",
+      "authenticated-import-restore-failed",
+      "authenticated-import-rollback-rejected",
+      "backup-durability-barrier-failed"
+    ],
+    "expiredMaintenanceOwnerMayReopen": false,
+    "scheduleClaimExactFieldsRequired": true,
+    "expiredScheduleClaimMayComplete": false,
+    "unownedStagingDeleted": false
+  },
+  "durablePublicationContract": {
+    "implementationPath": "backend/app/broker/durability.py",
+    "productEnabled": false,
+    "platforms": [
+      "windows",
+      "macos",
+      "linux"
+    ],
+    "sameParentFreshTargetOnly": true,
+    "symlinkInputsAccepted": false,
+    "fileDataSync": true,
+    "windowsMoveFileExWriteThrough": true,
+    "macosFullFsync": true,
+    "posixParentDirectoryFsync": true,
+    "processHardExitPublicationTested": true,
+    "processExitCountsAsPowerLossEvidence": false,
+    "requiredPowerCutPoints": [
+      "control-commit",
+      "state-backup",
+      "authority-backup",
+      "authentication-record",
+      "export-publication",
+      "restore-floor-commit",
+      "state-restore",
+      "authority-restore",
+      "import-record",
+      "import-publication"
+    ],
+    "minimumRepetitionsPerCut": 10,
+    "abruptPowerCutPerformed": false,
+    "writeCacheConfigurationRecorded": false,
+    "allRebootsCompleted": false,
+    "powerLossQualified": false,
+    "windowsJunctionsAccepted": false
   }
 }

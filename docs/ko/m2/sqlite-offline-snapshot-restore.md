@@ -5,7 +5,8 @@
 - 상태: local offline 후보 test 완료, 제품 비활성
 - Payload: broker state schema v3 및 runtime fence authority schema v1
 - 공개 방식: manifest를 마지막에 기록하는 snapshot directory와 restore record를 마지막에 기록하는 신규 directory
-- Live backup, 제품 service 연결, power-loss 자격 검증: 미구현
+- Live backup: 미지원, 인증 application-service wrapper: 구현했으나 제품 비활성
+- Durable publication barrier: 구현, abrupt power-loss 자격 검증: 미달성
 
 ## 경계
 
@@ -27,7 +28,7 @@ Source는 이미 WAL mode와 `synchronous=FULL`을 사용하는 정확한 schema
 
 Schema v1 manifest는 고정 key, canonical JSON encoding, canonical snapshot UUID, 호출자가 제공한 source-instance UUID, 양의 signed 64-bit sequence, quiescence UUID, 정확한 schema version, byte 길이, SHA-256, state 및 authority job count를 가집니다. 중복 JSON key, noncanonical encoding, 추가 file, link, 누락 file, 1 GiB 초과 payload, 크기 또는 hash drift, integrity-check 실패, schema drift는 실패 폐쇄됩니다.
 
-SHA-256은 우발적이거나 단순한 payload 치환을 탐지하지만 signature 또는 authenticity 증거는 아닙니다. 향후 제품 format에는 인증된 metadata와 보호된 source-instance identity가 필요합니다.
+SHA-256만으로는 signature 또는 authenticity 증거가 되지 않습니다. 별도 [인증된 backup-control 계약](authenticated-backup-control.md)은 이 하위 3개 file format을 바꾸지 않고 canonical manifest를 HMAC-SHA256으로 감싸 서명합니다.
 
 ## Pair 일관성
 
@@ -37,9 +38,9 @@ SHA-256은 우발적이거나 단순한 payload 치환을 탐지하지만 signat
 
 ## Restore 및 rollback policy
 
-Restore에는 호출자가 보유한 trust anchor 3개가 필요합니다. 정확한 snapshot UUID, 정확한 source-instance UUID, 허용할 최소 snapshot sequence입니다. Identity 불일치와 floor보다 낮은 sequence는 실패 폐쇄됩니다. OpenTCAD은 아직 이 floor를 별도로 저장하거나 복제하지 않으므로 호출자가 bundle 밖에 보존해야 합니다. 이는 rollback 검사 interface이며 완전한 rollback 방지 service가 아닙니다.
+Restore에는 호출자가 보유한 trust anchor 3개가 필요합니다. 정확한 snapshot UUID, 정확한 source-instance UUID, 허용할 최소 snapshot sequence입니다. Identity 불일치와 floor보다 낮은 sequence는 실패 폐쇄됩니다. 하위 manager는 계속 caller floor를 받습니다. 별도 backup-control DB는 인증 import 전에 source별 floor를 저장하고 증가시키지만 권한을 가진 공격자의 외부 control DB rollback은 보장 밖에 있습니다.
 
-Target은 새 directory여야 합니다. 기존 target은 덮어쓰지 않습니다. Manager는 복사 전에 bundle을 검사하고 두 database를 sibling staging directory에 restore한 뒤 복원된 pair를 다시 검사하며 canonical `restore.json`을 기록하고 directory 전체를 최종 위치로 rename합니다. 결과는 기존 adapter가 다시 열 수 있는 고정 state 및 authority path를 제공합니다. 이후 startup recovery는 만료된 lease와 허용된 state-ahead-of-authority gap을 다음 fencing token으로 처리합니다.
+Target은 새 directory여야 합니다. 기존 target은 덮어쓰지 않습니다. Manager는 복사 전에 bundle을 검사하고 두 database를 sibling staging directory에 restore한 뒤 복원된 pair를 다시 검사하며 canonical `restore.json`을 기록하고 모든 file을 flush한 뒤 platform durability barrier로 directory 전체를 공개합니다. 결과는 기존 adapter가 다시 열 수 있는 고정 state 및 authority path를 제공합니다. 이후 startup recovery는 만료된 lease와 허용된 state-ahead-of-authority gap을 다음 fencing token으로 처리합니다.
 
 ## Crash 경계 및 증거
 
@@ -49,4 +50,4 @@ Target은 새 directory여야 합니다. 기존 target은 덮어쓰지 않습니
 
 ## 제품 게이트
 
-이 후보는 native runtime object를 capture하지 않고 실행 중 broker를 조정하지 않으며 bundle 인증, durable restore floor, corruption repair, live installation 덮어쓰기, power loss 상황의 filesystem directory rename 자격 검증, multi-host coordination을 제공하지 않습니다. 제품 Docker 및 Podman adapter, local launcher, backup scheduling 및 retention, 인증된 export, restore admission, native object reconciliation, platform별 abrupt power-loss 행렬은 계속 gate 상태입니다. 사용자 대상 command와 lifecycle 연결은 M3 backup 골격의 책임으로 남습니다.
+하위 manager는 계속 native runtime object를 capture하지 않고 실행 중 broker를 조정하지 않으며 transport caller 인증, corruption repair, live installation 덮어쓰기, multi-host coordination을 제공하지 않습니다. 별도 application-service 후보는 maintenance admission, 인증 export/import, durable floor 저장, interval schedule 상태, platform publication barrier를 추가하지만 현재 broker operation은 자동 등록되지 않고 실제 abrupt-power-loss evidence도 없습니다. 제품 Docker 및 Podman quiescence, local launcher 및 command 연결, OS key storage, 자동 wake-up, retention UX, native object reconciliation, platform power-cut matrix는 계속 gate 상태입니다. 사용자 대상 command와 lifecycle의 제품 연결은 M3 책임으로 남습니다.
