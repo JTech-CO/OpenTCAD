@@ -1,51 +1,86 @@
 # OpenTCAD
 
-[English](README.md) · [정적 미리보기](https://jtech-co.github.io/OpenTCAD/) · [아키텍처](docs/ko/architecture.md) · [로드맵](docs/ko/roadmap.md)
+[English](README.md) · [공개 미리보기](https://jtech-co.github.io/OpenTCAD/) · [아키텍처](docs/ko/architecture.md) · [개발](docs/ko/development.md)
 
-OpenTCAD은 반도체 공정과 소자 시뮬레이션을 학습하기 위한 오픈 소스 한·영 지원 작업공간입니다. 제품 방향은 격리된 SUPREM-IV.GS 공정 흐름과 DEVSIM 소자 해석을 결합하고, Windows·macOS·Linux의 로컬 서버에서 같은 경험을 재현하는 것입니다.
+![OpenTCAD 소셜 미리보기](frontend/public/og.png)
 
-> OpenTCAD은 교육·구조 이해·수치 실험용이며 반도체 제조 공정의 sign-off 도구가 아닙니다.
+OpenTCAD은 반도체 공정과 소자 시뮬레이션 개념을 학습하기 위한 오픈 소스 한·영 작업공간입니다. 설명용 SUPREM 형식 공정 흐름, 소자 구조, 바이어스 조건, I–V 동작을 하나의 반응형 웹 경험으로 연결합니다.
 
-## 현재 제공 범위
+공개 화면은 영어로 시작합니다. 언제든지 **한국어**를 선택해 소개 페이지와 작업공간을 한국어로 전환할 수 있습니다.
 
-프로젝트 기반은 완료됐고 **M0는 진행 중**이며 엔진 독립 M1 및 M2 계약 작업은 `gated-active` 상태입니다. 현재 저장소는 다음을 포함합니다.
+> OpenTCAD은 교육, 인터페이스 탐색, 수치 실험용입니다. 반도체 제조 공정의 sign-off 도구가 아닙니다.
 
-- 반응형 영어/한국어 React 작업공간
-- 공정 프로파일, 소자 단면, I–V 곡선을 보여 주는 결정론적 참조 워크플로
-- 제출된 입력을 절대 실행하지 않는 GitHub Pages 정적 빌드
-- Node.js가 동작하는 모든 OS에서 사용할 수 있는 로컬 개발·미리보기 서버
-- CI, 접근성 중심 상호작용 상태, 향후 샌드박스 로컬 엔진을 위한 아키텍처 경계
-- 제품 runtime이나 solver를 호출하지 않는 runtime-neutral `RuntimeBackend` 계약, fail-closed policy validator, canonical input/output archive, phase 지정 cancellation, process-local idempotent cleanup, 결정론적 broker-event mapping, 재사용 가능한 state adapter, runtime object fence, runtime authority conformance suite, CAS durable-state interface, transaction 기반 schema v1 및 v2 migration을 갖춘 file-backed SQLite schema v3 state 후보, 전용 SQLite schema v1 process 간 runtime-fence authority 후보, 조정된 offline pair snapshot 및 신규 target restore 후보, 별도 schema v1 backup-control database와 maintenance admission, HMAC 인증 export/import, durable restore floor 및 interval scheduling, revision-neutral owner lease, 별도 process hard-exit case 8개, 비활성 mock 전용 execution, cancellation, recovery composition을 위한 이중 확인형 store와 runtime 활성화 bridge
-- OpenTCAD 고유 코드의 MIT 라이선스와 제3자 시뮬레이터의 분리된 라이선스 경계
+## 현재 릴리스
 
-정적 사이트는 제품 미리보기이며 브라우저 기반 솔버가 아닙니다. 실제 SUPREM-IV.GS와 DEVSIM 잡은 향후 로컬 API → 워커 → 샌드박스 브로커 → OCI 런타임 경로에서만 실행합니다. 브라우저에는 Docker/Podman 소켓을 절대 노출하지 않습니다.
+GitHub Pages에 공개된 빌드는 안전한 정적 제품 미리보기입니다. 다음 항목을 제공합니다.
 
-## 현재 앱 실행
+- 영어 기본 소개 페이지와 저장되는 한국어 선택 기능
+- 공정, 소자, 곡선 비교, 런타임 경계 화면
+- 메모리에서만 편집하는 예제 입력과 결정론적 과학 시각화
+- 명시적인 출처 정보와 `솔버 출력 아님` 표시
+- 반응형 레이아웃, 키보드 포커스 표시, 자동 UI 테스트
+- Python 계약 테스트가 있는 런타임 중립 브로커, 취소, 복구, fencing, SQLite 내구성, 인증 백업 후보
+- GitHub Pages 하위 경로와 일반 로컬 웹 서버에서 동작하는 정적 산출물
 
-요구사항은 Node.js 22 LTS 또는 24 LTS와 npm 10 이상입니다.
+이 빌드는 제출한 입력, 컨테이너, SUPREM-IV.GS, Gmsh 또는 DEVSIM을 **실행하지 않습니다**. 백엔드 코드는 제품에서 비활성화된 계약과 영속성 기반이며 연결된 솔버 서비스가 아닙니다. 이 저장소는 제3자 솔버 소스나 바이너리를 배포하지 않습니다.
+
+## 웹 앱 둘러보기
+
+[공개 미리보기](https://jtech-co.github.io/OpenTCAD/)를 열거나 로컬에서 실행합니다.
+
+요구사항:
+
+- Node.js 22 LTS 또는 24 LTS
+- npm 10 이상
 
 ```bash
 npm install
 npm run dev
 ```
 
-Vite가 출력한 loopback 주소를 엽니다. 배포용 정적 빌드는 다음과 같습니다.
+Vite가 출력한 loopback 주소를 엽니다. 소개 페이지가 기본 화면이며 `#workspace`를 사용하면 참조 작업공간을 바로 열 수 있습니다.
+
+배포 빌드를 검사하고 미리 보려면 다음 명령을 실행합니다.
 
 ```bash
-npm run build
+npm run check
 npm run preview
 ```
 
-미리보기 서버는 `127.0.0.1`에만 바인딩됩니다. 빌드 결과는 `frontend/dist/`에 생성되며 상대 자산 경로를 사용하므로 GitHub Pages와 일반 정적 서버에서 같은 번들을 실행할 수 있습니다.
+배포 산출물은 `frontend/dist/`에 생성됩니다. 미리보기 서버는 `127.0.0.1`에 바인딩됩니다.
 
-## 품질 게이트
+## 제품 경계
+
+| 화면 또는 구성요소 | 제공 여부 | 솔버 입력 실행 |
+|---|---:|---:|
+| GitHub Pages 소개 페이지와 작업공간 | 제공 | 실행 안 함 |
+| 로컬 정적 개발·미리보기 서버 | 제공 | 실행 안 함 |
+| 런타임 계약과 영속 상태 후보 | 테스트 전용 | 실행 안 함 |
+| 연결된 Docker 또는 Podman 솔버 서비스 | 미제공 | 실행 안 함 |
+
+화면의 모든 프로파일, 단면, I–V 곡선은 결정론적 참조 데이터입니다. 검증 결과로 내보낼 수 없으며 수렴한 솔버 출력으로 제시하지 않습니다.
+
+## 저장소 구성
+
+```text
+frontend/              React 소개 페이지와 정적 참조 작업공간
+backend/app/runtime/   런타임 프로토콜, 정책, identity, fencing 계약
+backend/app/broker/    영속 상태, lifecycle, recovery, archive, backup 후보
+backend/tests/         의존성 없는 Python 계약 및 crash recovery 테스트
+validation/            외부 관찰 도구, schema, comparator
+docs/en/               관리되는 영어 엔지니어링 문서
+docs/ko/               관리되는 한국어 엔지니어링 문서
+.github/workflows/     CI 및 GitHub Pages 배포
+```
+
+## 품질 검사
 
 ```bash
 npm run check
 npm run coverage
 ```
 
-이 저장소는 solver 출력이나 수치 기준선을 저장하지 않습니다. 외부 [BASE-001 관찰 하네스](docs/ko/m0/base001-reference-observation.md)는 원본 증거를 OpenTCAD 밖에 쓰며 기준선을 갱신할 수 없습니다. 엔진 독립 [장애 경로 supervisor](docs/ko/m0/fault-path-foundation.md)는 timeout, 취소, 합산 출력 제한, worker 교체를 검사합니다. 별도의 비승격 [OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md)은 Docker Desktop과 WSL2 rootless Podman에서 같은 통제를 관찰했고 20회 혼합 반복 뒤 label orphan이 0임을 확인했습니다. 이 관찰은 고정 비솔버 image를 사용하며 제품 adapter, solver, release image 또는 host를 검증하지 않습니다. Gate 상태의 [M2 runtime 및 mock broker 기반](docs/ko/m2/README.md)은 durable execution, 외부 cancellation, recovery ownership, 제한된 lease, strict mock native object label, operation 전후 fence 검사를 고정합니다. Process-local 기준 authority에는 WAL, FULL synchronization, `BEGIN IMMEDIATE`를 사용해 가장 높은 job, owner, token generation만 저장하는 전용 SQLite process 간 후보를 추가했습니다. Mock 전용 composition은 정확한 durable ownership을 검사하고 같은 runtime context를 활성화한 뒤 runtime 접촉 전에 두 경계를 다시 검사하는 이중 확인형 bridge를 사용합니다. 별도 process test는 authority 활성화가 `os._exit` 뒤에도 남는 경우와 authority 활성화 전에 commit된 state claim이 다음 token을 claim하고 활성화해 복구되는 경우를 증명합니다. 이 경로는 제품 비활성 상태이고 broker state와 authority commit을 원자화하지 않습니다. 조정된 offline 후보는 state 다음 authority 순서로 write lock을 얻고 SQLite backup payload 2개를 생성하며 정확한 schema, hash, owner generation을 검사하고 신규 directory에만 restore합니다. 별도 제품 비활성 application-service 후보는 schema v1 WAL 및 FULL control database, leased maintenance admission drain, 단조 sequence 할당, source별 durable restore floor, HMAC-SHA256 인증 export/import record, 저장된 interval schedule, platform별 durable directory 공개를 추가합니다. 추가 process hard-exit 경계 4곳은 sequence와 floor 결정을 보존하고 완전한 export 또는 import만 공개합니다. Broker admission 자동 연결, service transport, OS credential store 통합, native Docker 및 Podman quiescence, retention 삭제, 보호된 control store rollback 저항성, 실제 abrupt-power-loss evidence, runtime detection, worker integration, runtime socket, native in-flight 호출 취소, clock-skew 자격 검증, multi-host coordination, solver 실행은 계속 비활성입니다. 화면의 모든 곡선은 결정론적 참조 미리보기 데이터이며 UI에서 이를 명확히 표시합니다.
+전체 검사는 한국어 문장부호, 계약 기록, 프런트엔드 lint와 테스트, Python 런타임 테스트, 검증 테스트, 정적 배포 빌드를 실행합니다. 백엔드 테스트에는 Python 3.12부터 3.14가 필요합니다. 공개 정적 앱에는 Docker가 필요하지 않습니다.
 
 ## 문서
 
@@ -54,31 +89,11 @@ npm run coverage
 | [Architecture](docs/en/architecture.md) | [아키텍처](docs/ko/architecture.md) |
 | [Development](docs/en/development.md) | [개발](docs/ko/development.md) |
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
-| [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
-| [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
-| [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
-| [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
-| [M0 OCI fault matrix](docs/en/m0/oci-fault-matrix.md) | [M0 OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md) |
-| [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
-| [M2 runtime contract foundation](docs/en/m2/README.md) | [M2 런타임 계약 기반](docs/ko/m2/README.md) |
-| [M2 lifecycle, cleanup, and state contract](docs/en/m2/lifecycle-cleanup-state.md) | [M2 lifecycle, cleanup, state 계약](docs/ko/m2/lifecycle-cleanup-state.md) |
-| [M2 event mapping, adapter conformance, and restart recovery](docs/en/m2/event-state-recovery.md) | [M2 event mapping, adapter conformance, restart recovery](docs/ko/m2/event-state-recovery.md) |
-| [M2 SQLite durable-state candidate](docs/en/m2/sqlite-durable-state.md) | [M2 SQLite durable-state 후보](docs/ko/m2/sqlite-durable-state.md) |
-| [M2 inactive live-state composition](docs/en/m2/live-state-composition.md) | [M2 비활성 live-state composition](docs/ko/m2/live-state-composition.md) |
-| [M2 durable external cancellation arbitration](docs/en/m2/durable-cancellation-arbitration.md) | [M2 durable external cancellation 중재](docs/ko/m2/durable-cancellation-arbitration.md) |
-| [M2 durable operation ownership and fencing](docs/en/m2/durable-operation-ownership.md) | [M2 durable operation ownership 및 fencing](docs/ko/m2/durable-operation-ownership.md) |
-| [M2 owner lease and runtime fencing](docs/en/m2/owner-lease-runtime-fencing.md) | [M2 owner lease 및 runtime fencing](docs/ko/m2/owner-lease-runtime-fencing.md) |
-| [M2 native-object runtime fencing conformance](docs/en/m2/native-runtime-fence-conformance.md) | [M2 native object runtime fencing conformance](docs/ko/m2/native-runtime-fence-conformance.md) |
-| [M2 durable runtime fence authority and activation recovery](docs/en/m2/durable-runtime-fence-authority.md) | [M2 durable runtime fence authority 및 활성화 복구](docs/ko/m2/durable-runtime-fence-authority.md) |
-| [M2 coordinated SQLite offline snapshot and restore](docs/en/m2/sqlite-offline-snapshot-restore.md) | [M2 조정된 SQLite offline snapshot 및 restore](docs/ko/m2/sqlite-offline-snapshot-restore.md) |
-| [M2 authenticated backup control and durability](docs/en/m2/authenticated-backup-control.md) | [M2 인증된 backup control 및 durability](docs/ko/m2/authenticated-backup-control.md) |
-| [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
-| [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
+| [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 비교](docs/ko/implementation-scope.md) |
+| [Validation](validation/README.md) | [검증](validation/README.ko.md) |
 
-상세 한국어 기획 원문은 저장소 루트의 `01_PRODUCT_TECHNICAL_PLAN_KR.md`, `02_CODEX_HARNESS_KR.md`, `03_MILESTONE_ROADMAP_KR.md`, `04_INITIAL_BACKLOG_KR.md`에 유지합니다.
+## 라이선스
 
-## 라이선스 경계
+OpenTCAD 고유 애플리케이션 코드와 문서는 [MIT 라이선스](LICENSE)로 배포합니다. 이 라이선스는 SUPREM-IV.GS, Gmsh, DEVSIM, 관련 예제 또는 다른 업스트림 자료에 적용되지 않습니다. 배포 경계는 [라이선스 문서](docs/ko/licensing.md), [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), [NOTICE](NOTICE)에서 확인할 수 있습니다.
 
-OpenTCAD 고유 애플리케이션 코드와 새 문서는 [MIT 라이선스](LICENSE)로 배포합니다. 이 라이선스는 SUPREM-IV.GS, Gmsh, DEVSIM, 각 예제 또는 업스트림 코드를 MIT로 다시 허가하지 않습니다. 이번 기반 릴리스에는 제3자 솔버 소스나 바이너리를 포함하지 않습니다. 자세한 내용은 [라이선스 문서](docs/ko/licensing.md), [제3자 목록](THIRD_PARTY_LICENSES.md), [NOTICE](NOTICE)를 확인하십시오.
-
-Copyright ⓒ 2026 JTech-CO.
+Copyright © 2026 JTech-CO.

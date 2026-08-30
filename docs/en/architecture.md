@@ -72,7 +72,7 @@ backend/app/runtime/      Gated protocol, policy, stable errors, strict mock
 backend/app/broker/       Gated input/output archives, cancellation, redaction, mock orchestration
 packaging/compose/        Local/shared/server profiles (planned)
 packaging/launcher/       PowerShell and POSIX launcher (planned)
-validation/               M0/M1 records, comparators, and gated M2 manifest
+validation/               External observations, comparators, schemas, and contract records
 ```
 
 The current `backend/app/runtime/` and `backend/app/broker/` slices are a proposed contract surface, canonical byte validators, and strict in-memory test double only. It invokes no process, runtime, socket, or solver. Product adapters, detection, broker service transport, and worker integration remain blocked until the recorded entry and security gates are satisfied.

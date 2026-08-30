@@ -6,10 +6,10 @@
 
 - Node.js 22 LTS 또는 24 LTS
 - npm 10 이상
-- M2 계약 테스트용 Python 3.12부터 3.14
+- 런타임 계약 테스트용 Python 3.12부터 3.14
 - Git
 
-컨테이너 런타임, Python service, 외부 database server 또는 solver는 필요하지 않습니다. Python은 의존성이 없는 M2 계약 test만 실행하며 SQLite 후보 test는 표준 library와 격리된 임시 file을 사용합니다.
+컨테이너 런타임, Python service, 외부 database server 또는 solver는 필요하지 않습니다. Python은 의존성이 없는 계약 test만 실행하며 SQLite 후보 test는 표준 library와 격리된 임시 file을 사용합니다.
 
 ## 설정과 명령
 
@@ -21,10 +21,8 @@ npm run dev
 개발 서버는 Vite를 사용합니다. 배포 전 품질 게이트는 다음과 같습니다.
 
 ```bash
-npm run lint
-npm run test
-npm run check:m2
-npm run build
+npm run check
+npm run coverage
 ```
 
 `npm run preview`는 배포 번들을 `127.0.0.1`에서 제공합니다. 빌드는 상대 자산 URL을 사용하므로 GitHub 저장소 하위 경로와 일반 로컬 정적 서버에서 같은 산출물을 실행할 수 있습니다.
@@ -43,7 +41,7 @@ npm run build
 
 프런트엔드나 API에서 `docker`, `podman`, shell 또는 subprocess를 직접 호출하지 않습니다. 런타임 구현은 타입이 지정된 `RuntimeBackend` 계약과 정책 테스트에서 시작하고 실제 Docker 및 rootless Podman 증거를 추가합니다. 엔진 소켓에는 샌드박스 브로커만 접근할 수 있습니다.
 
-런타임, 수치, 데이터 migration 또는 배포 변경은 `02_CODEX_HARNESS_KR.md`의 이슈 접수 보고서, 위험 등급, tests-first 경계, 보안·수치 변화, rollback 증거를 따라야 합니다.
+런타임, 수치, 데이터 migration 또는 배포 변경은 구현 전에 범위, 위험 등급, tests-first 경계, 보안 또는 수치 변화, rollback 증거를 정의해야 합니다.
 
 ## 문서 동등성
 
@@ -54,4 +52,4 @@ docs/en/<name>.md
 docs/ko/<name>.md
 ```
 
-기능 또는 운영 문서 변경은 두 파일이 같은 계약을 설명해야 완료됩니다. 상세 기존 기획 번들은 한국어 원문으로 유지하고 새로 관리하는 제품 문서는 한·영으로 제공합니다.
+기능 또는 운영 문서 변경은 두 파일이 같은 계약을 설명해야 완료됩니다. 관리되는 제품 문서는 한·영으로 제공합니다.

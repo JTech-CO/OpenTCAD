@@ -20,11 +20,18 @@ import {
   IvCanvas,
   ProfileCanvas,
 } from "./components/ScientificCanvas";
+import { LandingPage } from "./LandingPage";
 
 const repositoryUrl = "https://github.com/JTech-CO/OpenTCAD";
+type AppSurface = "intro" | "workspace";
+
+function getInitialSurface(): AppSurface {
+  return window.location.hash === "#workspace" ? "workspace" : "intro";
+}
 
 function App() {
   const [locale, setLocale] = useState<Locale>(getInitialLocale);
+  const [surface, setSurface] = useState<AppSurface>(getInitialSurface);
   const [view, setView] = useState<WorkspaceView>("process");
   const [deck, setDeck] = useState(DEMO_DECK);
   const [selectedField, setSelectedField] =
@@ -44,7 +51,16 @@ function App() {
   }, [locale]);
 
   useEffect(() => {
-    if (runState !== "running") {
+    const syncSurface = () => {
+      setSurface(window.location.hash === "#workspace" ? "workspace" : "intro");
+    };
+
+    window.addEventListener("hashchange", syncSurface);
+    return () => window.removeEventListener("hashchange", syncSurface);
+  }, []);
+
+  useEffect(() => {
+    if (surface !== "workspace" || runState !== "running") {
       return;
     }
 
@@ -57,7 +73,7 @@ function App() {
     }, 620);
 
     return () => window.clearTimeout(timer);
-  }, [activeStep, runState]);
+  }, [activeStep, runState, surface]);
 
   const lineCount = useMemo(
     () => deck.split(/\r?\n/).filter((line) => line.length > 0).length,
@@ -76,6 +92,16 @@ function App() {
     setRunState("running");
   };
 
+  const openWorkspace = () => {
+    window.location.hash = "workspace";
+    setSurface("workspace");
+  };
+
+  const openOverview = () => {
+    window.location.hash = "";
+    setSurface("intro");
+  };
+
   const titleKey: Record<WorkspaceView, MessageKey> = {
     process: "processTitle",
     device: "deviceTitle",
@@ -88,6 +114,17 @@ function App() {
     compare: "compareSubtitle",
     runtime: "runtimeSubtitle",
   };
+
+  if (surface === "intro") {
+    return (
+      <LandingPage
+        locale={locale}
+        text={text}
+        onLocaleChange={setLocale}
+        onOpenWorkspace={openWorkspace}
+      />
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -113,6 +150,9 @@ function App() {
         </div>
 
         <div className="topbar-actions">
+          <button type="button" className="overview-link" onClick={openOverview}>
+            {text("backToOverview")}
+          </button>
           <a
             className="repo-link"
             href={repositoryUrl}
@@ -318,7 +358,7 @@ function App() {
           <dl className="detail-list">
             <div>
               <dt>{text("appRevision")}</dt>
-              <dd>foundation-r01</dd>
+              <dd>preview-r01</dd>
             </div>
             <div>
               <dt>{text("dataset")}</dt>

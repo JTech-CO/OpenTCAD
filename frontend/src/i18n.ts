@@ -21,7 +21,7 @@ export const en = {
   structureStage: "Structure",
   deviceStage: "Device setup",
   analysisStage: "I–V analysis",
-  projectRevision: "Foundation · r01",
+  projectRevision: "Reference preview · r01",
   safeBoundary: "Static safety boundary",
   safeBoundaryDetail: "Edits stay in this browser. GitHub Pages cannot run SUPREM-IV.GS, DEVSIM, shell commands, or containers.",
   processTitle: "Process workspace",
@@ -112,6 +112,67 @@ export const en = {
   selectView: "Select workspace view",
   selectField: "Select profile field",
   staticLabel: "STATIC",
+  backToOverview: "Overview",
+  introNavigation: "Introduction navigation",
+  introNavCapabilities: "Capabilities",
+  introNavWorkflow: "Workflow",
+  introNavScope: "Scope",
+  introEyebrow: "OPEN SOURCE · SEMICONDUCTOR TCAD",
+  introTitleLead: "See the process.",
+  introTitleAccent: "Understand the device.",
+  introDescription:
+    "OpenTCAD brings process decks, device structures, and electrical response into one bilingual learning workspace. This public build is a safe, deterministic preview of the product experience.",
+  introOpenWorkspace: "Explore the workspace",
+  introViewSource: "View source",
+  introStatus: "Current release",
+  introStatusValue: "Static reference workspace · no solver execution",
+  introVisualLabel: "Reference visualization",
+  introVisualState: "Static and safe",
+  introVisualAlt:
+    "OpenTCAD cover showing an abstract semiconductor cross-section and scientific curves",
+  introProofBilingual: "English and Korean interface",
+  introProofPortable: "Portable static build",
+  introProofSafe: "Sandbox-first architecture",
+  introCapabilitiesEyebrow: "Explore",
+  introCapabilitiesTitle: "One workspace, from process intent to device response.",
+  introCapabilitiesDescription:
+    "A focused product preview connects the language of fabrication, structure, bias, and electrical behavior without presenting illustrative data as solver results.",
+  introProcessTitle: "Process workspace",
+  introProcessDetail:
+    "Edit an illustrative SUPREM-style deck and inspect deterministic depth profiles.",
+  introDeviceTitle: "Device structure",
+  introDeviceDetail:
+    "Explore the material stack, contacts, mesh, and example bias conditions.",
+  introCompareTitle: "Curve comparison",
+  introCompareDetail:
+    "Review a reference I–V family designed to explain the intended analysis flow.",
+  introBoundaryTitle: "Runtime boundary",
+  introBoundaryDetail:
+    "See exactly where the static site ends and a future isolated local engine begins.",
+  introWorkflowEyebrow: "Reference flow",
+  introWorkflowTitle: "A clear path through the simulation story.",
+  introWorkflowDescription:
+    "The current workflow is interactive but deterministic. It teaches the intended sequence while keeping executable inputs outside the browser build.",
+  introFlowDeck: "Shape the process deck",
+  introFlowDeckDetail: "Review and edit an in-memory illustrative process description.",
+  introFlowStructure: "Inspect the structure",
+  introFlowStructureDetail: "Connect process intent to profiles and a device cross-section.",
+  introFlowDevice: "Set the device context",
+  introFlowDeviceDetail: "Review contacts, materials, temperature, and example biases.",
+  introFlowReview: "Compare electrical response",
+  introFlowReviewDetail: "Explore deterministic curves with visible provenance limits.",
+  introScopeEyebrow: "Honest scope",
+  introScopeTitle: "Useful today, explicit about what is not running.",
+  introAvailableLabel: "Available now",
+  introAvailableTitle: "Bilingual static product preview",
+  introAvailableDetail:
+    "Responsive UI, deterministic scientific visuals, paired documentation, automated checks, and GitHub Pages distribution are included.",
+  introUnavailableLabel: "Not in this build",
+  introUnavailableTitle: "No browser-side solver execution",
+  introUnavailableDetail:
+    "GitHub Pages does not execute submitted decks, shell commands, containers, SUPREM-IV.GS, or DEVSIM. The visible curves are reference data.",
+  introFooter:
+    "Open-source software for learning semiconductor process and device simulation concepts.",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -140,7 +201,7 @@ export const ko: Record<MessageKey, string> = {
   structureStage: "구조",
   deviceStage: "소자 설정",
   analysisStage: "I–V 해석",
-  projectRevision: "기반 단계 · r01",
+  projectRevision: "참조 미리보기 · r01",
   safeBoundary: "정적 안전 경계",
   safeBoundaryDetail: "편집 내용은 이 브라우저에만 남습니다. GitHub Pages에서는 SUPREM-IV.GS, DEVSIM, 셸 명령 또는 컨테이너를 실행할 수 없습니다.",
   processTitle: "공정 작업공간",
@@ -231,6 +292,63 @@ export const ko: Record<MessageKey, string> = {
   selectView: "작업공간 화면 선택",
   selectField: "프로파일 물리량 선택",
   staticLabel: "정적",
+  backToOverview: "소개",
+  introNavigation: "소개 페이지 탐색",
+  introNavCapabilities: "주요 기능",
+  introNavWorkflow: "워크플로",
+  introNavScope: "제공 범위",
+  introEyebrow: "오픈 소스 · 반도체 TCAD",
+  introTitleLead: "공정을 보고,",
+  introTitleAccent: "소자를 이해합니다.",
+  introDescription:
+    "OpenTCAD은 공정 덱, 소자 구조, 전기적 응답을 하나의 한·영 학습 작업공간으로 연결합니다. 이 공개 빌드는 제품 경험을 안전하고 결정론적으로 보여 주는 미리보기입니다.",
+  introOpenWorkspace: "작업공간 둘러보기",
+  introViewSource: "소스 보기",
+  introStatus: "현재 릴리스",
+  introStatusValue: "정적 참조 작업공간 · 솔버 실행 없음",
+  introVisualLabel: "참조 시각화",
+  introVisualState: "정적·안전 모드",
+  introVisualAlt: "추상 반도체 단면과 과학 곡선으로 구성된 OpenTCAD 표지",
+  introProofBilingual: "영어·한국어 인터페이스",
+  introProofPortable: "이식 가능한 정적 빌드",
+  introProofSafe: "샌드박스 우선 아키텍처",
+  introCapabilitiesEyebrow: "둘러보기",
+  introCapabilitiesTitle: "공정 의도부터 소자 응답까지 하나의 작업공간에서 확인합니다.",
+  introCapabilitiesDescription:
+    "집중된 제품 미리보기에서 제조 공정, 구조, 바이어스, 전기적 동작의 언어를 연결하며 설명용 데이터를 솔버 결과처럼 제시하지 않습니다.",
+  introProcessTitle: "공정 작업공간",
+  introProcessDetail:
+    "설명용 SUPREM 형식 덱을 편집하고 결정론적 깊이 프로파일을 확인합니다.",
+  introDeviceTitle: "소자 구조",
+  introDeviceDetail: "재질 적층, 접촉, 메시, 예시 바이어스 조건을 살펴봅니다.",
+  introCompareTitle: "곡선 비교",
+  introCompareDetail: "의도한 해석 흐름을 설명하는 참조 I–V 곡선군을 확인합니다.",
+  introBoundaryTitle: "런타임 경계",
+  introBoundaryDetail:
+    "정적 사이트의 끝과 향후 격리된 로컬 엔진의 시작 지점을 명확히 보여 줍니다.",
+  introWorkflowEyebrow: "참조 흐름",
+  introWorkflowTitle: "시뮬레이션 흐름을 명확한 순서로 살펴봅니다.",
+  introWorkflowDescription:
+    "현재 워크플로는 상호작용할 수 있지만 결과는 결정론적입니다. 실행 가능한 입력을 브라우저 빌드 밖에 두면서 의도한 순서를 설명합니다.",
+  introFlowDeck: "공정 덱 구성",
+  introFlowDeckDetail: "메모리에서만 사용하는 설명용 공정 기술을 검토하고 편집합니다.",
+  introFlowStructure: "구조 확인",
+  introFlowStructureDetail: "공정 의도를 프로파일과 소자 단면에 연결합니다.",
+  introFlowDevice: "소자 조건 설정",
+  introFlowDeviceDetail: "접촉, 재질, 온도, 예시 바이어스를 확인합니다.",
+  introFlowReview: "전기적 응답 비교",
+  introFlowReviewDetail: "출처 한계가 표시된 결정론적 곡선을 살펴봅니다.",
+  introScopeEyebrow: "정확한 제공 범위",
+  introScopeTitle: "현재 쓸 수 있는 기능과 실행되지 않는 기능을 구분합니다.",
+  introAvailableLabel: "현재 제공",
+  introAvailableTitle: "한·영 정적 제품 미리보기",
+  introAvailableDetail:
+    "반응형 UI, 결정론적 과학 시각화, 한·영 문서, 자동 검사, GitHub Pages 배포를 제공합니다.",
+  introUnavailableLabel: "현재 미제공",
+  introUnavailableTitle: "브라우저 내부 솔버 실행 없음",
+  introUnavailableDetail:
+    "GitHub Pages에서는 제출한 덱, 셸 명령, 컨테이너, SUPREM-IV.GS 또는 DEVSIM을 실행하지 않습니다. 화면의 곡선은 참조 데이터입니다.",
+  introFooter: "반도체 공정과 소자 시뮬레이션 개념 학습을 위한 오픈 소스 소프트웨어입니다.",
 };
 
 export const messages = { en, ko } as const;
@@ -245,7 +363,5 @@ export function getInitialLocale(): Locale {
     // A blocked preference store must not prevent the app from starting.
   }
 
-  return typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ko")
-    ? "ko"
-    : "en";
+  return "en";
 }
