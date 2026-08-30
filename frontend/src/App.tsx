@@ -127,7 +127,10 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-ui="precision-cad">
+      <a className="skip-link" href="#workspace-main">
+        {text("skipToMain")}
+      </a>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark" aria-hidden="true">
@@ -212,7 +215,7 @@ function App() {
               </span>
               <span>{text(item.label)}</span>
               <span className="nav-chevron" aria-hidden="true">
-                ?
+                ›
               </span>
             </button>
           ))}
@@ -269,7 +272,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="main-workspace">
+      <main className="main-workspace" id="workspace-main">
         <div className="safety-banner" role="note">
           <div className="safety-shield" aria-hidden="true">
             <span />

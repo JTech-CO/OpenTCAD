@@ -19,6 +19,13 @@ describe("OpenTCAD static experience", () => {
     render(<App />);
 
     expect(document.documentElement.lang).toBe("en");
+    expect(document.querySelector(".landing-page")).toHaveAttribute(
+      "data-ui",
+      "precision-cad",
+    );
+    expect(
+      screen.getByRole("link", { name: "Skip to main content" }),
+    ).toHaveAttribute("href", "#landing-main");
     expect(screen.getByText("Understand the device.")).toBeInTheDocument();
     expect(
       screen.getAllByRole("button", { name: "Explore the workspace" }),
@@ -49,6 +56,13 @@ describe("OpenTCAD static experience", () => {
       screen.getAllByRole("button", { name: "Explore the workspace" })[0],
     );
 
+    expect(document.querySelector(".app-shell")).toHaveAttribute(
+      "data-ui",
+      "precision-cad",
+    );
+    expect(
+      screen.getByRole("link", { name: "Skip to main content" }),
+    ).toHaveAttribute("href", "#workspace-main");
     expect(
       screen.getByRole("heading", { name: "Process workspace" }),
     ).toBeInTheDocument();

@@ -60,7 +60,10 @@ export function LandingPage({
   onOpenWorkspace,
 }: LandingPageProps) {
   return (
-    <div className="landing-page" id="top">
+    <div className="landing-page" id="top" data-ui="precision-cad">
+      <a className="skip-link" href="#landing-main">
+        {text("skipToMain")}
+      </a>
       <header className="landing-header">
         <a className="landing-brand" href="#top" aria-label="OpenTCAD">
           <span className="brand-mark" aria-hidden="true">
@@ -114,7 +117,7 @@ export function LandingPage({
         </div>
       </header>
 
-      <main>
+      <main id="landing-main">
         <section className="landing-hero" aria-labelledby="intro-title">
           <div className="landing-hero-copy">
             <div className="landing-kicker">
