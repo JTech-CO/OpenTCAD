@@ -6,10 +6,10 @@
 
 - Node.js 22 LTS or 24 LTS
 - npm 10 or newer
-- Python 3.12 through 3.14 for the M2 contract tests
+- Python 3.12 through 3.14 for the runtime contract tests
 - Git
 
-No container runtime, Python service, external database server, or solver is required. Python runs only the dependency-free M2 contract tests; SQLite candidate tests use the standard library and isolated temporary files.
+No container runtime, Python service, external database server, or solver is required. Python runs only dependency-free contract tests; SQLite candidate tests use the standard library and isolated temporary files.
 
 ## Setup and commands
 
@@ -21,10 +21,8 @@ npm run dev
 The development server uses Vite. Production checks are:
 
 ```bash
-npm run lint
-npm run test
-npm run check:m2
-npm run build
+npm run check
+npm run coverage
 ```
 
 Use `npm run preview` to serve the production bundle on `127.0.0.1`. The build uses relative asset URLs so a single artifact works under the GitHub repository subpath and on an ordinary local static server.
@@ -43,7 +41,7 @@ Use `npm run preview` to serve the production bundle on `127.0.0.1`. The build u
 
 Do not add a direct `docker`, `podman`, shell, or subprocess call from the frontend or API. Runtime implementation starts with a typed `RuntimeBackend` contract and policy tests, followed by real Docker and rootless Podman evidence. The sandbox broker is the only component allowed to reach an engine socket.
 
-Any runtime, numerical, data-migration, or distribution change must follow `02_CODEX_HARNESS_KR.md`, including its issue-intake report, risk level, tests-first boundary, security/numerical delta, and rollback evidence.
+Any runtime, numerical, data-migration, or distribution change must define its scope, risk level, tests-first boundary, security or numerical delta, and rollback evidence before implementation.
 
 ## Documentation parity
 
@@ -54,4 +52,4 @@ docs/en/<name>.md
 docs/ko/<name>.md
 ```
 
-A functional or operational documentation change is incomplete until both files describe the same contract. The detailed original planning bundle remains Korean source material; new maintained product documentation is bilingual.
+A functional or operational documentation change is incomplete until both files describe the same contract. Maintained product documentation is bilingual.

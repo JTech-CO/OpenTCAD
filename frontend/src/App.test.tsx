@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { en, ko } from "./i18n";
 
-describe("OpenTCAD static foundation", () => {
+describe("OpenTCAD static experience", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.localStorage.setItem("opentcad-locale", "en");
+    window.history.replaceState(null, "", "/");
   });
 
   afterEach(() => {
@@ -15,8 +15,39 @@ describe("OpenTCAD static foundation", () => {
     vi.useRealTimers();
   });
 
-  it("makes the static execution boundary explicit", () => {
+  it("opens on the English introduction and makes the release scope explicit", () => {
     render(<App />);
+
+    expect(document.documentElement.lang).toBe("en");
+    expect(screen.getByText("Understand the device.")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Explore the workspace" }),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(
+        /GitHub Pages does not execute submitted decks, shell commands, containers/,
+      ),
+    ).toBeInTheDocument();
+  }, 10_000);
+
+  it("switches the introduction to Korean and persists the choice", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "한국어" }));
+
+    expect(screen.getByText("소자를 이해합니다.")).toBeInTheDocument();
+    expect(screen.getByText("브라우저 내부 솔버 실행 없음")).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("ko");
+    expect(window.localStorage.getItem("opentcad-locale")).toBe("ko");
+  });
+
+  it("enters the reference workspace and keeps its safety boundary explicit", () => {
+    render(<App />);
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+    );
 
     expect(
       screen.getByRole("heading", { name: "Process workspace" }),
@@ -28,26 +59,15 @@ describe("OpenTCAD static foundation", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Not solver output").length).toBeGreaterThan(0);
-  }, 10_000);
-
-  it("switches every maintained surface to Korean", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole("button", { name: "한국어" }));
-
-    expect(
-      screen.getByRole("heading", { name: "공정 작업공간" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("정적 안전 경계")).toBeInTheDocument();
-    expect(document.documentElement.lang).toBe("ko");
-    expect(window.localStorage.getItem("opentcad-locale")).toBe("ko");
   });
 
   it("runs a deterministic reference-only workflow to completion", () => {
     vi.useFakeTimers();
     render(<App />);
 
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "Run reference workflow" }),
     );
@@ -73,6 +93,9 @@ describe("OpenTCAD static foundation", () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await user.click(
+      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+    );
     await user.click(screen.getByRole("button", { name: "Runtime" }));
 
     expect(

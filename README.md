@@ -1,51 +1,86 @@
 # OpenTCAD
 
-[한국어](README.ko.md) · [Live static preview](https://jtech-co.github.io/OpenTCAD/) · [Architecture](docs/en/architecture.md) · [Roadmap](docs/en/roadmap.md)
+[한국어](README.ko.md) · [Live preview](https://jtech-co.github.io/OpenTCAD/) · [Architecture](docs/en/architecture.md) · [Development](docs/en/development.md)
 
-OpenTCAD is an open-source, bilingual workspace for learning semiconductor process and device simulation. The product direction combines a sandboxed SUPREM-IV.GS process flow with DEVSIM device analysis and makes the experience reproducible from a local server on Windows, macOS, and Linux.
+![OpenTCAD social preview](frontend/public/og.png)
 
-> OpenTCAD is for education, structure exploration, and numerical experiments. It is not a fabrication sign-off tool.
+OpenTCAD is an open-source, bilingual workspace for learning semiconductor process and device simulation concepts. It connects an illustrative SUPREM-style process flow, device structure, bias conditions, and I–V behavior in one responsive web experience.
 
-## What is available now
+The default public experience is English. Select **한국어** at any time to switch the introduction and workspace to Korean.
 
-The project foundation is complete, **M0 is active**, and engine-independent M1 and M2 contract work is `gated-active`. The repository currently includes:
+> OpenTCAD is intended for education, interface exploration, and numerical experimentation. It is not a fabrication sign-off tool.
 
-- a responsive English/Korean React workspace;
-- a deterministic, clearly labelled reference workflow for process profiles, device cross-sections, and I–V curves;
-- a static GitHub Pages build that never executes submitted input;
-- local development and preview servers that work anywhere Node.js runs;
-- CI, accessibility-oriented interaction states, and the architecture boundary for the future sandboxed local engine;
-- a runtime-neutral `RuntimeBackend` contract, fail-closed policy validator, canonical input/output archives, phase-addressable cancellation, process-local idempotent cleanup, deterministic broker-event mapping, reusable state-adapter, runtime-object fence, and runtime-authority conformance suites, a CAS durable-state interface, a file-backed SQLite schema-v3 state candidate with transactional version-1 and version-2 migration, a dedicated SQLite schema-v1 cross-process runtime-fence authority candidate, a coordinated offline paired-snapshot and fresh-target restore candidate, a separate schema-v1 backup-control database with maintenance admission, HMAC-authenticated export/import, durable restore floors and interval scheduling, revision-neutral owner leases, eight separate-process hard-exit cases, and a double-checked store-to-runtime activation bridge for the inactive mock-only execution, cancellation, and recovery composition;
-- MIT licensing for original OpenTCAD code, with third-party simulators kept outside that license boundary.
+## Current release
 
-The static site is a product preview, not a browser-based solver. Real SUPREM-IV.GS and DEVSIM jobs will run only through the planned local API → worker → sandbox broker → OCI runtime path. The browser will never receive a Docker or Podman socket.
+The published GitHub Pages build is a safe static product preview. It includes:
 
-## Run the current app
+- an English-first introduction page with a persistent Korean language option;
+- process, device, curve-comparison, and runtime-boundary views;
+- editable in-memory example input and deterministic scientific visuals;
+- explicit provenance and “not solver output” labels;
+- responsive layouts, keyboard-visible focus states, and automated UI tests;
+- runtime-neutral broker, cancellation, recovery, fencing, SQLite durability, and authenticated backup candidates with Python contract tests;
+- a static artifact that works under a GitHub Pages subpath or an ordinary local web server.
 
-Requirements: Node.js 22 LTS or 24 LTS and npm 10 or newer.
+This build does **not** execute submitted input, containers, SUPREM-IV.GS, Gmsh, or DEVSIM. The backend code is a product-disabled contract and persistence foundation, not a connected solver service. No third-party solver source or binary is distributed in this repository.
+
+## Explore the web app
+
+Open the [live preview](https://jtech-co.github.io/OpenTCAD/) or run it locally.
+
+Requirements:
+
+- Node.js 22 LTS or 24 LTS
+- npm 10 or newer
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the loopback URL printed by Vite. For the production-static build:
+Open the loopback URL printed by Vite. The introduction is the default route; `#workspace` opens the reference workspace directly.
+
+To verify and preview the production build:
 
 ```bash
-npm run build
+npm run check
 npm run preview
 ```
 
-The preview server binds to `127.0.0.1`. The build output is `frontend/dist/` and uses relative asset paths so the same bundle works on GitHub Pages and ordinary static servers.
+The production artifact is written to `frontend/dist/`. The preview server binds to `127.0.0.1`.
 
-## Quality gates
+## Product boundary
+
+| Surface | Available | Executes solver input |
+|---|---:|---:|
+| GitHub Pages introduction and workspace | Yes | No |
+| Local static development and preview server | Yes | No |
+| Runtime contracts and durable-state candidates | Test-only | No |
+| Connected Docker or Podman solver service | No | No |
+
+Every visible profile, cross-section, and I–V curve is deterministic reference data. It cannot be exported as a validated result and is never presented as converged solver output.
+
+## Repository layout
+
+```text
+frontend/              React introduction and static reference workspace
+backend/app/runtime/   Runtime protocol, policy, identity, and fencing contracts
+backend/app/broker/    Durable state, lifecycle, recovery, archive, and backup candidates
+backend/tests/         Dependency-free Python contract and crash-recovery tests
+validation/            External observation tools, schemas, and comparators
+docs/en/               Maintained English engineering documentation
+docs/ko/               Maintained Korean engineering documentation
+.github/workflows/     CI and GitHub Pages deployment
+```
+
+## Quality checks
 
 ```bash
 npm run check
 npm run coverage
 ```
 
-This repository stores no solver output or numerical baseline. The external [BASE-001 observation harness](docs/en/m0/base001-reference-observation.md) writes raw evidence outside OpenTCAD and cannot update a baseline. The engine-independent [fault-path supervisor](docs/en/m0/fault-path-foundation.md) tests timeout, cancellation, combined-output limits, and worker replacement. A separate non-promoting [OCI fault matrix](docs/en/m0/oci-fault-matrix.md) observed the same controls on Docker Desktop and WSL2 rootless Podman with 20-case mixed loops and zero labelled orphans. It uses a fixed non-solver image and does not qualify a product adapter, solver, release image, or host. The gated [M2 runtime and mock broker foundation](docs/en/m2/README.md) freezes durable execution, external cancellation, recovery ownership, bounded leases, strict mock native-object labels, and pre-operation and post-operation fence checks. A process-local reference authority now has a dedicated SQLite cross-process candidate that persists only the highest job, owner, and token generation under WAL, FULL synchronization, and `BEGIN IMMEDIATE`. The mock-only composition uses a double-checked bridge that verifies exact durable ownership, activates the same runtime context, and verifies both boundaries again before runtime contact. Separate-process tests prove authority activation survives `os._exit` and that a state claim committed before authority activation recovers by claiming and activating the next token. This path remains product-disabled and does not make broker-state and authority commits atomic. A coordinated offline candidate now write-locks state then authority, creates two SQLite backup payloads, validates exact schemas, hashes, and owner generations, and restores only into a fresh directory. A separate product-disabled application-service candidate adds a schema-v1 WAL/FULL control database, leased maintenance admission drain, monotonic sequence allocation, a durable per-source restore floor, HMAC-SHA256 authenticated export/import records, persisted interval schedules, and platform-specific durable directory publication. Four additional process hard-exit seams preserve sequence and floor decisions and expose only complete exports or imports. Broker admission auto-wiring, service transport, OS credential-store integration, native Docker and Podman quiescence, retention deletion, protected control-store rollback resistance, real abrupt-power-loss evidence, runtime detection, worker integration, runtime sockets, native in-flight call revocation, clock-skew qualification, multi-host coordination, and solver execution remain disabled. All visible curves remain deterministic reference-preview data and are marked as such in the interface.
+The full check runs Korean punctuation validation, contract records, frontend lint and tests, Python runtime tests, validation tests, and the static production build. Python 3.12 through 3.14 is required for the backend test suite. Docker is not required for the published static app.
 
 ## Documentation
 
@@ -54,31 +89,11 @@ This repository stores no solver output or numerical baseline. The external [BAS
 | [Architecture](docs/en/architecture.md) | [아키텍처](docs/ko/architecture.md) |
 | [Development](docs/en/development.md) | [개발](docs/ko/development.md) |
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
-| [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 기존 사이트 비교](docs/ko/implementation-scope.md) |
-| [M0 discovery and baseline status](docs/en/m0/README.md) | [M0 조사 및 기준선 상태](docs/ko/m0/README.md) |
-| [BASE-001 reference observation](docs/en/m0/base001-reference-observation.md) | [BASE-001 참조 관찰](docs/ko/m0/base001-reference-observation.md) |
-| [M0 fault-path contract](docs/en/m0/fault-path-foundation.md) | [M0 장애 경로 계약](docs/ko/m0/fault-path-foundation.md) |
-| [M0 OCI fault matrix](docs/en/m0/oci-fault-matrix.md) | [M0 OCI 장애 행렬](docs/ko/m0/oci-fault-matrix.md) |
-| [M1 reproducibility and validation status](docs/en/m1/README.md) | [M1 재현성 및 검증 상태](docs/ko/m1/README.md) |
-| [M2 runtime contract foundation](docs/en/m2/README.md) | [M2 런타임 계약 기반](docs/ko/m2/README.md) |
-| [M2 lifecycle, cleanup, and state contract](docs/en/m2/lifecycle-cleanup-state.md) | [M2 lifecycle, cleanup, state 계약](docs/ko/m2/lifecycle-cleanup-state.md) |
-| [M2 event mapping, adapter conformance, and restart recovery](docs/en/m2/event-state-recovery.md) | [M2 event mapping, adapter conformance, restart recovery](docs/ko/m2/event-state-recovery.md) |
-| [M2 SQLite durable-state candidate](docs/en/m2/sqlite-durable-state.md) | [M2 SQLite durable-state 후보](docs/ko/m2/sqlite-durable-state.md) |
-| [M2 inactive live-state composition](docs/en/m2/live-state-composition.md) | [M2 비활성 live-state composition](docs/ko/m2/live-state-composition.md) |
-| [M2 durable external cancellation arbitration](docs/en/m2/durable-cancellation-arbitration.md) | [M2 durable external cancellation 중재](docs/ko/m2/durable-cancellation-arbitration.md) |
-| [M2 durable operation ownership and fencing](docs/en/m2/durable-operation-ownership.md) | [M2 durable operation ownership 및 fencing](docs/ko/m2/durable-operation-ownership.md) |
-| [M2 owner lease and runtime fencing](docs/en/m2/owner-lease-runtime-fencing.md) | [M2 owner lease 및 runtime fencing](docs/ko/m2/owner-lease-runtime-fencing.md) |
-| [M2 native-object runtime fencing conformance](docs/en/m2/native-runtime-fence-conformance.md) | [M2 native object runtime fencing conformance](docs/ko/m2/native-runtime-fence-conformance.md) |
-| [M2 durable runtime fence authority and activation recovery](docs/en/m2/durable-runtime-fence-authority.md) | [M2 durable runtime fence authority 및 활성화 복구](docs/ko/m2/durable-runtime-fence-authority.md) |
-| [M2 coordinated SQLite offline snapshot and restore](docs/en/m2/sqlite-offline-snapshot-restore.md) | [M2 조정된 SQLite offline snapshot 및 restore](docs/ko/m2/sqlite-offline-snapshot-restore.md) |
-| [M2 authenticated backup control and durability](docs/en/m2/authenticated-backup-control.md) | [M2 인증된 backup control 및 durability](docs/ko/m2/authenticated-backup-control.md) |
-| [Roadmap](docs/en/roadmap.md) | [로드맵](docs/ko/roadmap.md) |
-| [Foundation work report](docs/en/project-foundation.md) | [기반 작업 보고서](docs/ko/project-foundation.md) |
+| [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 비교](docs/ko/implementation-scope.md) |
+| [Validation](validation/README.md) | [검증](validation/README.ko.md) |
 
-The detailed Korean planning sources remain at the repository root: `01_PRODUCT_TECHNICAL_PLAN_KR.md`, `02_CODEX_HARNESS_KR.md`, `03_MILESTONE_ROADMAP_KR.md`, and `04_INITIAL_BACKLOG_KR.md`.
+## License
 
-## License boundary
+Original OpenTCAD application code and documentation are released under the [MIT License](LICENSE). This license does not relicense SUPREM-IV.GS, Gmsh, DEVSIM, their examples, or other upstream material. See [Licensing](docs/en/licensing.md), [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), and [NOTICE](NOTICE) for the distribution boundary.
 
-Original OpenTCAD application code and new documentation are released under the [MIT License](LICENSE). That does **not** relicense SUPREM-IV.GS, Gmsh, DEVSIM, their examples, or any upstream code. No third-party solver source or binary is included in this foundation release. See [Licensing](docs/en/licensing.md), the [third-party inventory](THIRD_PARTY_LICENSES.md), and [NOTICE](NOTICE).
-
-Copyright ⓒ 2026 JTech-CO.
+Copyright © 2026 JTech-CO.

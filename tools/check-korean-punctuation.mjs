@@ -8,12 +8,6 @@ const emDash = "\u2014";
 const koreanDocuments = [
   "README.ko.md",
   "validation/README.ko.md",
-  "01_PRODUCT_TECHNICAL_PLAN_KR.md",
-  "02_CODEX_HARNESS_KR.md",
-  "03_MILESTONE_ROADMAP_KR.md",
-  "04_INITIAL_BACKLOG_KR.md",
-  "PLANNING_BUNDLE_README_KR.md",
-  "TCAD_CROSS_PLATFORM_MASTER_PLAN_KR.md",
 ];
 
 async function markdownFiles(directory) {

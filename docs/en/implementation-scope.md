@@ -4,7 +4,7 @@
 
 ## Baseline and method
 
-This report compares the read-only behavior reference `ypooh2042/tcad-webapp@13bce4a` with the OpenTCAD foundation merged at `JTech-CO/OpenTCAD@4a7cae9`. The reference README, code maps, frontend package, backend package, container definitions, and deployment layout were inspected. No upstream application source is copied into OpenTCAD.
+This report compares the read-only behavior reference `ypooh2042/tcad-webapp@13bce4a` with the current OpenTCAD repository. The reference README, code maps, frontend package, backend package, container definitions, and deployment layout were inspected. No upstream application source is copied into OpenTCAD.
 
 The existing site is a functional, Linux-oriented solver application. OpenTCAD is currently a clean-room, bilingual, static product foundation. It is therefore not yet a feature-for-feature replacement. The present release improves distribution clarity, public accessibility, language coverage, and the cross-platform target architecture while intentionally withholding real solver execution.
 
@@ -43,7 +43,7 @@ The browser and API must never receive an OCI runtime socket. Only the broker ma
 
 | Capability | Existing reference site | OpenTCAD now | Feasible OpenTCAD target |
 |---|---|---|---|
-| Public static access | No dedicated safe static product | Complete on GitHub Pages | Keep throughout the roadmap |
+| Public static access | No dedicated safe static product | Complete on GitHub Pages | Keep as the public product surface |
 | English and Korean | Primarily Korean | Complete for maintained UI and product docs | Keep translation keys and paired docs in parity |
 | Process deck editor | Monaco editor with real workspace files | In-memory illustrative deck | Monaco or equivalent editor with secure project storage |
 | Syntax catalog and manuals | Completion, parameter tables, manual and reference panels | Not present | Clean-room catalog and licensed documentation index |
@@ -82,19 +82,9 @@ The browser and API must never receive an OCI runtime socket. Only the broker ma
 
 These omissions are deliberate. Copying the existing source would undermine the clean MIT boundary, and shipping a partially isolated solver path would create a security claim that the current code cannot support.
 
-## Practical implementation ceiling by phase
+## Current release boundary
 
-| Phase | Implementable outcome | Required exit evidence |
-|---|---|---|
-| Foundation, complete | Bilingual static product, CI, Pages, architecture and licensing boundary | Static build cannot execute input |
-| M0 | Dependency and provenance inventory, distribution decision, Linux behavior baseline | Written license decision and reproducible baseline |
-| M1 | Golden decks, parsers, numerical comparators and pinned images | Repeatable topology, process metrics and I–V evidence |
-| M2 | Runtime protocol, broker, Docker and Podman adapters, job volumes | Fail-closed sandbox tests and cleanup evidence |
-| M3 | Loopback local stack, launcher, doctor, projects, backup and upgrade skeleton | One-command local alpha with no runtime socket exposure |
-| M4 to M5 | Windows and macOS packaging plus architecture policy | Repeated end-to-end and numerical evidence on supported hosts |
-| M6 to M8 | Correctness burn-down, portability, diagnostics, release operations | No open critical defect and all licensing, rollback and qualification gates met |
-
-A useful local alpha is realistic after M0 through M3. A trustworthy 1.0 requires the later numerical, security, data-safety, and platform gates; process exit alone is never sufficient evidence.
+The current public release is complete as a bilingual, non-executing product preview. Real solver execution is not part of this release and must not be inferred from the runtime contracts or deterministic visuals. Any future connected local service requires separate licensing, sandbox, numerical, data-safety, and cross-platform qualification.
 
 ## Korean punctuation policy
 
