@@ -69,7 +69,7 @@ function drawGrid(
   yDivisions: number,
 ) {
   context.save();
-  context.strokeStyle = "rgba(137, 177, 193, 0.13)";
+  context.strokeStyle = "rgba(92, 225, 212, 0.14)";
   context.lineWidth = 1;
 
   for (let index = 0; index <= xDivisions; index += 1) {
@@ -102,14 +102,21 @@ interface ProfileCanvasProps extends CanvasProps {
 export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) {
   const draw = useCallback<DrawCanvas>(
     (context, width, height) => {
-      const margin = { left: 58, right: 18, top: 24, bottom: 42 };
+      const tickSize = Math.round(Math.min(15, Math.max(12, width / 82)));
+      const axisSize = tickSize + 1;
+      const margin = {
+        left: tickSize * 4.8,
+        right: 20,
+        top: 26,
+        bottom: axisSize * 3.4,
+      };
       const plotWidth = width - margin.left - margin.right;
       const plotHeight = height - margin.top - margin.bottom;
       const minLog = 14;
       const maxLog = 21;
       const maxDepth = 0.8;
 
-      context.fillStyle = "#09151c";
+      context.fillStyle = "#041015";
       context.fillRect(0, 0, width, height);
       drawGrid(
         context,
@@ -122,8 +129,8 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
       );
 
       context.save();
-      context.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
-      context.fillStyle = "#75909c";
+      context.font = `${tickSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      context.fillStyle = "#9ab4bc";
       context.textAlign = "right";
       context.textBaseline = "middle";
 
@@ -143,8 +150,8 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
         context.fillText(depth.toFixed(1), x, margin.top + plotHeight + 10);
       }
 
-      context.fillStyle = "#91a8b1";
-      context.font = "12px Inter, ui-sans-serif, system-ui";
+      context.fillStyle = "#c2d4d8";
+      context.font = `600 ${axisSize}px Inter, ui-sans-serif, system-ui`;
       context.fillText("Depth (μm)", margin.left + plotWidth / 2, height - 18);
       context.save();
       context.translate(15, margin.top + plotHeight / 2);
@@ -155,7 +162,7 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
       context.fillStyle = "rgba(134, 207, 205, 0.08)";
       context.fillRect(margin.left, margin.top, plotWidth, 11);
       context.fillStyle = "rgba(138, 187, 196, 0.5)";
-      context.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+      context.font = `${Math.max(11, tickSize - 1)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
       context.textAlign = "left";
       context.fillText("Si / surface", margin.left + 6, margin.top + 1);
       context.restore();
@@ -226,7 +233,9 @@ export function DeviceCanvas({ ariaLabel }: CanvasProps) {
     const plotHeight = height - top - bottom;
     const surfaceY = top + plotHeight * 0.28;
 
-    context.fillStyle = "#08151c";
+    const labelSize = Math.round(Math.min(16, Math.max(12, width / 74)));
+
+    context.fillStyle = "#041015";
     context.fillRect(0, 0, width, height);
 
     const siliconGradient = context.createLinearGradient(0, surfaceY, 0, top + plotHeight);
@@ -329,14 +338,14 @@ export function DeviceCanvas({ ariaLabel }: CanvasProps) {
     }
     context.restore();
 
-    context.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    context.font = `700 ${labelSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
     context.textAlign = "center";
     context.fillStyle = "#e9f3f4";
     context.fillText("S", left + plotWidth * 0.2, surfaceY - 14);
     context.fillText("G", left + plotWidth * 0.5, surfaceY - plotHeight * 0.25);
     context.fillText("D", left + plotWidth * 0.8, surfaceY - 14);
     context.fillStyle = "#708d98";
-    context.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    context.font = `${Math.max(12, labelSize - 1)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
     context.fillText("1.20 μm", left + plotWidth / 2, height - 14);
   }, []);
 
@@ -355,20 +364,27 @@ export function DeviceCanvas({ ariaLabel }: CanvasProps) {
 
 export function IvCanvas({ ariaLabel }: CanvasProps) {
   const draw = useCallback<DrawCanvas>((context, width, height) => {
-    const margin = { left: 58, right: 22, top: 24, bottom: 44 };
+    const tickSize = Math.round(Math.min(15, Math.max(12, width / 82)));
+    const axisSize = tickSize + 1;
+    const margin = {
+      left: tickSize * 4.8,
+      right: 22,
+      top: 26,
+      bottom: axisSize * 3.4,
+    };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
     const maxVoltage = 1.2;
     const maxCurrent = 0.32;
     const colors = ["#6f8190", "#55c8be", "#f2b75e", "#ff7086"];
 
-    context.fillStyle = "#09151c";
+    context.fillStyle = "#041015";
     context.fillRect(0, 0, width, height);
     drawGrid(context, margin.left, margin.top, plotWidth, plotHeight, 6, 5);
 
     context.save();
-    context.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
-    context.fillStyle = "#75909c";
+    context.font = `${tickSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    context.fillStyle = "#9ab4bc";
     context.textAlign = "center";
     context.textBaseline = "top";
     for (let index = 0; index <= 6; index += 1) {
@@ -387,8 +403,8 @@ export function IvCanvas({ ariaLabel }: CanvasProps) {
 
     context.textAlign = "center";
     context.textBaseline = "alphabetic";
-    context.fillStyle = "#91a8b1";
-    context.font = "12px Inter, ui-sans-serif, system-ui";
+    context.fillStyle = "#c2d4d8";
+    context.font = `600 ${axisSize}px Inter, ui-sans-serif, system-ui`;
     context.fillText("Vd (V)", margin.left + plotWidth / 2, height - 10);
     context.save();
     context.translate(15, margin.top + plotHeight / 2);
