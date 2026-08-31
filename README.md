@@ -1,6 +1,6 @@
 # OpenTCAD
 
-[한국어](README.ko.md) · [Live preview](https://jtech-co.github.io/OpenTCAD/) · [Architecture](docs/en/architecture.md) · [Development](docs/en/development.md)
+[한국어](README.ko.md) · [Live preview](https://jtech-co.github.io/OpenTCAD/) · [Architecture](docs/en/architecture.md) · [Local service](docs/en/m3-local-service.md)
 
 ![OpenTCAD social preview](frontend/public/og.png)
 
@@ -49,12 +49,25 @@ npm run preview
 
 The production artifact is written to `frontend/dist/`. The preview server binds to `127.0.0.1`.
 
+To inspect M3 and run the same-origin, non-executing local preview:
+
+```bash
+npm run local:doctor
+npm run local:preview
+```
+
+The preview command prints a sensitive, short-lived `browserUrl`. It creates no
+broker state, reads no OS credential, and contacts no container runtime. See
+[M3 local product service](docs/en/m3-local-service.md) for the product command,
+configuration paths, startup order, and current activation blockers.
+
 ## Product boundary
 
 | Surface | Available | Executes solver input |
 |---|---:|---:|
 | GitHub Pages introduction and workspace | Yes | No |
 | Local static development and preview server | Yes | No |
+| Same-origin blocked local product preview | Yes | No |
 | Runtime contracts and durable local service | Implemented, gate-disabled | No |
 | Connected Docker or Podman solver service | Awaiting external evidence | No |
 
@@ -93,6 +106,7 @@ The full check runs Korean punctuation validation, M0 through M3 contract record
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 비교](docs/ko/implementation-scope.md) |
 | [M3 product entry gates](docs/en/m3-entry-gates.md) | [M3 제품 진입 게이트](docs/ko/m3-entry-gates.md) |
+| [M3 local product service](docs/en/m3-local-service.md) | [M3 로컬 제품 서비스](docs/ko/m3-local-service.md) |
 | [Validation](validation/README.md) | [검증](validation/README.ko.md) |
 
 ## License

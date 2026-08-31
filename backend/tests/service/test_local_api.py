@@ -38,6 +38,25 @@ class FakeWorker(LocalBrokerWorker):
         raise AssertionError(envelope.operation)
 
 
+class BlockingApi(LocalBrokerApi):
+    def __init__(self) -> None:
+        super().__init__(FakeWorker())
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def handle(
+        self,
+        method: str,
+        path: str,
+        body: dict,
+    ) -> tuple[int, dict]:
+        if method == "POST" and path == "/v1/startup":
+            self.started.set()
+            await self.release.wait()
+            return 200, {"status": "completed"}
+        return await super().handle(method, path, body)
+
+
 class LocalApiServerTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.secret = b"s" * 32
@@ -161,6 +180,64 @@ class LocalApiServerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status, 400)
         self.assertEqual(body["error"]["code"], "invalid-json")
         self.assertEqual(self.worker.envelopes, [])
+
+    async def test_control_reserve_remains_available_during_execution(self) -> None:
+        await self.server.close()
+        application = BlockingApi()
+        self.server = LocalApiServer(
+            application,
+            self.secret,
+            LocalApiBind("127.0.0.1", 0),
+            maximum_connections=1,
+            control_connection_reserve=1,
+        )
+        await self.server.start()
+
+        execution = asyncio.create_task(
+            self.request(
+                "POST",
+                "/v1/startup",
+                body=b"{}",
+                authorization=self.authorization,
+            ),
+        )
+        await asyncio.wait_for(application.started.wait(), timeout=1.0)
+
+        status, body = await self.request(
+            "GET",
+            "/v1/health",
+            authorization=self.authorization,
+        )
+        self.assertEqual((status, body["status"]), (200, "ready"))
+
+        application.release.set()
+        self.assertEqual(await execution, (200, {"status": "completed"}))
+
+    async def test_close_cancels_and_reaps_active_handlers(self) -> None:
+        await self.server.close()
+        application = BlockingApi()
+        self.server = LocalApiServer(
+            application,
+            self.secret,
+            LocalApiBind("127.0.0.1", 0),
+        )
+        await self.server.start()
+        execution = asyncio.create_task(
+            self.request(
+                "POST",
+                "/v1/startup",
+                body=b"{}",
+                authorization=self.authorization,
+            ),
+        )
+        await asyncio.wait_for(application.started.wait(), timeout=1.0)
+
+        await asyncio.wait_for(self.server.close(), timeout=1.0)
+        await asyncio.gather(execution, return_exceptions=True)
+
+        self.assertEqual(self.server._handlers, set())
+        self.assertEqual(self.server._clients, set())
+        self.assertEqual(self.server._active_connections, 0)
 
     def test_non_loopback_bind_is_rejected(self) -> None:
         with self.assertRaises(TypeError):

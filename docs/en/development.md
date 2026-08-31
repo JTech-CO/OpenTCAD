@@ -9,7 +9,10 @@
 - Python 3.12 through 3.14 for the runtime contract tests
 - Git
 
-No container runtime, Python service, external database server, or solver is required. Python runs only dependency-free contract tests; SQLite candidate tests use the standard library and isolated temporary files.
+No container runtime, external database server, or solver is required for the
+static app or contract suite. The local service and SQLite stores use the
+Python standard library. Native Docker and Podman observations are separate,
+non-promoting qualification tasks.
 
 ## Setup and commands
 
@@ -27,6 +30,21 @@ npm run coverage
 
 Use `npm run preview` to serve the production bundle on `127.0.0.1`. The build uses relative asset URLs so a single artifact works under the GitHub repository subpath and on an ordinary local static server.
 
+## M3 local host
+
+After `npm run build`, inspect the product gates and start the non-executing
+same-origin host:
+
+```bash
+npm run local:doctor
+npm run local:preview
+```
+
+The preview deliberately does not open a credential store, SQLite database, or
+OCI runtime. `npm run local:serve` is the product command; it must exit blocked
+with the committed manifest. See [M3 local product service](m3-local-service.md)
+for configuration, paths, exit behavior, and the activation order.
+
 ## Frontend rules
 
 - Every user-visible string belongs in `frontend/src/i18n.ts` and must exist in both English and Korean.
@@ -37,11 +55,19 @@ Use `npm run preview` to serve the production bundle on `127.0.0.1`. The build u
 - Static reference data must be visibly labelled and must not use words such as “validated,” “converged,” or “solver result.”
 - Store only device-local preferences, such as locale, in browser storage.
 
-## Adding local-engine work
+## Changing local-engine work
 
-Do not add a direct `docker`, `podman`, shell, or subprocess call from the frontend or API. Runtime implementation starts with a typed `RuntimeBackend` contract and policy tests, followed by real Docker and rootless Podman evidence. The sandbox broker is the only component allowed to reach an engine socket.
+Do not add a direct `docker`, `podman`, shell, or subprocess call from the
+frontend or API. The sandbox broker and activated OCI adapter are the only
+components allowed to contact a runtime. Operator configuration must never
+select commands, images, entrypoints, mounts, host paths, or environment
+values.
 
-Any runtime, numerical, data-migration, or distribution change must define its scope, risk level, tests-first boundary, security or numerical delta, and rollback evidence before implementation.
+An activation or release-profile change requires paired tests for rejection
+and success, reviewed evidence hashes, exact image and entrypoint grants,
+three-platform native observations, and licensing and numerical review. Test
+fixtures may construct release profiles explicitly; production profiles remain
+code-owned.
 
 ## Documentation parity
 

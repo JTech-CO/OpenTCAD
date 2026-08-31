@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -13,6 +14,8 @@ from backend.app.broker.state import InMemoryJobStateStore
 from backend.app.service.product_composition import ProductDurableBrokerComposition
 from backend.app.runtime.errors import ErrorCode, RuntimeBackendError, RuntimePhase
 from backend.app.runtime.fence_authority import InMemoryRuntimeFenceAuthority
+from backend.app.runtime.product_fence_authority import ProductRuntimeFenceAuthority
+from backend.app.broker.sqlite_state import SQLiteJobStateStore
 from backend.app.runtime.fencing import (
     RUNTIME_FENCING_TOKEN_LABEL,
     RuntimeFencingContext,
@@ -21,8 +24,11 @@ from backend.app.runtime.models import (
     JobIdentity,
     RuntimeHealth,
     RuntimeKind,
+    TerminalClassification,
+    TerminationReason,
 )
 from backend.app.runtime.oci_backend import (
+    OUTPUT_LIMIT_LABEL,
     OciAdapterConfiguration,
     OciCommandResult,
     OciEntrypoint,
@@ -170,7 +176,10 @@ class FakeOciRunner:
                     }],
                 ).encode(),
             )
-        if values[:3] == ("manifest", "inspect", "--verbose"):
+        if values[:3] == ("manifest", "inspect", "--verbose") or values[:2] == (
+            "manifest",
+            "inspect",
+        ):
             return command_result(
                 json.dumps(
                     {
@@ -197,12 +206,12 @@ class FakeOciRunner:
         if values[:3] == ("volume", "inspect", "--format"):
             name = values[-1]
             if name not in self.volumes:
-                return command_result(returncode=1)
+                return command_result(stderr=b"No such volume", returncode=1)
             return command_result(json.dumps(self.labels[name]).encode())
         if values[:3] == ("container", "inspect", "--format"):
             name = values[-1]
             if name not in self.containers:
-                return command_result(returncode=1)
+                return command_result(stderr=b"No such container", returncode=1)
             if values[3] == "{{json .State}}":
                 return command_result(
                     json.dumps(
@@ -246,6 +255,34 @@ class FakeOciRunner:
         raise AssertionError(f"Unexpected OCI command: {values!r}")
 
 
+class BlockingVolumeRunner(FakeOciRunner):
+    def __init__(self, kind: RuntimeKind) -> None:
+        super().__init__(kind)
+        self.mutation_started = asyncio.Event()
+        self.release_mutation = asyncio.Event()
+
+    async def run(self, arguments, **kwargs):
+        values = tuple(arguments)
+        if values[:2] == ("volume", "create"):
+            self.mutation_started.set()
+            await self.release_mutation.wait()
+        return await super().run(arguments, **kwargs)
+
+
+class BlockingWaitRunner(FakeOciRunner):
+    def __init__(self, kind: RuntimeKind) -> None:
+        super().__init__(kind)
+        self.wait_started = asyncio.Event()
+        self.release_wait = asyncio.Event()
+
+    async def run(self, arguments, **kwargs):
+        values = tuple(arguments)
+        if values[:2] == ("container", "wait"):
+            self.wait_started.set()
+            await self.release_wait.wait()
+        return await super().run(arguments, **kwargs)
+
+
 def configuration(kind: RuntimeKind) -> OciAdapterConfiguration:
     return OciAdapterConfiguration(
         kind,
@@ -261,6 +298,93 @@ def configuration(kind: RuntimeKind) -> OciAdapterConfiguration:
 
 
 class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
+    async def test_product_passive_wait_does_not_block_cancellation_takeover(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            locks = root / "locks"
+            locks.mkdir()
+            authority = ProductRuntimeFenceAuthority(root / "fence.sqlite3", locks)
+            runner = BlockingWaitRunner(RuntimeKind.DOCKER)
+            backend = OciRuntimeBackend(
+                configuration(RuntimeKind.DOCKER),
+                activation_token(),
+                authority,
+                runner=runner,
+            )
+            identity = JobIdentity(str(uuid4()))
+            old = RuntimeFencingContext(identity, str(uuid4()), 1)
+            current = RuntimeFencingContext(identity, str(uuid4()), 2)
+            await authority.activate(
+                old,
+                phase=RuntimePhase.QUERY,
+                backend=backend.name,
+            )
+            bound = backend.bind_job(old)
+            spec = POLICY.validate(
+                make_spec(identity.job_id),
+                (await backend.probe()).capabilities,
+            )
+            volume = await bound.create_volume()
+            await bound.stage_inputs(volume, spec, ARCHIVE)
+            container = await bound.create_container(spec, volume)
+            await bound.start(container)
+
+            waiting = asyncio.create_task(bound.wait(container))
+            await runner.wait_started.wait()
+            await asyncio.wait_for(
+                authority.activate(
+                    current,
+                    phase=RuntimePhase.KILL,
+                    backend=backend.name,
+                ),
+                timeout=1,
+            )
+            runner.release_wait.set()
+            with self.assertRaises(RuntimeBackendError) as raised:
+                await waiting
+            self.assertEqual(raised.exception.code, ErrorCode.OPERATION_FENCED)
+
+    async def test_product_guard_linearizes_takeover_after_native_mutation(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            locks = root / "locks"
+            locks.mkdir()
+            authority = ProductRuntimeFenceAuthority(root / "fence.sqlite3", locks)
+            runner = BlockingVolumeRunner(RuntimeKind.DOCKER)
+            backend = OciRuntimeBackend(
+                configuration(RuntimeKind.DOCKER),
+                activation_token(),
+                authority,
+                runner=runner,
+            )
+            identity = JobIdentity(str(uuid4()))
+            old = RuntimeFencingContext(identity, str(uuid4()), 1)
+            current = RuntimeFencingContext(identity, str(uuid4()), 2)
+            await authority.activate(
+                old,
+                phase=RuntimePhase.QUERY,
+                backend=backend.name,
+            )
+            mutation = asyncio.create_task(backend.bind_job(old).create_volume())
+            await runner.mutation_started.wait()
+            takeover = asyncio.create_task(
+                authority.activate(
+                    current,
+                    phase=RuntimePhase.QUERY,
+                    backend=backend.name,
+                ),
+            )
+            await asyncio.sleep(0.05)
+            self.assertFalse(takeover.done())
+            runner.release_mutation.set()
+            await mutation
+            await takeover
+            call_count = len(runner.calls)
+            with self.assertRaises(RuntimeBackendError) as fenced:
+                await backend.bind_job(old).list_managed()
+            self.assertEqual(fenced.exception.code, ErrorCode.OPERATION_FENCED)
+            self.assertEqual(len(runner.calls), call_count)
+
     def backend(self, kind: RuntimeKind = RuntimeKind.DOCKER):
         runner = FakeOciRunner(kind)
         authority = InMemoryRuntimeFenceAuthority()
@@ -283,21 +407,26 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(probe.capabilities.runtime_fencing)
 
     async def test_matching_activation_opens_durable_composition(self) -> None:
-        token = activation_token()
-        runner = FakeOciRunner(RuntimeKind.DOCKER)
-        backend = OciRuntimeBackend(
-            configuration(RuntimeKind.DOCKER),
-            token,
-            InMemoryRuntimeFenceAuthority(),
-            runner=runner,
-        )
-        composition = ProductDurableBrokerComposition(
-            SandboxBroker(backend, POLICY, ARCHIVE_LIMITS),
-            backend,
-            InMemoryJobStateStore(),
-            token,
-        )
-        self.assertFalse(composition.ready)
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            locks = root / "locks"
+            locks.mkdir()
+            token = activation_token()
+            runner = FakeOciRunner(RuntimeKind.DOCKER)
+            authority = ProductRuntimeFenceAuthority(root / "fence.sqlite3", locks)
+            backend = OciRuntimeBackend(
+                configuration(RuntimeKind.DOCKER),
+                token,
+                authority,
+                runner=runner,
+            )
+            composition = ProductDurableBrokerComposition(
+                SandboxBroker(backend, POLICY, ARCHIVE_LIMITS),
+                backend,
+                SQLiteJobStateStore(root / "state.sqlite3"),
+                token,
+            )
+            self.assertFalse(composition.ready)
 
     async def test_mismatched_activation_cannot_open_product_composition(self) -> None:
         backend_token = activation_token()
@@ -308,32 +437,24 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
             authority,
             runner=FakeOciRunner(RuntimeKind.DOCKER),
         )
-        with self.assertRaises(PermissionError):
+        with self.assertRaises(TypeError):
             ProductDurableBrokerComposition(
                 SandboxBroker(backend, POLICY, ARCHIVE_LIMITS),
                 backend,
                 InMemoryJobStateStore(),
                 activation_token(),
             )
-        other = OciRuntimeBackend(
-            configuration(RuntimeKind.DOCKER),
-            backend_token,
-            authority,
-            runner=FakeOciRunner(RuntimeKind.DOCKER),
-        )
-        with self.assertRaises(PermissionError):
-            ProductDurableBrokerComposition(
-                SandboxBroker(backend, POLICY, ARCHIVE_LIMITS),
-                other,
-                InMemoryJobStateStore(),
-                backend_token,
-            )
 
     async def test_full_lifecycle_uses_hardened_argv_and_native_fence(self) -> None:
-        backend, runner, _ = self.backend()
+        backend, runner, authority = self.backend()
         job_id = str(uuid4())
         owner_id = str(uuid4())
         fence = RuntimeFencingContext(JobIdentity(job_id), owner_id, 1)
+        await authority.activate(
+            fence,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
         bound = backend.bind_job(fence)
         self.assertIsInstance(bound, RuntimeJobBackend)
         probe = await backend.probe()
@@ -362,9 +483,11 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
             "--user",
             "--pids-limit",
             "--memory",
+            "--memory-swap",
             "--cpus",
             "--tmpfs",
             "--mount",
+            "--pull",
             "--entrypoint",
         ):
             self.assertIn(required, create)
@@ -382,6 +505,11 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
         identity = JobIdentity(str(uuid4()))
         old = RuntimeFencingContext(identity, str(uuid4()), 1)
         current = RuntimeFencingContext(identity, str(uuid4()), 2)
+        await authority.activate(
+            old,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
         volume = await backend.bind_job(old).create_volume()
         await authority.activate(
             current,
@@ -397,9 +525,14 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(volume.opaque_id, runner.volumes)
 
     async def test_tampered_native_fence_label_rejects_start(self) -> None:
-        backend, runner, _ = self.backend()
+        backend, runner, authority = self.backend()
         identity = JobIdentity(str(uuid4()))
         fence = RuntimeFencingContext(identity, str(uuid4()), 1)
+        await authority.activate(
+            fence,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
         bound = backend.bind_job(fence)
         spec = POLICY.validate(
             make_spec(identity.job_id),
@@ -411,6 +544,133 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
         runner.labels[container.opaque_id][RUNTIME_FENCING_TOKEN_LABEL] = "2"
         with self.assertRaises(RuntimeBackendError) as raised:
             await bound.start(container)
+        self.assertEqual(raised.exception.code, ErrorCode.OPERATION_FENCED)
+
+    async def test_restart_cancellation_recovers_limits_from_native_labels(self) -> None:
+        backend, _, authority = self.backend()
+        identity = JobIdentity(str(uuid4()))
+        fence = RuntimeFencingContext(identity, str(uuid4()), 1)
+        await authority.activate(
+            fence,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
+        bound = backend.bind_job(fence)
+        spec = POLICY.validate(
+            make_spec(identity.job_id),
+            (await backend.probe()).capabilities,
+        )
+        volume = await bound.create_volume()
+        await bound.stage_inputs(volume, spec, ARCHIVE)
+        container = await bound.create_container(spec, volume)
+        await bound.start(container)
+
+        backend._specs.clear()
+        result = await bound.kill(container, TerminationReason.CANCELLATION)
+
+        self.assertEqual(result.classification, TerminalClassification.CANCELLED)
+        self.assertEqual(result.output_limit_bytes, spec.spec.limits.output_bytes)
+        self.assertEqual(result.artifacts, ())
+
+    async def test_reopened_backend_takeover_cancels_and_cleans_predecessor(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            locks = root / "locks"
+            locks.mkdir()
+            runner = FakeOciRunner(RuntimeKind.DOCKER)
+            token = activation_token()
+            first_authority = ProductRuntimeFenceAuthority(
+                root / "fence.sqlite3",
+                locks,
+            )
+            first_backend = OciRuntimeBackend(
+                configuration(RuntimeKind.DOCKER),
+                token,
+                first_authority,
+                runner=runner,
+            )
+            identity = JobIdentity(str(uuid4()))
+            predecessor = RuntimeFencingContext(identity, str(uuid4()), 1)
+            await first_authority.activate(
+                predecessor,
+                phase=RuntimePhase.QUERY,
+                backend=first_backend.name,
+            )
+            first = first_backend.bind_job(predecessor)
+            spec = POLICY.validate(
+                make_spec(identity.job_id),
+                (await first_backend.probe()).capabilities,
+            )
+            volume = await first.create_volume()
+            await first.stage_inputs(volume, spec, ARCHIVE)
+            container = await first.create_container(spec, volume)
+            await first.start(container)
+
+            reopened_authority = ProductRuntimeFenceAuthority(
+                root / "fence.sqlite3",
+                locks,
+            )
+            reopened_backend = OciRuntimeBackend(
+                configuration(RuntimeKind.DOCKER),
+                token,
+                reopened_authority,
+                runner=runner,
+            )
+            takeover = RuntimeFencingContext(identity, str(uuid4()), 2)
+            await reopened_authority.activate(
+                takeover,
+                phase=RuntimePhase.KILL,
+                backend=reopened_backend.name,
+            )
+            recovered = reopened_backend.bind_job(takeover)
+
+            result = await recovered.kill(
+                container,
+                TerminationReason.CANCELLATION,
+            )
+            self.assertEqual(
+                result.classification,
+                TerminalClassification.CANCELLED,
+            )
+            self.assertEqual(
+                result.output_limit_bytes,
+                spec.spec.limits.output_bytes,
+            )
+            self.assertEqual(
+                await reopened_authority.current(identity.job_id),
+                takeover,
+            )
+
+            await recovered.remove_container(container)
+            await recovered.remove_container(container)
+            await recovered.remove_volume(volume)
+            await recovered.remove_volume(volume)
+            managed = await recovered.list_managed()
+            self.assertEqual(managed.containers, ())
+            self.assertEqual(managed.volumes, ())
+
+    async def test_restart_cancellation_rejects_tampered_output_limit(self) -> None:
+        backend, runner, authority = self.backend()
+        identity = JobIdentity(str(uuid4()))
+        fence = RuntimeFencingContext(identity, str(uuid4()), 1)
+        await authority.activate(
+            fence,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
+        bound = backend.bind_job(fence)
+        spec = POLICY.validate(
+            make_spec(identity.job_id),
+            (await backend.probe()).capabilities,
+        )
+        volume = await bound.create_volume()
+        await bound.stage_inputs(volume, spec, ARCHIVE)
+        container = await bound.create_container(spec, volume)
+        backend._specs.clear()
+        runner.labels[container.opaque_id][OUTPUT_LIMIT_LABEL] = "unbounded"
+
+        with self.assertRaises(RuntimeBackendError) as raised:
+            await bound.kill(container, TerminationReason.CANCELLATION)
         self.assertEqual(raised.exception.code, ErrorCode.OPERATION_FENCED)
 
 

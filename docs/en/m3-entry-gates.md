@@ -7,20 +7,30 @@ OpenTCAD now contains the product connection layer for a local service, but prod
 ## Implemented product path
 
 - Docker and Podman OCI adapters use shell-free bounded subprocess transport.
-- Every runtime object carries the exact job ID, owner ID, and fencing generation. The adapter checks durable authority before and after an operation, verifies native labels before mutation, and verifies labels immediately after object creation.
+- Every runtime object carries the exact job ID, owner ID, and fencing
+  generation. Product operations hold a job-specific cross-process lock across
+  durable authority verification and native mutation, verify native labels
+  before mutation, and verify labels immediately after object creation.
+- Restart cancellation recovers its bounded output contract from native
+  labels. Missing or malformed recovery labels fence the request before kill.
 - Runtime authority is an exact grant over backend, immutable image identity, and configured entrypoint. Approved lists are not combined as a Cartesian product.
 - The API binds only to a numeric loopback address and validates the peer, Host, Origin, bearer secret, request size, JSON shape, and duplicate keys.
 - A bounded execution lane and a separate control lane allow cancellation while a solver job is running.
 - Startup recovery completes before API admission. Execution, cancellation, maintenance, authenticated export/import, scheduled backup, and shutdown share one lifecycle assembly.
 - Windows Credential Manager, macOS Keychain, and Linux Secret Service adapters keep API and HMAC secrets outside application backups.
 - A second monotonic restore floor is stored in the OS credential service and advances before an import.
+- The executable `doctor`, blocked `preview`, and product `serve` commands use
+  strict per-user paths, one instance lock, code-owned release profiles, and a
+  same-origin static UI. The committed profile set is intentionally empty.
 
 ## Implementation map
 
 | Path | Responsibility |
 |---|---|
 | `backend/app/product/gates.py` | Exact, evidence-hash-bound product activation and runtime grants |
+| `backend/app/product/release_profile.py` | Code-owned backend, image, entrypoint, policy, and manifest-digest binding |
 | `backend/app/runtime/oci_backend.py` | Docker and Podman command transport, hardening, image identity, and native object fencing |
+| `backend/app/runtime/product_fence_authority.py` | Cross-process linearization of durable takeover and native mutation |
 | `backend/app/service/product_composition.py` | M3-only bridge that preserves the frozen M2 composition and requires a matching activation token |
 | `backend/app/service/worker.py` | Typed lifecycle queue, reserved cancellation lane, admission heartbeat, and offline import arbitration |
 | `backend/app/service/local_api.py` | Authenticated loopback HTTP boundary and strict request codecs |
@@ -28,16 +38,20 @@ OpenTCAD now contains the product connection layer for a local service, but prod
 | `backend/app/service/anti_rollback.py` | OS-protected monotonic restore floor |
 | `backend/app/service/scheduler.py` | Restart-safe scheduled backup wake-up loop and retained failure state |
 | `backend/app/service/application.py` | Recovery-first product service assembly and shutdown ordering |
+| `backend/app/service/bootstrap.py` | Side-effect-free activation check and activated product composition |
+| `backend/app/service/cli.py` | Cross-platform doctor, blocked preview, and product serve commands |
+| `backend/app/service/static_assets.py` | Bounded same-origin static asset serving |
+| `backend/app/service/status.py` | Versioned and redacted browser status contract |
 | `tools/qualify-runtime.py` | Non-promoting host observation tool |
 
 ## Gate status
 
 | Gate | Implementation | Qualification or approval |
 |---|---|---|
-| Docker and Podman adapters | Implemented and fake-CLI tested | Blocked: Docker daemon unavailable on the observed Windows host, Podman absent |
+| Docker and Podman adapters | Implemented and fake-CLI tested | Blocked: no approved native three-platform evidence in the manifest |
 | Native fencing | Implemented and tamper/stale-owner tested | Blocked: no native Docker or Podman object evidence |
-| Local API and worker transport | Implemented and loopback-socket tested | Awaiting release review |
-| Lifecycle integration | Implemented and SQLite assembly tested | Awaiting release review |
+| Local API and worker transport | Implemented, bounded, and loopback-socket tested | Blocked: product manifest and release profile disabled |
+| Lifecycle integration | Implemented and SQLite assembly tested | Blocked: product manifest and release profile disabled |
 | OS credentials and scheduled backup | Three host adapters and scheduler implemented | Blocked: only Windows DPAPI test evidence is present; three-OS native evidence is incomplete |
 | Power loss and abnormal termination | Eight process hard-exit seams pass | Blocked: physical abrupt-power runs are 0 of the required 100 per evidence record |
 | Windows, macOS, and Linux qualification | CI host-contract matrix and observation tool implemented | Blocked: the three native runtime rows are not qualified |
@@ -48,7 +62,8 @@ The authoritative status is [the M3 gate manifest](../../validation/manifests/m3
 ## Verification
 
     npm run check:m3
-    python -m unittest backend.tests.product.test_gates backend.tests.runtime.test_oci_backend backend.tests.service.test_credentials backend.tests.service.test_anti_rollback backend.tests.service.test_worker_scheduler backend.tests.service.test_local_api backend.tests.service.test_application
+    python -m unittest backend.tests.product.test_gates backend.tests.runtime.test_oci_backend backend.tests.service.test_credentials backend.tests.service.test_anti_rollback backend.tests.service.test_worker_scheduler backend.tests.service.test_local_api backend.tests.service.test_application backend.tests.service.test_local_product_bootstrap
+    npm run local:doctor
     python tools/qualify-runtime.py --output validation/evidence/m3/runtime-host-local.json
 
 The qualification command returns a nonzero blocked result until the runtime, approved image, contract suite, and native conformance evidence are all available. Its output is an observation, not an approval.

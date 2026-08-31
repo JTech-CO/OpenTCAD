@@ -4,15 +4,21 @@
 
 ## Product modes
 
-OpenTCAD deliberately separates a safe static experience from the future solver-backed local product.
+OpenTCAD deliberately separates a safe static experience, a blocked local
+preview, and an evidence-activated solver product.
 
 | Mode | Where it runs | Can execute a deck? | Purpose |
 |---|---|---:|---|
 | Static preview | GitHub Pages or any static host | No | Explore the workflow, UI, terminology, and deterministic reference visuals |
-| Local | Loopback-only local web server plus OCI runtime | Yes, after sandbox validation | Single-user process and device simulation |
+| Local blocked preview | Loopback-only same-origin web server | No | Exercise the product connection UI without state, credentials, or a runtime |
+| Activated local product | Loopback-only local web server plus OCI runtime | Only after release activation | Single-user process and device simulation |
 | Shared/server | Managed host with authentication and quotas | Yes, after sandbox validation | Classroom, lab, or maintained server use |
 
-The static build contains no runtime credentials, engine socket, subprocess bridge, uploaded code execution, or hidden solver endpoint. Editing the deck in static mode changes browser memory only.
+The static build contains no runtime credentials, engine socket, subprocess
+bridge, uploaded code execution, or hidden solver endpoint. Editing the deck
+in static mode changes browser memory only. The blocked local preview serves
+the same assets and a redacted status endpoint, but creates no durable state
+and contacts no native service.
 
 ## Target local flow
 
@@ -20,24 +26,51 @@ The static build contains no runtime credentials, engine socket, subprocess brid
 Browser
   │ same-origin HTTP
   ▼
-Web gateway ──► FastAPI ──► PostgreSQL / Redis
-                    │ queues typed jobs
-                    ▼
-                  Worker
-                    │ SandboxSpec only
-                    ▼
-             Sandbox broker
-                    │ validated OCI operations
-                    ▼
-        Docker or rootless Podman adapter
-                    │
-          per-job managed volume
-             ├─ SUPREM-IV.GS
-             ├─ Gmsh remeshing
-             └─ DEVSIM analysis
+Local API and static host
+  ├─ strict bearer HTTP codecs
+  ├─ bounded execution and control lanes
+  └─ redacted product status
+             │ typed requests
+             ▼
+      Local product service
+  ├─ recovery-first startup
+  ├─ maintenance and backup coordinator
+  ├─ native credential store
+  └─ durable SQLite state and fencing
+             │ SandboxSpec only
+             ▼
+        Sandbox broker
+             │ validated OCI operations
+             ▼
+ Docker or rootless Podman adapter
+             │
+   per-job managed volume
+      ├─ approved process engine
+      ├─ approved remeshing engine
+      └─ approved device engine
 ```
 
-The API does not execute simulators. The worker does not construct raw runtime commands. Only the sandbox broker can reach the runtime, and it accepts a typed, allowlisted request rather than arbitrary image, command, environment, or mount values.
+The API does not execute simulators. The worker does not construct raw runtime
+commands. Only the sandbox broker can reach the runtime, and it accepts a
+typed, allowlisted request rather than arbitrary image, command, environment,
+or mount values. The local service uses standard-library HTTP and SQLite; it
+does not require FastAPI, PostgreSQL, or Redis.
+
+## Product activation boundary
+
+The product command checks the evidence-bound M3 manifest before reading
+assets, creating local directories, opening credentials or databases, probing
+an OCI runtime, or binding a socket. A second, code-owned release profile must
+match the manifest digest, backend, images, and entrypoints exactly. The
+committed release-profile set is empty, so changing operator configuration or
+the manifest alone cannot activate execution.
+
+After activation, one per-user instance runs at a time. It completes durable
+recovery before API admission, starts the scheduled-backup coordinator, and
+publishes only a secret-free endpoint record. Static assets and API responses
+share one numeric loopback origin. The browser receives an ephemeral secret in
+a URL fragment, removes the fragment immediately, and stores the secret in
+memory only.
 
 ## Non-negotiable sandbox policy
 
@@ -64,15 +97,19 @@ When a local engine is connected later, every result will carry provenance: app 
 ## Repository direction
 
 ```text
-frontend/                 Static-compatible React application
+frontend/                 Static-compatible React application and local connection UI
 docs/en/ and docs/ko/     Paired product and engineering documentation
 .github/workflows/        CI and GitHub Pages deployment
 
-backend/app/runtime/      Gated protocol, policy, stable errors, strict mock
-backend/app/broker/       Gated input/output archives, cancellation, redaction, mock orchestration
-packaging/compose/        Local/shared/server profiles (planned)
-packaging/launcher/       PowerShell and POSIX launcher (planned)
+backend/app/product/      Evidence gates and code-owned release profiles
+backend/app/runtime/      Docker, Podman, policy, stable errors, native fencing
+backend/app/broker/       Durable lifecycle, cancellation, recovery, archive, backup
+backend/app/service/      Loopback host, worker, credentials, scheduler, CLI
+config/                   Strict operator configuration example
 validation/               External observations, comparators, schemas, and contract records
 ```
 
-The current `backend/app/runtime/` and `backend/app/broker/` slices are a proposed contract surface, canonical byte validators, and strict in-memory test double only. It invokes no process, runtime, socket, or solver. Product adapters, detection, broker service transport, and worker integration remain blocked until the recorded entry and security gates are satisfied.
+The runtime and service implementation is present and contract-tested, but the
+committed product remains disabled. Docker or Podman is contacted only by an
+activated product host. No third-party solver binary, approved solver image,
+or numerical release corpus is distributed in this repository.

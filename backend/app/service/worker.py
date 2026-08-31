@@ -39,6 +39,7 @@ from .anti_rollback import NativeRestoreFloorStore
 
 LOCAL_WORKER_TRANSPORT_PRODUCT_ENABLED = True
 _HASH = re.compile(r"^[0-9a-f]{64}$")
+_CANCELLATION_ADMISSION_LEASE_MS = 60_000
 
 
 class WorkerOperation(StrEnum):
@@ -57,6 +58,7 @@ class WorkerErrorCode(StrEnum):
     NOT_STARTED = "worker-not-started"
     CLOSED = "worker-closed"
     REQUEST_CONFLICT = "worker-request-conflict"
+    CAPACITY_REACHED = "worker-capacity-reached"
     INVALID_REQUEST = "worker-invalid-request"
 
 
@@ -317,6 +319,76 @@ class LocalLifecycleCoordinator:
                 except BackupControlError:
                     pass
 
+    async def _cancel(self, payload: CancelWork) -> object:
+        """Keep cancellation inside the same maintenance quiescence boundary."""
+
+        owner_id = payload.request.identity.job_id
+        admission = await asyncio.to_thread(
+            self._control.admit_operation,
+            payload.context.operation_id,
+            owner_id,
+            lease_duration_ms=_CANCELLATION_ADMISSION_LEASE_MS,
+        )
+        lost = asyncio.Event()
+        failures: list[Exception] = []
+        heartbeat = asyncio.create_task(
+            self._renew_admission(
+                admission,
+                _CANCELLATION_ADMISSION_LEASE_MS,
+                lost,
+                failures,
+            ),
+            name="opentcad-cancellation-admission-heartbeat",
+        )
+        operation = asyncio.create_task(
+            self._composition.cancel(
+                payload.request,
+                payload.context,
+            ),
+            name="opentcad-durable-cancellation",
+        )
+        admission_lost = asyncio.create_task(
+            lost.wait(),
+            name="opentcad-cancellation-admission-loss",
+        )
+        try:
+            completed, _ = await asyncio.wait(
+                (operation, admission_lost),
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if admission_lost in completed and not operation.done():
+                operation.cancel()
+                await asyncio.gather(operation, return_exceptions=True)
+                if failures:
+                    raise failures[0]
+                raise WorkerError(WorkerErrorCode.CLOSED)
+            result = await operation
+            if failures:
+                raise failures[0]
+            return result
+        finally:
+            admission_lost.cancel()
+            if not operation.done():
+                operation.cancel()
+            await asyncio.gather(
+                admission_lost,
+                operation,
+                return_exceptions=True,
+            )
+            heartbeat.cancel()
+            try:
+                await heartbeat
+            except asyncio.CancelledError:
+                pass
+            try:
+                await asyncio.to_thread(
+                    self._control.release_operation,
+                    admission,
+                )
+            except Exception:
+                if not failures:
+                    raise
+
     async def dispatch(self, operation: WorkerOperation, payload: object) -> object:
         if operation is WorkerOperation.STARTUP_RECOVERY:
             if not isinstance(payload, BrokerStartupRequest):
@@ -329,10 +401,7 @@ class LocalLifecycleCoordinator:
         if operation is WorkerOperation.CANCEL:
             if not isinstance(payload, CancelWork):
                 raise WorkerError(WorkerErrorCode.INVALID_REQUEST)
-            return await self._composition.cancel(
-                payload.request,
-                payload.context,
-            )
+            return await self._cancel(payload)
         if operation is WorkerOperation.MAINTENANCE_BEGIN:
             if not isinstance(payload, MaintenanceRequest):
                 raise WorkerError(WorkerErrorCode.INVALID_REQUEST)
@@ -390,6 +459,7 @@ class LocalBrokerWorker:
         coordinator: LocalLifecycleCoordinator,
         *,
         queue_capacity: int = 128,
+        control_capacity: int = 16,
         result_capacity: int = 1_024,
         execution_concurrency: int = 4,
     ) -> None:
@@ -399,6 +469,9 @@ class LocalBrokerWorker:
             not isinstance(queue_capacity, int)
             or isinstance(queue_capacity, bool)
             or not 1 <= queue_capacity <= 4_096
+            or not isinstance(control_capacity, int)
+            or isinstance(control_capacity, bool)
+            or not 1 <= control_capacity <= 256
             or not isinstance(result_capacity, int)
             or isinstance(result_capacity, bool)
             or not 1 <= result_capacity <= 65_536
@@ -408,11 +481,18 @@ class LocalBrokerWorker:
         ):
             raise TypeError("Local worker capacities are invalid.")
         self._coordinator = coordinator
-        self._queue: asyncio.Queue[_QueuedWork | None] = asyncio.Queue(queue_capacity)
+        self._queue_capacity = queue_capacity
+        self._control_capacity = control_capacity
+        self._queue: asyncio.Queue[_QueuedWork | None] = asyncio.Queue(
+            queue_capacity + control_capacity,
+        )
         self._result_capacity = result_capacity
         self._completed: dict[str, tuple[str, object]] = {}
         self._order: list[str] = []
-        self._inflight: dict[str, tuple[str, asyncio.Future[object]]] = {}
+        self._inflight: dict[
+            str,
+            tuple[str, asyncio.Future[object], bool],
+        ] = {}
         self._execution_gate = asyncio.Semaphore(execution_concurrency)
         self._control_gate = asyncio.Semaphore(1)
         self._active: set[asyncio.Task[None]] = set()
@@ -453,10 +533,24 @@ class LocalBrokerWorker:
                     raise WorkerError(WorkerErrorCode.REQUEST_CONFLICT)
                 future = inflight[1]
             else:
+                control = self._control_operation(envelope.operation)
+                active_same_class = sum(
+                    1
+                    for _, _, candidate_control in self._inflight.values()
+                    if candidate_control is control
+                )
+                capacity = (
+                    self._control_capacity
+                    if control
+                    else self._queue_capacity
+                )
+                if active_same_class >= capacity:
+                    raise WorkerError(WorkerErrorCode.CAPACITY_REACHED)
                 future = asyncio.get_running_loop().create_future()
                 self._inflight[envelope.request_id] = (
                     envelope.request_hash,
                     future,
+                    control,
                 )
                 await self._queue.put(_QueuedWork(envelope, future))
         return await asyncio.shield(future)

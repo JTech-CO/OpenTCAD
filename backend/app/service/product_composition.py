@@ -9,8 +9,10 @@ from backend.app.broker.orchestrator import SandboxBroker
 from backend.app.broker.runtime_fence_activation import DurableRuntimeFenceActivator
 from backend.app.broker.state import DurableJobStateStore
 from backend.app.broker.state_composition import DurableBrokerComposition
+from backend.app.broker.sqlite_state import SQLiteJobStateStore
 from backend.app.product.gates import ProductActivationToken
 from backend.app.runtime.models import RuntimeKind
+from backend.app.runtime.product_fence_authority import ProductRuntimeFenceAuthority
 from backend.app.runtime.protocol import RuntimeBackend
 
 
@@ -32,8 +34,8 @@ class ProductDurableBrokerComposition(DurableBrokerComposition):
             raise TypeError("Product composition requires SandboxBroker.")
         if not isinstance(backend, RuntimeBackend):
             raise TypeError("Product composition requires RuntimeBackend.")
-        if not isinstance(store, DurableJobStateStore):
-            raise TypeError("Product composition requires DurableJobStateStore.")
+        if not isinstance(store, SQLiteJobStateStore):
+            raise TypeError("Product composition requires SQLiteJobStateStore.")
         if not isinstance(activation, ProductActivationToken):
             raise TypeError("Product composition requires product activation.")
         if not isinstance(lease_policy, OwnerLeasePolicy):
@@ -46,6 +48,7 @@ class ProductDurableBrokerComposition(DurableBrokerComposition):
             or broker.runtime_fence_authority is not backend.fence_authority
             or backend.name not in activation.approved_backends
             or fingerprint != activation.manifest_sha256
+            or not isinstance(backend.fence_authority, ProductRuntimeFenceAuthority)
         ):
             raise PermissionError("Product runtime activation does not match broker.")
 
@@ -64,3 +67,7 @@ class ProductDurableBrokerComposition(DurableBrokerComposition):
     @property
     def activation_manifest_sha256(self) -> str:
         return self._activation_manifest_sha256
+
+    @property
+    def runtime_kind(self) -> RuntimeKind:
+        return self._broker.runtime_kind

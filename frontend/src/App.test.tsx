@@ -13,6 +13,7 @@ describe("OpenTCAD static experience", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("opens on the English introduction and makes the release scope explicit", () => {
@@ -121,6 +122,49 @@ describe("OpenTCAD static experience", () => {
       "href",
       expect.stringContaining("/docs/en/architecture.md"),
     );
+    expect(
+      screen.queryByRole("button", { name: "Connect local service" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("connects only after an explicit local action and keeps execution blocked", async () => {
+    const user = userEvent.setup();
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => ({
+        schemaVersion: 1,
+        serviceState: "ready",
+        executionState: "blocked",
+        manifestSha256: "a".repeat(64),
+        backend: null,
+        blockedGates: ["runtime-adapters", "solver-release"],
+        recoveryState: "not-applicable",
+        schedulerState: "not-started",
+      }),
+    } as unknown as Response);
+    vi.stubGlobal("fetch", fetcher);
+    render(<App localBootstrap={{ token: "A".repeat(43) }} />);
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+    );
+    await user.click(screen.getByRole("button", { name: "Runtime" }));
+    expect(fetcher).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole("button", { name: "Connect local service" }),
+    );
+
+    expect(await screen.findByText("Connected")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Execution blocked by release gates").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText("runtime-adapters, solver-release")).toBeInTheDocument();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Process" }));
+    expect(
+      screen.getByRole("button", { name: "Run reference workflow" }),
+    ).toBeEnabled();
   });
 
   it("keeps English and Korean translation keys in parity", () => {

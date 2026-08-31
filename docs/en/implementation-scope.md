@@ -6,7 +6,12 @@
 
 This report compares the read-only behavior reference `ypooh2042/tcad-webapp@13bce4a` with the current OpenTCAD repository. The reference README, code maps, frontend package, backend package, container definitions, and deployment layout were inspected. No upstream application source is copied into OpenTCAD.
 
-The existing site is a functional, Linux-oriented solver application. OpenTCAD is currently a clean-room, bilingual, static product foundation. It is therefore not yet a feature-for-feature replacement. The present release improves distribution clarity, public accessibility, language coverage, and the cross-platform target architecture while intentionally withholding real solver execution.
+The existing site is a functional, Linux-oriented solver application.
+OpenTCAD is now a clean-room, bilingual static product plus a fail-closed local
+service and OCI runtime implementation. It is not yet a feature-for-feature
+solver replacement. The present release improves distribution clarity, public
+accessibility, language coverage, durable lifecycle design, and cross-platform
+host integration while intentionally withholding real solver execution.
 
 ## Feasible delivery models
 
@@ -26,8 +31,9 @@ The recommended implementation keeps the established Linux solver environment in
 ```text
 Browser
   -> loopback-only web gateway
-  -> FastAPI contract
-  -> typed job queue and worker
+  -> standard-library authenticated local API
+  -> bounded execution and control worker lanes
+  -> durable SQLite state, recovery, and backup control
   -> sandbox broker
   -> Docker or rootless Podman adapter
   -> isolated per-job managed volume
@@ -54,11 +60,11 @@ The browser and API must never receive an OCI runtime socket. Only the broker ma
 | Saved result comparison | Stored analyses can be overlaid and deleted | Reference curves only | Versioned result sets, comparison, export, and replay |
 | Files and projects | Server filesystem workspace and file operations | No persistent projects | Portable `.tcadproj`, secure import/export, backup and migration |
 | Authentication and administration | Session login, invitation flow, occupancy and admin controls | None | Omit from single-user local mode; restore for shared mode |
-| Job queue and cancellation | PostgreSQL queue, worker, polling, console and cancellation | Timed UI-only reference state | Typed durable jobs, cancellation, cleanup and diagnostic bundle |
-| Runtime support | Rootless Podman and server-specific Linux assumptions | No runtime dependency | Docker and Podman adapters behind one protocol |
-| Packaging | Python, Node, Redis, PostgreSQL, three images, systemd and nginx | Node static app | One-command launcher, doctor, loopback gateway, backup and upgrade |
+| Job queue and cancellation | PostgreSQL queue, worker, polling, console and cancellation | Durable typed lifecycle and cancellation contracts; UI submission disabled | Connect approved solver requests and diagnostics |
+| Runtime support | Rootless Podman and server-specific Linux assumptions | Evidence-gated Docker and Podman adapters; product disabled | Qualify exact release images on three hosts |
+| Packaging | Python, Node, Redis, PostgreSQL, three images, systemd and nginx | Static host plus doctor, blocked preview, and fail-closed product command | Signed and qualified platform launch packages |
 | Licensing | No recognized root license and bundled solver boundary | GitHub-recognized MIT for original OpenTCAD work; solvers excluded | Component-level notices, source provenance and approved distribution profile |
-| CI and deployment | Unit, integration and E2E structure; server-specific deployment | Node 22 CI and Pages workflow | Add backend, sandbox, numerical and cross-platform matrices |
+| CI and deployment | Unit, integration and E2E structure; server-specific deployment | Frontend, Python contract, host-contract, punctuation, Pages, and gate checks | Add approved native runtime and numerical release matrices |
 
 ## What OpenTCAD updates
 
@@ -70,21 +76,36 @@ The browser and API must never receive an OCI runtime socket. Only the broker ma
 - Deterministic visuals that are visibly marked as reference data rather than solver output.
 - A responsive process, device, comparison, and runtime-boundary experience.
 - A cross-platform target that separates domain jobs from Docker and Podman details.
+- A same-origin local preview that creates no state and makes solver
+  authorization visibly distinct from transport connection.
+- Evidence-gated Docker and Podman adapters, native fencing, durable SQLite
+  lifecycle, recovery, maintenance, authenticated archive, and scheduled
+  backup integration.
+- Cross-platform `doctor`, blocked `preview`, and fail-closed `serve` commands
+  with strict per-user paths and operator configuration.
 - Current GitHub Actions, locked JavaScript dependencies, automated tests, and a generated social preview.
 
 ### Existing functionality not yet restored
 
 - Real SUPREM execution, `.str` parsing, Gmsh remeshing, and DEVSIM solves.
 - Monaco language integration, server-backed files, tabs, manual panels, and parameter catalogs.
-- Device-plan editing, saved analyses, overlays, cancellation, logs, and artifact downloads.
-- Authentication, invitations, administration, PostgreSQL, Redis, migrations, backup, and upgrade.
-- Sandbox broker, runtime adapters, launchers, doctor checks, and cross-platform qualification.
+- Device-plan editing, saved analyses, overlays, user-facing cancellation,
+  logs, and artifact downloads.
+- Authentication, invitations, and administration for a future shared-server
+  mode.
+- Approved native runtime observations, physical power-loss runs, a
+  code-owned solver release profile, platform packages, and upgrade UI.
 
 These omissions are deliberate. Copying the existing source would undermine the clean MIT boundary, and shipping a partially isolated solver path would create a security claim that the current code cannot support.
 
 ## Current release boundary
 
-The current public release is complete as a bilingual, non-executing product preview. Real solver execution is not part of this release and must not be inferred from the runtime contracts or deterministic visuals. Any future connected local service requires separate licensing, sandbox, numerical, data-safety, and cross-platform qualification.
+The current public release is complete as a bilingual, non-executing product
+preview. M3 also provides a runnable blocked local preview and a product host
+that refuses activation before side effects. Real solver execution is not part
+of this release and must not be inferred from the runtime implementation or
+deterministic visuals. Activation still requires separate licensing, sandbox,
+numerical, data-safety, physical power-loss, and cross-platform approval.
 
 ## Korean punctuation policy
 

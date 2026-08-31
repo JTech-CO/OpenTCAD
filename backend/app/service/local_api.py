@@ -11,7 +11,7 @@ from hmac import compare_digest
 import ipaddress
 import json
 import re
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -49,6 +49,8 @@ from .worker import (
     WorkerError,
     WorkerOperation,
 )
+from .static_assets import LocalStaticAsset, LocalStaticAssets
+from .status import LocalProductStatus
 
 
 LOCALHOST_BROKER_API_PRODUCT_ENABLED = True
@@ -436,7 +438,7 @@ class LocalApiBind:
 
 
 class LocalApiServer:
-    """Minimal HTTP/1.1 server with loopback peer and origin enforcement."""
+    """Bounded HTTP/1.1 server for one same-origin local product surface."""
 
     _STATUS = {
         200: "OK",
@@ -445,6 +447,7 @@ class LocalApiServer:
         403: "Forbidden",
         404: "Not Found",
         405: "Method Not Allowed",
+        408: "Request Timeout",
         409: "Conflict",
         413: "Content Too Large",
         415: "Unsupported Media Type",
@@ -456,14 +459,19 @@ class LocalApiServer:
 
     def __init__(
         self,
-        application: LocalBrokerApi,
+        application: LocalBrokerApi | None,
         bearer_secret: bytes,
         bind: LocalApiBind = LocalApiBind(),
         *,
+        static_assets: LocalStaticAssets | None = None,
+        status_provider: Callable[[], LocalProductStatus] | None = None,
         maximum_header_bytes: int = 16_384,
         maximum_body_bytes: int = 16_777_216,
+        maximum_connections: int = 64,
+        control_connection_reserve: int = 8,
+        request_timeout_seconds: float = 15.0,
     ) -> None:
-        if not isinstance(application, LocalBrokerApi):
+        if application is not None and not isinstance(application, LocalBrokerApi):
             raise TypeError("Local server requires LocalBrokerApi.")
         if (
             not isinstance(bearer_secret, bytes)
@@ -472,6 +480,12 @@ class LocalApiServer:
             raise TypeError("Local server bearer secret must be 32 to 128 bytes.")
         if not isinstance(bind, LocalApiBind):
             raise TypeError("Local server requires LocalApiBind.")
+        if static_assets is not None and not isinstance(static_assets, LocalStaticAssets):
+            raise TypeError("Local server static assets are invalid.")
+        if status_provider is not None and not callable(status_provider):
+            raise TypeError("Local server status provider is invalid.")
+        if application is None and status_provider is None:
+            raise TypeError("Status-only local server requires a status provider.")
         if (
             not isinstance(maximum_header_bytes, int)
             or isinstance(maximum_header_bytes, bool)
@@ -479,14 +493,33 @@ class LocalApiServer:
             or not isinstance(maximum_body_bytes, int)
             or isinstance(maximum_body_bytes, bool)
             or not 1_024 <= maximum_body_bytes <= 1_073_741_824
+            or not isinstance(maximum_connections, int)
+            or isinstance(maximum_connections, bool)
+            or not 1 <= maximum_connections <= 1_024
+            or not isinstance(control_connection_reserve, int)
+            or isinstance(control_connection_reserve, bool)
+            or not 1 <= control_connection_reserve <= 256
+            or not isinstance(request_timeout_seconds, (int, float))
+            or isinstance(request_timeout_seconds, bool)
+            or not 1.0 <= request_timeout_seconds <= 120.0
         ):
             raise TypeError("Local server request limits are invalid.")
         self._application = application
         self._bind = bind
         token = base64.urlsafe_b64encode(bearer_secret).rstrip(b"=")
         self._authorization = b"Bearer " + token
+        self._browser_token = token.decode("ascii")
+        self._static_assets = static_assets
+        self._status_provider = status_provider
         self._maximum_header_bytes = maximum_header_bytes
         self._maximum_body_bytes = maximum_body_bytes
+        self._maximum_connections = maximum_connections
+        self._control_connection_reserve = control_connection_reserve
+        self._request_timeout_seconds = float(request_timeout_seconds)
+        self._active_connections = 0
+        self._active_general_connections = 0
+        self._clients: set[asyncio.StreamWriter] = set()
+        self._handlers: set[asyncio.Task[None]] = set()
         self._server: asyncio.Server | None = None
 
     @property
@@ -494,6 +527,12 @@ class LocalApiServer:
         if self._server is None or not self._server.sockets:
             raise RuntimeError("Local API server is not started.")
         return int(self._server.sockets[0].getsockname()[1])
+
+    @property
+    def browser_url(self) -> str:
+        if self._static_assets is None:
+            raise RuntimeError("Local server has no browser surface.")
+        return f"http://{self._bind.host}:{self.port}/#local={self._browser_token}"
 
     async def start(self) -> None:
         if self._server is not None:
@@ -518,6 +557,19 @@ class LocalApiServer:
         self._server = None
         if server is not None:
             server.close()
+        current = asyncio.current_task()
+        handlers = tuple(
+            task
+            for task in self._handlers
+            if task is not current and not task.done()
+        )
+        for task in handlers:
+            task.cancel()
+        for writer in tuple(self._clients):
+            writer.close()
+        if handlers:
+            await asyncio.gather(*handlers, return_exceptions=True)
+        if server is not None:
             await server.wait_closed()
 
     @staticmethod
@@ -635,9 +687,15 @@ class LocalApiServer:
         self._validate_origin(headers.get("origin"))
         if "transfer-encoding" in headers:
             raise LocalApiError(400, "transfer-encoding-forbidden")
-        authorization = headers.get("authorization", "").encode("ascii")
-        if not compare_digest(authorization, self._authorization):
-            raise LocalApiError(401, "authentication-required")
+        public_asset = (
+            method == "GET"
+            and self._static_assets is not None
+            and self._static_assets.matches(target_value.path)
+        )
+        if not public_asset:
+            authorization = headers.get("authorization", "").encode("ascii")
+            if not compare_digest(authorization, self._authorization):
+                raise LocalApiError(401, "authentication-required")
         try:
             content_length = int(headers.get("content-length", "0"))
         except ValueError:
@@ -685,8 +743,69 @@ class LocalApiServer:
         ).encode("ascii")
         writer.write(headers + body)
         try:
-            await writer.drain()
-        except (ConnectionError, OSError):
+            await asyncio.wait_for(
+                writer.drain(),
+                timeout=self._request_timeout_seconds,
+            )
+        except (ConnectionError, OSError, TimeoutError):
+            pass
+
+    async def _write_asset(
+        self,
+        writer: asyncio.StreamWriter,
+        asset: LocalStaticAsset,
+    ) -> None:
+        headers = (
+            "HTTP/1.1 200 OK\r\n"
+            f"Content-Type: {asset.content_type}\r\n"
+            f"Content-Length: {len(asset.body)}\r\n"
+            f"Cache-Control: {asset.cache_control}\r\n"
+            "Content-Security-Policy: default-src 'self'; script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
+            "connect-src 'self'; object-src 'none'; base-uri 'none'; "
+            "frame-ancestors 'none'\r\n"
+            "X-Content-Type-Options: nosniff\r\n"
+            "Referrer-Policy: no-referrer\r\n"
+            "Cross-Origin-Opener-Policy: same-origin\r\n"
+            "Cross-Origin-Resource-Policy: same-origin\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+        ).encode("ascii")
+        writer.write(headers + asset.body)
+        try:
+            await asyncio.wait_for(
+                writer.drain(),
+                timeout=self._request_timeout_seconds,
+            )
+        except (ConnectionError, OSError, TimeoutError):
+            pass
+
+    @staticmethod
+    def _reserved_control_request(method: str, path: str) -> bool:
+        return (
+            method == "GET"
+            and path in {"/v1/health", "/v1/status"}
+        ) or (
+            method == "POST"
+            and (
+                _JOB_CANCEL.fullmatch(path) is not None
+                or path
+                in {
+                    "/v1/maintenance/begin",
+                    "/v1/maintenance/offline",
+                    "/v1/maintenance/end",
+                }
+            )
+        )
+
+    async def _close_writer(self, writer: asyncio.StreamWriter) -> None:
+        writer.close()
+        try:
+            await asyncio.wait_for(
+                writer.wait_closed(),
+                timeout=self._request_timeout_seconds,
+            )
+        except (ConnectionError, OSError, TimeoutError):
             pass
 
     async def _handle_client(
@@ -694,16 +813,100 @@ class LocalApiServer:
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
     ) -> None:
+        handler = asyncio.current_task()
+        self._clients.add(writer)
+        if handler is not None:
+            self._handlers.add(handler)
+        if self._active_connections >= (
+            self._maximum_connections + self._control_connection_reserve
+        ):
+            try:
+                await self._write(
+                    writer,
+                    503,
+                    {"error": {"code": "connection-capacity-reached"}},
+                )
+            finally:
+                await self._close_writer(writer)
+                self._clients.discard(writer)
+                if handler is not None:
+                    self._handlers.discard(handler)
+            return
+        self._active_connections += 1
+        general_connection = False
+        cancelled = False
+        asset: LocalStaticAsset | None = None
+        status = 500
+        payload: dict[str, Any] = {"error": {"code": "internal-error"}}
         try:
-            method, path, body = await self._request(reader, writer)
-            status, payload = await self._application.handle(method, path, body)
+            method, path, body = await asyncio.wait_for(
+                self._request(reader, writer),
+                timeout=self._request_timeout_seconds,
+            )
+            if not self._reserved_control_request(method, path):
+                if (
+                    self._active_general_connections
+                    >= self._maximum_connections
+                ):
+                    status, payload = 503, {
+                        "error": {"code": "connection-capacity-reached"},
+                    }
+                else:
+                    self._active_general_connections += 1
+                    general_connection = True
+            if status != 503:
+                if (
+                    method == "GET"
+                    and self._static_assets is not None
+                    and self._static_assets.matches(path)
+                ):
+                    try:
+                        asset = self._static_assets.read(path)
+                    except FileNotFoundError:
+                        status, payload = 404, {
+                            "error": {"code": "asset-not-found"},
+                        }
+                elif method == "GET" and path == "/v1/status":
+                    if self._status_provider is None:
+                        status, payload = 404, {
+                            "error": {"code": "route-not-found"},
+                        }
+                    else:
+                        value = self._status_provider()
+                        if not isinstance(value, LocalProductStatus):
+                            raise TypeError(
+                                "Status provider returned an invalid value.",
+                            )
+                        status, payload = 200, value.as_dict()
+                elif self._application is None:
+                    status, payload = 503, {
+                        "error": {"code": "product-disabled"},
+                    }
+                else:
+                    status, payload = await self._application.handle(
+                        method,
+                        path,
+                        body,
+                    )
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+        except TimeoutError:
+            status, payload = 408, {"error": {"code": "request-timeout"}}
         except LocalApiError as error:
             status, payload = error.status, error.as_dict()
         except Exception:
             status, payload = 500, {"error": {"code": "internal-error"}}
-        await self._write(writer, status, payload)
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except (ConnectionError, OSError):
-            pass
+        finally:
+            if not cancelled:
+                if asset is not None:
+                    await self._write_asset(writer, asset)
+                else:
+                    await self._write(writer, status, payload)
+            await self._close_writer(writer)
+            if general_connection:
+                self._active_general_connections -= 1
+            self._active_connections -= 1
+            self._clients.discard(writer)
+            if handler is not None:
+                self._handlers.discard(handler)

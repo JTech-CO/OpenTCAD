@@ -1,6 +1,6 @@
 # OpenTCAD
 
-[English](README.md) · [공개 미리보기](https://jtech-co.github.io/OpenTCAD/) · [아키텍처](docs/ko/architecture.md) · [개발](docs/ko/development.md)
+[English](README.md) · [공개 미리보기](https://jtech-co.github.io/OpenTCAD/) · [아키텍처](docs/ko/architecture.md) · [로컬 서비스](docs/ko/m3-local-service.md)
 
 ![OpenTCAD 소셜 미리보기](frontend/public/og.png)
 
@@ -49,12 +49,22 @@ npm run preview
 
 배포 산출물은 `frontend/dist/`에 생성됩니다. 미리보기 서버는 `127.0.0.1`에 바인딩됩니다.
 
+M3 상태를 확인하고 동일 출처 방식의 비실행 로컬 미리보기를 시작할 수 있습니다.
+
+```bash
+npm run local:doctor
+npm run local:preview
+```
+
+미리보기 명령은 수명이 짧은 민감한 `browserUrl`을 출력합니다. 브로커 상태를 만들지 않고 OS 자격 증명을 읽지 않으며 컨테이너 런타임에 접근하지 않습니다. 제품 명령, 설정 경로, 시작 순서, 현재 활성화 차단 항목은 [M3 로컬 제품 서비스](docs/ko/m3-local-service.md)에서 확인할 수 있습니다.
+
 ## 제품 경계
 
 | 화면 또는 구성요소 | 제공 여부 | 솔버 입력 실행 |
 |---|---:|---:|
 | GitHub Pages 소개 페이지와 작업공간 | 제공 | 실행 안 함 |
 | 로컬 정적 개발·미리보기 서버 | 제공 | 실행 안 함 |
+| 동일 출처 차단형 로컬 제품 미리보기 | 제공 | 실행 안 함 |
 | 런타임 계약과 durable 로컬 서비스 | 구현됨, 게이트로 비활성 | 실행 안 함 |
 | 연결된 Docker 또는 Podman solver 서비스 | 외부 증거 대기 | 실행 안 함 |
 
@@ -93,6 +103,7 @@ npm run coverage
 | [Licensing](docs/en/licensing.md) | [라이선스](docs/ko/licensing.md) |
 | [Implementation scope and comparison](docs/en/implementation-scope.md) | [구현 범위와 비교](docs/ko/implementation-scope.md) |
 | [M3 product entry gates](docs/en/m3-entry-gates.md) | [M3 제품 진입 게이트](docs/ko/m3-entry-gates.md) |
+| [M3 local product service](docs/en/m3-local-service.md) | [M3 로컬 제품 서비스](docs/ko/m3-local-service.md) |
 | [Validation](validation/README.md) | [검증](validation/README.ko.md) |
 
 ## 라이선스

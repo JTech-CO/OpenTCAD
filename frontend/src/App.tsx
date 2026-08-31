@@ -21,15 +21,30 @@ import {
   ProfileCanvas,
 } from "./components/ScientificCanvas";
 import { LandingPage } from "./LandingPage";
+import {
+  fetchLocalProductStatus,
+  type LocalProductStatus,
+  type LocalServiceBootstrap,
+} from "./local-service";
 
 const repositoryUrl = "https://github.com/JTech-CO/OpenTCAD";
 type AppSurface = "intro" | "workspace";
+type LocalConnectionState =
+  | "unavailable"
+  | "available"
+  | "connecting"
+  | "connected"
+  | "error";
+
+interface AppProps {
+  localBootstrap?: LocalServiceBootstrap | null;
+}
 
 function getInitialSurface(): AppSurface {
   return window.location.hash === "#workspace" ? "workspace" : "intro";
 }
 
-function App() {
+function App({ localBootstrap = null }: AppProps) {
   const [locale, setLocale] = useState<Locale>(getInitialLocale);
   const [surface, setSurface] = useState<AppSurface>(getInitialSurface);
   const [view, setView] = useState<WorkspaceView>("process");
@@ -38,6 +53,10 @@ function App() {
     useState<ProfileField>("netActive");
   const [runState, setRunState] = useState<RunState>("idle");
   const [activeStep, setActiveStep] = useState(0);
+  const [localConnection, setLocalConnection] = useState<LocalConnectionState>(
+    localBootstrap ? "available" : "unavailable",
+  );
+  const [localStatus, setLocalStatus] = useState<LocalProductStatus | null>(null);
   const copy = messages[locale];
   const text = (key: MessageKey) => copy[key];
 
@@ -91,6 +110,23 @@ function App() {
     setActiveStep(0);
     setRunState("running");
   };
+
+  const connectLocalService = async () => {
+    if (!localBootstrap || localConnection === "connecting") {
+      return;
+    }
+    setLocalConnection("connecting");
+    try {
+      setLocalStatus(await fetchLocalProductStatus(localBootstrap));
+      setLocalConnection("connected");
+    } catch {
+      setLocalStatus(null);
+      setLocalConnection("error");
+    }
+  };
+
+  const localSurface = localBootstrap !== null;
+  const localAuthorized = localStatus?.executionState === "authorized";
 
   const openWorkspace = () => {
     window.location.hash = "workspace";
@@ -147,8 +183,18 @@ function App() {
         <div className="topbar-center">
           <span className="mode-beacon" aria-hidden="true" />
           <div>
-            <strong>{text("staticPreview")}</strong>
-            <span>{text("staticModeDetail")}</span>
+            <strong>{text(localSurface ? "localService" : "staticPreview")}</strong>
+            <span>
+              {text(
+                localConnection === "connected"
+                  ? localAuthorized
+                    ? "localServiceAuthorized"
+                    : "localServiceBlocked"
+                  : localSurface
+                    ? "localModeDetail"
+                    : "staticModeDetail",
+              )}
+            </span>
           </div>
         </div>
 
@@ -278,10 +324,12 @@ function App() {
             <span />
           </div>
           <div>
-            <strong>{text("safeBoundary")}</strong>
-            <p>{text("safeBoundaryDetail")}</p>
+            <strong>{text(localSurface ? "localSafetyBoundary" : "safeBoundary")}</strong>
+            <p>{text(localSurface ? "localSafetyBoundaryDetail" : "safeBoundaryDetail")}</p>
           </div>
-          <span className="static-stamp">{text("staticLabel")}</span>
+          <span className="static-stamp">
+            {text(localSurface ? "localLabel" : "staticLabel")}
+          </span>
         </div>
 
         <div className="workspace-heading">
@@ -323,7 +371,15 @@ function App() {
 
         {view === "compare" && <CompareView text={text} />}
 
-        {view === "runtime" && <RuntimeView locale={locale} text={text} />}
+        {view === "runtime" && (
+          <RuntimeView
+            locale={locale}
+            text={text}
+            connection={localConnection}
+            status={localStatus}
+            onConnect={connectLocalService}
+          />
+        )}
       </main>
 
       <aside className="inspector" aria-label={text("runDetails")}>
@@ -342,18 +398,32 @@ function App() {
           <dl className="detail-list">
             <div>
               <dt>{text("mode")}</dt>
-              <dd>{text("staticPreview")}</dd>
+              <dd>{text(localSurface ? "localService" : "staticPreview")}</dd>
             </div>
             <div>
               <dt>{text("engine")}</dt>
-              <dd className="muted-value">{text("disconnected")}</dd>
+              <dd className="muted-value">
+                {localConnection === "connected"
+                  ? localStatus?.backend ?? text("localServiceBlocked")
+                  : text("disconnected")}
+              </dd>
             </div>
             <div>
               <dt>{text("job")}</dt>
               <dd>{text("referenceOnly")}</dd>
             </div>
           </dl>
-          <p className="inspector-help">{text("engineUnavailable")}</p>
+          <p className="inspector-help">
+            {text(
+              localConnection === "connected"
+                ? localAuthorized
+                  ? "localServiceAuthorized"
+                  : "localServiceBlocked"
+                : localSurface
+                  ? "localConnectionPrompt"
+                  : "engineUnavailable",
+            )}
+          </p>
         </section>
 
         <section className="inspector-section">
@@ -646,9 +716,18 @@ function CompareView({ text }: SharedTextProps) {
 
 interface RuntimeViewProps extends SharedTextProps {
   locale: Locale;
+  connection: LocalConnectionState;
+  status: LocalProductStatus | null;
+  onConnect: () => void;
 }
 
-function RuntimeView({ locale, text }: RuntimeViewProps) {
+function RuntimeView({
+  locale,
+  text,
+  connection,
+  status,
+  onConnect,
+}: RuntimeViewProps) {
   const path: MessageKey[] = ["browser", "api", "worker", "broker", "ociRuntime"];
   const architectureUrl = `${repositoryUrl}/blob/main/docs/${locale}/architecture.md`;
 
@@ -665,14 +744,85 @@ function RuntimeView({ locale, text }: RuntimeViewProps) {
             <p>{text("pagesSafeDetail")}</p>
           </div>
         </section>
-        <section className="mode-card planned">
+        <section
+          className={`mode-card ${connection === "unavailable" ? "planned" : "local"}`}
+          aria-busy={connection === "connecting"}
+        >
           <span className="mode-number">02</span>
           <div>
             <div className="mode-card-heading">
               <h2>{text("localEngine")}</h2>
-              <span>{text("notAvailableYet")}</span>
+              <span>
+                {text(
+                  connection === "unavailable"
+                    ? "notAvailableYet"
+                    : connection === "connected"
+                      ? status?.executionState === "authorized"
+                        ? "localServiceAuthorized"
+                        : "localServiceBlocked"
+                      : connection === "connecting"
+                        ? "connectingLocalService"
+                        : connection === "error"
+                          ? "localServiceError"
+                          : "localServiceAvailable",
+                )}
+              </span>
             </div>
             <p>{text("localEngineDetail")}</p>
+            {connection !== "unavailable" && (
+              <div className="local-connection" role="status" aria-live="polite">
+                {connection === "connected" && status ? (
+                  <dl>
+                    <div>
+                      <dt>{text("transport")}</dt>
+                      <dd>{text("localServiceConnected")}</dd>
+                    </div>
+                    <div>
+                      <dt>{text("executionAuthorization")}</dt>
+                      <dd>
+                        {text(
+                          status.executionState === "authorized"
+                            ? "localServiceAuthorized"
+                            : "localServiceBlocked",
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{text("gateBlockers")}</dt>
+                      <dd>
+                        {status.blockedGates.length > 0
+                          ? status.blockedGates.join(", ")
+                          : text("noGateBlockers")}
+                      </dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p>
+                    {text(
+                      connection === "error"
+                        ? "localServiceError"
+                        : connection === "connecting"
+                          ? "connectingLocalService"
+                          : "localConnectionPrompt",
+                    )}
+                  </p>
+                )}
+                {connection !== "connected" && (
+                  <button
+                    type="button"
+                    className="primary-action local-connect-button"
+                    onClick={onConnect}
+                    disabled={connection === "connecting"}
+                  >
+                    {text(
+                      connection === "error"
+                        ? "retryConnection"
+                        : "connectLocalService",
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </div>

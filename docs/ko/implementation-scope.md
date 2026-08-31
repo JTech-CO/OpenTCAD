@@ -6,7 +6,7 @@
 
 이 문서는 읽기 전용 동작 참고본 `ypooh2042/tcad-webapp@13bce4a`와 현재 OpenTCAD 저장소를 비교합니다. 참고본의 README, 코드맵, 프런트엔드와 백엔드 패키지, 컨테이너 정의, 배포 구조를 확인했습니다. 업스트림 애플리케이션 소스는 OpenTCAD에 복사하지 않았습니다.
 
-기존 사이트는 Linux 중심의 실제 솔버 애플리케이션입니다. 현재 OpenTCAD은 clean-room 방식으로 만든 한·영 정적 제품 기반입니다. 따라서 아직 기존 사이트를 기능 단위로 대체하지는 못합니다. 현재 릴리스는 실제 솔버 실행을 의도적으로 제외하는 대신 배포 경계, 공개 접근성, 언어 지원, 교차 플랫폼 목표 아키텍처를 개선했습니다.
+기존 사이트는 Linux 중심의 실제 솔버 애플리케이션입니다. 현재 OpenTCAD은 clean-room 방식으로 만든 한·영 정적 제품에 실패 폐쇄 로컬 서비스와 OCI 런타임 구현을 더한 상태입니다. 아직 기존 사이트를 기능 단위로 대체하지는 못합니다. 현재 릴리스는 실제 솔버 실행을 의도적으로 제외하는 대신 배포 경계, 공개 접근성, 언어 지원, 영속 lifecycle 설계, 교차 플랫폼 host 통합을 개선했습니다.
 
 ## 구현 가능한 제공 방식
 
@@ -26,8 +26,9 @@
 ```text
 브라우저
   -> loopback 전용 웹 게이트웨이
-  -> FastAPI 계약
-  -> 타입이 지정된 잡 큐와 워커
+  -> 표준 library 기반 인증 로컬 API
+  -> 상한이 있는 실행 및 control worker lane
+  -> 영속 SQLite 상태, recovery, backup control
   -> 샌드박스 브로커
   -> Docker 또는 rootless Podman adapter
   -> 격리된 잡별 관리 볼륨
@@ -54,11 +55,11 @@
 | 저장 결과 비교 | 저장한 해석의 겹쳐 보기와 삭제 | 참조 곡선만 제공 | 버전 결과 묶음, 비교, 내보내기, replay |
 | 파일과 프로젝트 | 서버 파일시스템 작업공간과 파일 연산 | 영속 프로젝트 없음 | 이식 가능한 `.tcadproj`, 안전한 가져오기·내보내기, 백업·migration |
 | 인증과 관리 | 세션 로그인, 초대, 접속 현황, 관리자 기능 | 없음 | 단일 사용자 로컬 모드에서는 제외하고 공유 모드에서 복원 |
-| 잡 큐와 중단 | PostgreSQL 큐, 워커, 폴링, 콘솔, 중단 | 시간 기반 UI 참조 상태 | 타입 기반 영속 잡, 중단, 정리, 진단 번들 |
-| 런타임 지원 | rootless Podman과 특정 Linux 서버 전제 | 런타임 의존 없음 | 하나의 계약 뒤에 Docker와 Podman adapter 배치 |
-| 패키징 | Python, Node, Redis, PostgreSQL, 이미지 3개, systemd, nginx | Node 정적 앱 | 단일 명령 launcher, doctor, loopback gateway, 백업·업그레이드 |
+| 잡 큐와 중단 | PostgreSQL 큐, 워커, 폴링, 콘솔, 중단 | 영속 typed lifecycle과 cancellation 계약, UI 제출 비활성 | 승인된 solver 요청과 진단 연결 |
+| 런타임 지원 | rootless Podman과 특정 Linux 서버 전제 | 증거 게이트가 있는 Docker 및 Podman adapter, 제품 비활성 | 3개 host에서 정확한 릴리스 image 검증 |
+| 패키징 | Python, Node, Redis, PostgreSQL, 이미지 3개, systemd, nginx | 정적 host, doctor, 차단형 preview, 실패 폐쇄 제품 명령 | 서명 및 자격 검증된 플랫폼 실행 패키지 |
 | 라이선스 | 인식 가능한 루트 라이선스 없음, 솔버 번들 경계 불명확 | OpenTCAD 고유 작업은 GitHub 인식 MIT, 솔버 제외 | 구성요소별 고지, 소스 출처, 승인된 배포 프로필 |
-| CI와 배포 | 단위·통합·E2E 구조, 특정 서버 배포 | Node 22 CI와 Pages workflow | 백엔드, 샌드박스, 수치, 교차 플랫폼 matrix 추가 |
+| CI와 배포 | 단위·통합·E2E 구조, 특정 서버 배포 | 프런트엔드, Python 계약, host 계약, 문장부호, Pages, gate 검사 | 승인된 native runtime 및 수치 릴리스 matrix 추가 |
 
 ## OpenTCAD에서 업데이트된 점
 
@@ -70,21 +71,24 @@
 - 솔버 출력이 아니라는 표시가 있는 결정론적 참조 시각화
 - 반응형 공정·소자·비교·런타임 경계 경험
 - 도메인 잡과 Docker·Podman 세부사항을 분리하는 교차 플랫폼 목표
+- 상태를 만들지 않는 동일 출처 로컬 미리보기와 전송 연결 및 solver 권한의 분리 표시
+- 증거 게이트 기반 Docker 및 Podman adapter, native fencing, 영속 SQLite lifecycle, recovery, maintenance, 인증 archive, 예약 backup 통합
+- 엄격한 사용자별 경로와 운영자 설정을 사용하는 교차 플랫폼 `doctor`, 차단형 `preview`, 실패 폐쇄 `serve` 명령
 - 최신 GitHub Actions, 잠긴 JavaScript 의존성, 자동 테스트, 소셜 미리보기
 
 ### 아직 복원하지 않은 기존 기능
 
 - 실제 SUPREM 실행, `.str` 파싱, Gmsh 재메시, DEVSIM 해석
 - Monaco 언어 통합, 서버 파일, 탭, 매뉴얼 패널, 파라미터 카탈로그
-- 소자 계획 편집, 저장 해석, 곡선 겹치기, 잡 중단, 로그, 산출물 다운로드
-- 인증, 초대, 관리, PostgreSQL, Redis, migration, 백업, 업그레이드
-- 샌드박스 브로커, 런타임 adapter, launcher, doctor 검사, 교차 플랫폼 자격 검증
+- 소자 계획 편집, 저장 해석, 곡선 겹치기, 사용자용 잡 중단, 로그, 산출물 다운로드
+- 향후 공유 서버 모드의 인증, 초대, 관리
+- 승인된 native runtime 관측, 실제 전원 차단 실행, 코드 소유 solver 릴리스 프로필, 플랫폼 package, upgrade UI
 
 이 누락은 의도적입니다. 기존 소스를 복사하면 clean MIT 경계가 무너지고, 불완전하게 격리된 솔버 경로를 배포하면 현재 코드가 보장할 수 없는 보안 주장을 하게 됩니다.
 
 ## 현재 릴리스 경계
 
-현재 공개 릴리스는 입력을 실행하지 않는 한·영 제품 미리보기로 완료되었습니다. 실제 솔버 실행은 이 릴리스에 포함되지 않으며 런타임 계약이나 결정론적 시각화에서 솔버 실행을 추론해서는 안 됩니다. 향후 연결형 로컬 서비스에는 별도의 라이선스, 샌드박스, 수치, 데이터 안전, 교차 플랫폼 자격 검증이 필요합니다.
+현재 공개 릴리스는 입력을 실행하지 않는 한·영 제품 미리보기로 완료되었습니다. M3는 실행 가능한 차단형 로컬 미리보기와 side effect 전에 활성화를 거부하는 제품 host도 제공합니다. 실제 솔버 실행은 이 릴리스에 포함되지 않으며 런타임 구현이나 결정론적 시각화에서 솔버 실행을 추론해서는 안 됩니다. 활성화에는 별도의 license, sandbox, 수치, data safety, 실제 전원 차단, 교차 플랫폼 승인이 필요합니다.
 
 ## 한국어 문장부호 정책
 

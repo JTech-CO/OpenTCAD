@@ -803,6 +803,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
   padding: 1.1rem;
 }
 .mode-card.planned::before { background: linear-gradient(90deg, var(--amber), transparent 72%); }
+.mode-card.local::before { background: linear-gradient(90deg, var(--cyan), transparent 72%); }
 .mode-number {
   display: grid;
   place-items: center;
@@ -814,6 +815,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
   font-size: 0.78rem;
 }
 .mode-card.planned .mode-number { border-color: var(--amber-border); color: var(--amber); }
+.mode-card.local .mode-number { border-color: var(--cyan); color: var(--cyan-bright); }
 .mode-card-heading {
   display: flex;
   align-items: center;
@@ -830,6 +832,46 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 }
 .mode-card.planned .mode-card-heading span { color: var(--amber); }
 .mode-card p { margin: 0.45rem 0 0; color: var(--text-soft); font-size: 0.78rem; }
+.local-connection {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+.local-connection > p { margin: 0; }
+.local-connection dl { display: grid; gap: 0.45rem; margin: 0; }
+.local-connection dl > div {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+}
+.local-connection dt {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+}
+.local-connection dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-soft);
+  font-size: 0.7rem;
+}
+.local-connect-button {
+  justify-self: start;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #69e9dd;
+  border-radius: 5px;
+  background: var(--cyan);
+  color: #022022;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.local-connect-button:hover:not(:disabled) { background: var(--cyan-bright); }
+.local-connect-button:disabled { cursor: wait; opacity: 0.58; }
 .runtime-path ol {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

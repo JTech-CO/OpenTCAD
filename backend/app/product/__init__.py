@@ -12,6 +12,11 @@ from .gates import (
     ProductGateReport,
     ProductRuntimeGrant,
 )
+from .release_profile import (
+    PRODUCT_RELEASE_PROFILES,
+    ProductReleaseProfile,
+    release_profile_for,
+)
 
 __all__ = [
     "EvidenceRecord",
@@ -24,4 +29,7 @@ __all__ = [
     "ProductGateErrorCode",
     "ProductGateReport",
     "ProductRuntimeGrant",
+    "PRODUCT_RELEASE_PROFILES",
+    "ProductReleaseProfile",
+    "release_profile_for",
 ]

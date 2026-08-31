@@ -117,6 +117,9 @@ const api = read("backend/app/service/local_api.py").toString("utf8");
 for (const marker of ["peer-not-loopback", "host-not-loopback", "origin-not-allowed", "authentication-required"]) {
   requireValue(api.includes(marker), "Local API boundary marker missing: " + marker);
 }
+for (const marker of ["control_connection_reserve", "_active_general_connections", "self._handlers"]) {
+  requireValue(api.includes(marker), "Local API control-capacity marker missing: " + marker);
+}
 const application = read("backend/app/service/application.py").toString("utf8");
 requireValue(application.includes("STARTUP_RECOVERY"), "Local service must recover before admission.");
 requireValue(application.includes("NativeRestoreFloorStore"), "Local service must wire the OS anti-rollback floor.");
@@ -146,5 +149,70 @@ requireValue(credentials.includes("opentcad-secret-v1:"), "Secret Service byte e
 const scheduler = read("backend/app/service/scheduler.py").toString("utf8");
 requireValue(scheduler.includes("self._failures"), "Scheduled backup failures must remain observable.");
 requireValue(scheduler.includes("except AuthenticatedBackupError"), "Scheduled backup service failures must not terminate the loop.");
+requireValue(
+  scheduler.includes("scheduled-backup-unexpected-failure"),
+  "Unexpected scheduled backup failures must remain redacted and retryable.",
+);
+
+const productFence = read("backend/app/runtime/product_fence_authority.py").toString("utf8");
+for (const marker of ["operation_guard", "_NativeFileLock", "await self._authority.verify", "runtime-{fence.identity.job_id}.lock"]) {
+  requireValue(productFence.includes(marker), "Product runtime fence marker missing: " + marker);
+}
+requireValue(oci.includes("_recovery_output_limit"), "Restart cancellation must validate its native output bound.");
+requireValue(oci.includes("runtime-output-limit-label-invalid"), "Invalid restart recovery labels must fail closed.");
+
+const releaseProfiles = read("backend/app/product/release_profile.py").toString("utf8");
+requireValue(
+  releaseProfiles.includes("PRODUCT_RELEASE_PROFILES: tuple[ProductReleaseProfile, ...] = ()"),
+  "Committed product release profiles must remain empty until approval.",
+);
+for (const marker of ["manifest_sha256", "verify_activation", "activation.permits"]) {
+  requireValue(releaseProfiles.includes(marker), "Release profile binding marker missing: " + marker);
+}
+for (const marker of ["input_helper_id", "output_helper_id", "engine.entrypoint_id"]) {
+  requireValue(releaseProfiles.includes(marker), "Release role binding marker missing: " + marker);
+}
+
+const bootstrap = read("backend/app/service/bootstrap.py").toString("utf8");
+for (const marker of ["BlockedLocalPreviewHost", "ProductRuntimeFenceAuthority", "LocalStaticAssets", "release_profile_for"]) {
+  requireValue(bootstrap.includes(marker), "Local bootstrap marker missing: " + marker);
+}
+for (const marker of ["sync_file(temporary)", "MoveFileExW", "O_DIRECTORY", "identity is missing for existing state"]) {
+  requireValue(bootstrap.includes(marker), "Installation durability marker missing: " + marker);
+}
+requireValue(
+  bootstrap.indexOf("activation = self._gate.require_activation()")
+    < bootstrap.indexOf("paths.prepare()"),
+  "Product activation must precede local path creation.",
+);
+const localCli = read("backend/app/service/cli.py").toString("utf8");
+for (const marker of ["bootstrap.require_activation()", "bootstrap.require_release_profile(configuration)", "LocalStaticAssets(args.assets)", "paths.prepare()"]) {
+  requireValue(localCli.includes(marker), "Local CLI startup marker missing: " + marker);
+}
+requireValue(
+  localCli.indexOf("bootstrap.require_activation()")
+    < localCli.indexOf("LocalUserConfiguration.load(configuration_path)")
+    && localCli.indexOf("LocalUserConfiguration.load(configuration_path)")
+      < localCli.indexOf("bootstrap.require_release_profile(configuration)")
+    && localCli.indexOf("bootstrap.require_release_profile(configuration)")
+      < localCli.lastIndexOf("LocalStaticAssets(args.assets)"),
+  "Local CLI must resolve manifest, config, and release profile before assets.",
+);
+const localConfiguration = read("backend/app/service/configuration.py").toString("utf8");
+for (const forbidden of ["entrypoint", "executable", "mount", "imageDigest"]) {
+  requireValue(!localConfiguration.includes(`"${forbidden}"`), "Operator configuration exposes " + forbidden + ".");
+}
+const staticAssets = read("backend/app/service/static_assets.py").toString("utf8");
+for (const marker of ["FILE_ATTRIBUTE_REPARSE_POINT", "_is_link_like", "os.path.samestat"]) {
+  requireValue(staticAssets.includes(marker), "Static asset boundary marker missing: " + marker);
+}
+const browserBoundary = read("frontend/src/local-service.ts").toString("utf8");
+for (const marker of ["#local=", "replaceState", "\"/v1/status\"", "credentials: \"omit\"", "redirect: \"error\""]) {
+  requireValue(browserBoundary.includes(marker), "Browser local-service boundary marker missing: " + marker);
+}
+const launcher = read("tools/run-local-service.mjs").toString("utf8");
+requireValue(launcher.includes("OPENTCAD_PYTHON"), "Local launcher needs an explicit interpreter override.");
+requireValue(launcher.includes("shell: false"), "Local launcher must not invoke a shell.");
+requireValue(launcher.includes("child.kill(signal)"), "Local launcher must forward service-manager signals.");
 
 console.log("M3 entry-gate records are internally consistent and remain fail-closed.");

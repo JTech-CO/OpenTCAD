@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "runtimeBackend": "docker",
+  "apiPort": 0,
+  "backupIntervalMs": 86400000,
+  "recoveryPageLimit": 100
+}

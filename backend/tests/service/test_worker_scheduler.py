@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from uuid import uuid4
 
 from backend.app.broker.backup_control import (
@@ -23,6 +24,8 @@ from backend.app.broker.backup_service import (
     ScheduledSQLiteBackupRunner,
 )
 from backend.app.broker.models import BrokerRequest
+from backend.app.broker.cancellation import CancellationRequest
+from backend.app.runtime.models import JobIdentity
 from backend.app.broker.state_composition import (
     DurableBrokerComposition,
     StateOperationContext,
@@ -30,11 +33,14 @@ from backend.app.broker.state_composition import (
 from backend.app.service.scheduler import (
     ScheduledBackupLoop,
     ScheduledBackupLoopConfiguration,
+    SchedulerError,
+    SchedulerErrorCode,
 )
 from backend.app.service.anti_rollback import NativeRestoreFloorStore
 from backend.app.service.credentials import InMemoryCredentialStore
 from backend.app.service.worker import (
     BackupImportWork,
+    CancelWork,
     ExecuteWork,
     LocalBrokerWorker,
     LocalLifecycleCoordinator,
@@ -97,6 +103,22 @@ class SlowComposition(DurableBrokerComposition):
         return {"operation": context.operation_id}
 
 
+class BlockingCancelComposition(DurableBrokerComposition):
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+        self.cancelled = asyncio.Event()
+
+    async def cancel(self, request, context):
+        self.started.set()
+        try:
+            await self.release.wait()
+        except asyncio.CancelledError:
+            self.cancelled.set()
+            raise
+        return {"operation": context.operation_id}
+
+
 class CountingControlStore(SQLiteBackupControlStore):
     def __init__(self, path, installation_id) -> None:
         super().__init__(path, installation_id)
@@ -108,6 +130,11 @@ class CountingControlStore(SQLiteBackupControlStore):
             admission,
             lease_duration_ms=lease_duration_ms,
         )
+
+
+class FailingRenewControlStore(SQLiteBackupControlStore):
+    def renew_operation(self, admission, *, lease_duration_ms):
+        raise BackupControlError(BackupControlErrorCode.CONTROL_UNAVAILABLE)
 
 
 class DummyBackupService(AuthenticatedSQLiteBackupService):
@@ -147,7 +174,47 @@ class DummyScheduledRunner(ScheduledSQLiteBackupRunner):
         return schedule_id
 
 
+class UnexpectedThenSuccessScheduledRunner(ScheduledSQLiteBackupRunner):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run_due(self, schedule_id, owner_id, *, lease_duration_ms, crash_signal=None):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("sensitive path: C:/private/backup-control.sqlite3")
+        return schedule_id
+
+
 class WorkerTransportTests(unittest.IsolatedAsyncioTestCase):
+    async def test_capacity_bounds_active_and_queued_requests(self) -> None:
+        coordinator = BlockingCoordinator()
+        worker = LocalBrokerWorker(
+            coordinator,
+            queue_capacity=1,
+            execution_concurrency=1,
+        )
+        await worker.start()
+        first = WorkerEnvelope(
+            str(uuid4()),
+            sha256(b"first").hexdigest(),
+            WorkerOperation.EXECUTE,
+            object(),
+        )
+        task = asyncio.create_task(worker.submit(first))
+        await coordinator.execution_started.wait()
+        second = WorkerEnvelope(
+            str(uuid4()),
+            sha256(b"second").hexdigest(),
+            WorkerOperation.EXECUTE,
+            object(),
+        )
+        with self.assertRaises(WorkerError) as raised:
+            await worker.submit(second)
+        self.assertEqual(raised.exception.code, WorkerErrorCode.CAPACITY_REACHED)
+        coordinator.release_execution.set()
+        self.assertEqual(await task, "executed")
+        await worker.close()
+
     async def test_single_owner_and_idempotent_result_cache(self) -> None:
         coordinator = RecordingCoordinator()
         worker = LocalBrokerWorker(coordinator, queue_capacity=4)
@@ -237,6 +304,91 @@ class WorkerTransportTests(unittest.IsolatedAsyncioTestCase):
                 offline,
             )
 
+    async def test_cancellation_admission_blocks_offline_snapshot_transition(self) -> None:
+        with TemporaryDirectory() as directory:
+            installation = str(uuid4())
+            control = SQLiteBackupControlStore(
+                Path(directory) / "control.sqlite3",
+                installation,
+            )
+            composition = BlockingCancelComposition()
+            coordinator = LocalLifecycleCoordinator(
+                composition,
+                control,
+                DummyBackupService(),
+                DummyScheduledRunner(),
+                NativeRestoreFloorStore(InMemoryCredentialStore()),
+            )
+            operation_id = str(uuid4())
+            cancel_task = asyncio.create_task(
+                coordinator.dispatch(
+                    WorkerOperation.CANCEL,
+                    CancelWork(
+                        CancellationRequest(JobIdentity(str(uuid4()))),
+                        StateOperationContext(operation_id),
+                    ),
+                ),
+            )
+            await composition.started.wait()
+            lease = control.begin_maintenance(
+                MaintenanceRequest(
+                    str(uuid4()),
+                    str(uuid4()),
+                    str(uuid4()),
+                    60_000,
+                ),
+            )
+            with self.assertRaises(BackupControlError) as raised:
+                control.mark_offline(lease)
+            self.assertEqual(
+                raised.exception.code,
+                BackupControlErrorCode.MAINTENANCE_NOT_QUIESCENT,
+            )
+            composition.release.set()
+            self.assertEqual(
+                await cancel_task,
+                {"operation": operation_id},
+            )
+            offline = control.mark_offline(lease)
+            control.end_maintenance(offline)
+
+    async def test_cancellation_stops_when_maintenance_admission_is_lost(self) -> None:
+        with TemporaryDirectory() as directory:
+            installation = str(uuid4())
+            control = FailingRenewControlStore(
+                Path(directory) / "control.sqlite3",
+                installation,
+            )
+            composition = BlockingCancelComposition()
+            coordinator = LocalLifecycleCoordinator(
+                composition,
+                control,
+                DummyBackupService(),
+                DummyScheduledRunner(),
+                NativeRestoreFloorStore(InMemoryCredentialStore()),
+            )
+            with patch(
+                "backend.app.service.worker._CANCELLATION_ADMISSION_LEASE_MS",
+                300,
+            ):
+                task = asyncio.create_task(
+                    coordinator.dispatch(
+                        WorkerOperation.CANCEL,
+                        CancelWork(
+                            CancellationRequest(JobIdentity(str(uuid4()))),
+                            StateOperationContext(str(uuid4())),
+                        ),
+                    ),
+                )
+                await composition.started.wait()
+                with self.assertRaises(BackupControlError) as raised:
+                    await asyncio.wait_for(task, timeout=1)
+            self.assertEqual(
+                raised.exception.code,
+                BackupControlErrorCode.CONTROL_UNAVAILABLE,
+            )
+            self.assertTrue(composition.cancelled.is_set())
+
     async def test_long_execution_renews_maintenance_admission(self) -> None:
         with TemporaryDirectory() as directory:
             installation = str(uuid4())
@@ -323,7 +475,12 @@ class WorkerTransportTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_cancel_control_lane_runs_while_execution_is_blocked(self) -> None:
         coordinator = BlockingCoordinator()
-        worker = LocalBrokerWorker(coordinator, execution_concurrency=1)
+        worker = LocalBrokerWorker(
+            coordinator,
+            queue_capacity=1,
+            control_capacity=1,
+            execution_concurrency=1,
+        )
         await worker.start()
         execute = WorkerEnvelope(
             str(uuid4()),
@@ -348,6 +505,41 @@ class WorkerTransportTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ScheduledBackupLoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_background_loop_redacts_unexpected_failure_and_retries(self) -> None:
+        runner = UnexpectedThenSuccessScheduledRunner()
+        schedule_id = "00000000-0000-0000-0000-000000000005"
+        observed: list[tuple[str, SchedulerError]] = []
+        loop = ScheduledBackupLoop(
+            runner,
+            ScheduledBackupLoopConfiguration(
+                (schedule_id,),
+                str(uuid4()),
+                poll_interval_ms=100,
+                claim_lease_ms=1_000,
+            ),
+            error_sink=lambda value, error: observed.append((value, error)),
+        )
+        await loop.start()
+        try:
+            async with asyncio.timeout(1):
+                while runner.calls < 2:
+                    await asyncio.sleep(0.01)
+            self.assertTrue(loop.running)
+        finally:
+            await loop.close()
+
+        self.assertEqual(len(observed), 1)
+        observed_id, error = observed[0]
+        self.assertEqual(observed_id, schedule_id)
+        self.assertIsInstance(error, SchedulerError)
+        self.assertEqual(error.code, SchedulerErrorCode.UNEXPECTED_FAILURE)
+        self.assertEqual(
+            error.as_dict(),
+            {"code": "scheduled-backup-unexpected-failure"},
+        )
+        self.assertNotIn("private", str(error))
+        self.assertEqual(loop.failures, {})
+
     async def test_run_once_treats_not_due_as_idle(self) -> None:
         runner = DummyScheduledRunner()
         first = "00000000-0000-0000-0000-000000000001"

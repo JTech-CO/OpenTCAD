@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from hashlib import sha256
 from io import BytesIO
@@ -26,6 +26,7 @@ from .errors import (
 )
 from .fence_authority import RuntimeFenceAuthority
 from .fencing import RuntimeFencingContext, enforce_runtime_object_fence
+from .product_fence_authority import ProductRuntimeFenceAuthority
 from .models import (
     ArtifactRecord,
     ContainerHandle,
@@ -52,6 +53,9 @@ ENTRYPOINT_LABEL = "io.opentcad.entrypoint"
 OUTPUT_LIMIT_LABEL = "io.opentcad.output-limit"
 MANAGED_LABEL_VALUE = "true"
 _CONTROL_OUTPUT_LIMIT = 1_048_576
+_MIN_OUTPUT_LIMIT = 1_024
+_MAX_OUTPUT_LIMIT = 1_073_741_824
+_RECOVERY_WAIT_TIMEOUT_MS = 30_000
 _ENTRYPOINT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 _ALLOWED_ENVIRONMENT = (
     "PATH",
@@ -201,11 +205,22 @@ class SubprocessOciCommandRunner:
                 timeout=timeout_ms / 1_000,
             )
             stdout, stderr = await asyncio.gather(stdout_task, stderr_task)
-        except TimeoutError:
-            process.kill()
-            await process.wait()
-            await asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
+        except BaseException:
+            if process.returncode is None:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+            await asyncio.shield(process.wait())
             input_task.cancel()
+            await asyncio.shield(
+                asyncio.gather(
+                    stdout_task,
+                    stderr_task,
+                    input_task,
+                    return_exceptions=True,
+                ),
+            )
             raise
         return OciCommandResult(
             process.returncode,
@@ -291,6 +306,25 @@ def _runtime_error(
         backend=backend.value,
         detail=detail,
     )
+
+
+def _recovery_output_limit(
+    labels: Mapping[str, str],
+    backend: RuntimeKind,
+) -> int:
+    raw_output_limit = labels.get(OUTPUT_LIMIT_LABEL)
+    try:
+        output_limit = int(raw_output_limit or "")
+    except ValueError:
+        output_limit = 0
+    if not _MIN_OUTPUT_LIMIT <= output_limit <= _MAX_OUTPUT_LIMIT:
+        raise _runtime_error(
+            ErrorCode.OPERATION_FENCED,
+            RuntimePhase.WAIT,
+            backend,
+            "runtime-output-limit-label-invalid",
+        )
+    return output_limit
 
 
 def _decode_json(payload: bytes, phase: RuntimePhase, backend: RuntimeKind) -> object:
@@ -519,10 +553,14 @@ class OciRuntimeBackend:
                 ):
                     return True
         descriptor = value.get("Descriptor")
-        platform = value.get("OCIPlatform")
+        digest = (
+            descriptor.get("digest")
+            if isinstance(descriptor, dict)
+            else value.get("Digest")
+        )
+        platform = value.get("OCIPlatform") or value.get("Platform")
         return (
-            isinstance(descriptor, dict)
-            and descriptor.get("digest") == image.platform_manifest_digest
+            digest == image.platform_manifest_digest
             and isinstance(platform, dict)
             and platform.get("os") == platform_os
             and _architecture(platform.get("architecture")) == platform_arch
@@ -555,8 +593,13 @@ class OciRuntimeBackend:
                 self.name,
                 "local-image-identity-mismatch",
             )
+        manifest_arguments = (
+            ("manifest", "inspect", "--verbose", image.reference)
+            if self.name is RuntimeKind.DOCKER
+            else ("manifest", "inspect", image.reference)
+        )
         manifest = await self._command(
-            ("manifest", "inspect", "--verbose", image.reference),
+            manifest_arguments,
             phase=RuntimePhase.IMAGE,
             error_code=ErrorCode.IMAGE_IDENTITY_MISMATCH,
         )
@@ -594,11 +637,11 @@ class OciRuntimeBackend:
                 "runtime-command-unavailable",
             ) from None
         if probe.returncode != 0:
-            await self._command(
-                ("pull", "--platform", image.platform, image.reference),
-                phase=RuntimePhase.IMAGE,
-                timeout_ms=600_000,
-                output_limit=8_388_608,
+            raise _runtime_error(
+                ErrorCode.IMAGE_IDENTITY_MISMATCH,
+                RuntimePhase.IMAGE,
+                self.name,
+                "approved-image-not-local",
             )
         return await self.inspect_image(image)
 
@@ -635,11 +678,37 @@ class OciRuntimeBackend:
             missing_code = ErrorCode.VOLUME_NOT_FOUND
         else:
             raise TypeError("OCI fence inspection requires a runtime handle.")
-        result = await self._command(
-            arguments,
-            phase=phase,
-            error_code=missing_code,
-        )
+        try:
+            result = await self._runner.run(
+                arguments,
+                timeout_ms=30_000,
+                output_limit=_CONTROL_OUTPUT_LIMIT,
+            )
+        except (OSError, TimeoutError):
+            raise _runtime_error(
+                ErrorCode.RUNTIME_UNAVAILABLE,
+                phase,
+                self.name,
+                "runtime-inspect-unavailable",
+            ) from None
+        if result.returncode != 0:
+            diagnostic = result.stderr.decode("utf-8", errors="replace").casefold()
+            if any(
+                marker in diagnostic
+                for marker in ("no such", "not found", "does not exist")
+            ):
+                raise _runtime_error(
+                    missing_code,
+                    phase,
+                    self.name,
+                    "runtime-object-not-found",
+                )
+            raise _runtime_error(
+                ErrorCode.RUNTIME_UNAVAILABLE,
+                phase,
+                self.name,
+                "runtime-inspect-failed",
+            )
         value = _decode_json(result.stdout, phase, self.name)
         if (
             not isinstance(value, dict)
@@ -687,13 +756,22 @@ class OciRuntimeBackend:
             )
         return observed
 
-    async def _list_names(self, object_type: str) -> tuple[str, ...]:
+    async def _list_names(
+        self,
+        object_type: str,
+        job_id: str | None = None,
+    ) -> tuple[str, ...]:
+        filters = [
+            "--filter",
+            f"label={MANAGED_LABEL}={MANAGED_LABEL_VALUE}",
+        ]
+        if job_id is not None:
+            filters.extend(("--filter", f"label=tcad.job_id={job_id}"))
         if object_type == "volume":
             arguments = (
                 "volume",
                 "ls",
-                "--filter",
-                f"label={MANAGED_LABEL}={MANAGED_LABEL_VALUE}",
+                *filters,
                 "--format",
                 "{{.Name}}",
             )
@@ -702,8 +780,7 @@ class OciRuntimeBackend:
                 "container",
                 "ls",
                 "--all",
-                "--filter",
-                f"label={MANAGED_LABEL}={MANAGED_LABEL_VALUE}",
+                *filters,
                 "--format",
                 "{{.Names}}",
             )
@@ -723,8 +800,8 @@ class OciRuntimeBackend:
             ) from None
 
     async def _list_managed(self, job_id: str | None) -> ManagedObjects:
-        volume_names = await self._list_names("volume")
-        container_names = await self._list_names("container")
+        volume_names = await self._list_names("volume", job_id)
+        container_names = await self._list_names("container", job_id)
         volumes: list[VolumeHandle] = []
         containers: list[ContainerHandle] = []
         nil_job = "00000000-0000-0000-0000-000000000000"
@@ -788,10 +865,14 @@ class OciRuntimeBackend:
             str(limits.pids),
             "--memory",
             str(limits.memory_bytes),
+            "--memory-swap",
+            str(limits.memory_bytes),
             "--cpus",
             format(limits.cpu_millis / 1_000, ".3f"),
             "--restart",
             "no",
+            "--pull",
+            "never",
             "--tmpfs",
             f"/tmp:rw,noexec,nosuid,nodev,size={limits.tmpfs_bytes}",
             "--mount",
@@ -967,18 +1048,32 @@ class _OciRuntimeJobBackend:
         return self._fence
 
     async def _invoke(self, phase: RuntimePhase, operation):
-        await self._backend.fence_authority.activate(
+        authority = self._backend.fence_authority
+        if (
+            isinstance(authority, ProductRuntimeFenceAuthority)
+            and phase is not RuntimePhase.WAIT
+        ):
+            async with authority.operation_guard(
+                self._fence,
+                phase=phase,
+                backend=self._backend.name,
+            ):
+                return await operation()
+        await authority.verify(
             self._fence,
             phase=phase,
             backend=self._backend.name,
         )
-        result = await operation()
-        await self._backend.fence_authority.verify(
-            self._fence,
-            phase=phase,
-            backend=self._backend.name,
-        )
-        return result
+        try:
+            return await operation()
+        finally:
+            await asyncio.shield(
+                authority.verify(
+                    self._fence,
+                    phase=phase,
+                    backend=self._backend.name,
+                ),
+            )
 
     async def create_volume(self) -> VolumeHandle:
         async def operation() -> VolumeHandle:
@@ -1200,19 +1295,34 @@ class _OciRuntimeJobBackend:
         self,
         container: ContainerHandle,
         classification_override: TerminalClassification | None = None,
+        *,
+        export_artifacts: bool = True,
     ) -> RunResult:
         spec = self._backend._specs.get(container.opaque_id)
-        if spec is None:
+        if spec is None and classification_override is None:
             raise _runtime_error(
                 ErrorCode.INVALID_STATE,
                 RuntimePhase.WAIT,
                 self._backend.name,
                 "runtime-spec-not-resident",
             )
+        if spec is None:
+            labels = await self._backend._inspect_labels(
+                container,
+                RuntimePhase.WAIT,
+            )
+            output_limit = _recovery_output_limit(
+                labels,
+                self._backend.name,
+            )
+            wait_timeout_ms = _RECOVERY_WAIT_TIMEOUT_MS
+        else:
+            output_limit = spec.spec.limits.output_bytes
+            wait_timeout_ms = spec.spec.limits.timeout_ms
         wait = await self._backend._command(
             ("container", "wait", container.opaque_id),
             phase=RuntimePhase.WAIT,
-            timeout_ms=spec.spec.limits.timeout_ms,
+            timeout_ms=wait_timeout_ms,
             error_code=ErrorCode.WAIT_FAILED,
         )
         try:
@@ -1227,7 +1337,7 @@ class _OciRuntimeJobBackend:
         logs = await self._backend._command(
             ("container", "logs", container.opaque_id),
             phase=RuntimePhase.WAIT,
-            output_limit=spec.spec.limits.output_bytes,
+            output_limit=output_limit,
             error_code=ErrorCode.WAIT_FAILED,
         )
         inspect = await self._backend._command(
@@ -1272,7 +1382,11 @@ class _OciRuntimeJobBackend:
             classification = TerminalClassification.NONZERO_EXIT
 
         artifacts: tuple[ArtifactRecord, ...] = ()
-        if classification is TerminalClassification.SUCCEEDED:
+        if (
+            classification is TerminalClassification.SUCCEEDED
+            and export_artifacts
+            and spec is not None
+        ):
             archive, artifacts = await self._backend._export_artifacts(
                 self._fence,
                 spec,
@@ -1282,7 +1396,7 @@ class _OciRuntimeJobBackend:
             classification,
             exit_code,
             duration_ms,
-            spec.spec.limits.output_bytes,
+            output_limit,
             logs.observed_bytes,
             logs.captured_bytes,
             logs.truncated,
@@ -1292,7 +1406,7 @@ class _OciRuntimeJobBackend:
         )
 
     async def wait(self, container: ContainerHandle) -> RunResult:
-        async def operation() -> RunResult:
+        async def observe() -> RunResult:
             observed = await self._backend._inspect_fence(
                 container,
                 RuntimePhase.WAIT,
@@ -1303,9 +1417,42 @@ class _OciRuntimeJobBackend:
                 RuntimePhase.WAIT,
                 self._backend.name,
             )
-            return await self._terminal_result(container)
+            return await self._terminal_result(
+                container,
+                export_artifacts=False,
+            )
 
-        return await self._invoke(RuntimePhase.WAIT, operation)
+        result = await self._invoke(RuntimePhase.WAIT, observe)
+        if result.classification is not TerminalClassification.SUCCEEDED:
+            return result
+
+        async def export() -> RunResult:
+            observed = await self._backend._inspect_fence(
+                container,
+                RuntimePhase.ARTIFACT,
+            )
+            enforce_runtime_object_fence(
+                self._fence,
+                observed,
+                RuntimePhase.ARTIFACT,
+                self._backend.name,
+            )
+            spec = self._backend._specs.get(container.opaque_id)
+            if spec is None:
+                raise _runtime_error(
+                    ErrorCode.INVALID_STATE,
+                    RuntimePhase.ARTIFACT,
+                    self._backend.name,
+                    "runtime-spec-not-resident",
+                )
+            archive, artifacts = await self._backend._export_artifacts(
+                self._fence,
+                spec,
+            )
+            self._backend._artifact_archives[container.opaque_id] = archive
+            return replace(result, artifacts=artifacts)
+
+        return await self._invoke(RuntimePhase.ARTIFACT, export)
 
     async def kill(
         self,
@@ -1326,6 +1473,12 @@ class _OciRuntimeJobBackend:
                 RuntimePhase.KILL,
                 self._backend.name,
             )
+            if container.opaque_id not in self._backend._specs:
+                labels = await self._backend._inspect_labels(
+                    container,
+                    RuntimePhase.WAIT,
+                )
+                _recovery_output_limit(labels, self._backend.name)
             await self._backend._command(
                 ("container", "kill", container.opaque_id),
                 phase=RuntimePhase.KILL,

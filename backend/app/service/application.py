@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from hashlib import sha256
+import hmac
 from pathlib import Path
 from uuid import UUID, uuid5
 
@@ -15,7 +16,7 @@ from backend.app.broker.backup_service import (
 )
 from backend.app.broker.sqlite_snapshot import SQLiteOfflineSnapshotManager
 from backend.app.broker.state_composition import BrokerStartupRequest
-from backend.app.product.gates import ProductActivationToken
+from backend.app.product.gates import ProductActivationToken, ProductGateReport
 
 from .credentials import (
     NativeCredentialStore,
@@ -29,6 +30,8 @@ from .scheduler import (
     ScheduledBackupLoop,
     ScheduledBackupLoopConfiguration,
 )
+from .static_assets import LocalStaticAssets
+from .status import LocalProductStatus
 from .worker import (
     LocalBrokerWorker,
     LocalLifecycleCoordinator,
@@ -84,6 +87,9 @@ class OpenTcadLocalService:
         control: SQLiteBackupControlStore,
         snapshot_manager: SQLiteOfflineSnapshotManager,
         credentials: NativeCredentialStore,
+        *,
+        static_assets: LocalStaticAssets | None = None,
+        status_report: ProductGateReport | None = None,
     ) -> None:
         if not isinstance(configuration, LocalServiceConfiguration):
             raise TypeError("Local service requires configuration.")
@@ -104,13 +110,29 @@ class OpenTcadLocalService:
             raise TypeError("Local service requires snapshot manager.")
         if not isinstance(credentials, NativeCredentialStore):
             raise TypeError("Local service requires native credentials.")
+        if (static_assets is None) != (status_report is None):
+            raise TypeError("Local browser assets and status report must be paired.")
+        if static_assets is not None and not isinstance(static_assets, LocalStaticAssets):
+            raise TypeError("Local service static assets are invalid.")
+        if status_report is not None and (
+            not isinstance(status_report, ProductGateReport)
+            or not status_report.ready
+            or status_report.manifest_sha256 != activation.manifest_sha256
+        ):
+            raise PermissionError("Local service status report is not activated.")
 
         keyring = load_backup_keyring(credentials)
-        bearer = load_or_create_secret(
+        bearer_root = load_or_create_secret(
             credentials,
             "opentcad",
             "local-api-v1",
         )
+        bearer = hmac.new(
+            bearer_root,
+            b"OpenTCAD local browser session v1\x00"
+            + configuration.startup_id.encode("ascii"),
+            sha256,
+        ).digest()
         backup_service = AuthenticatedSQLiteBackupService(
             snapshot_manager,
             control,
@@ -129,12 +151,17 @@ class OpenTcadLocalService:
             NativeRestoreFloorStore(credentials),
         )
         self._configuration = configuration
+        self._composition = composition
         self._control = control
         self._worker = LocalBrokerWorker(coordinator)
+        self._status_report = status_report
+        self._started = False
         self._server = LocalApiServer(
             LocalBrokerApi(self._worker),
             bearer,
             configuration.bind,
+            static_assets=static_assets,
+            status_provider=(self._status if status_report is not None else None),
         )
         self._scheduler = ScheduledBackupLoop(
             scheduled_runner,
@@ -143,7 +170,19 @@ class OpenTcadLocalService:
                 configuration.installation_id,
             ),
         )
-        self._started = False
+
+    def _status(self) -> LocalProductStatus:
+        report = self._status_report
+        if report is None:
+            raise RuntimeError("Local browser status is not configured.")
+        return LocalProductStatus.activated(
+            report,
+            self._composition.runtime_kind,
+            service_ready=self._started,
+            recovery_ready=self._composition.ready,
+            scheduler_running=self._scheduler.running,
+            scheduler_degraded=bool(self._scheduler.failures),
+        )
 
     @property
     def started(self) -> bool:
@@ -152,6 +191,14 @@ class OpenTcadLocalService:
     @property
     def port(self) -> int:
         return self._server.port
+
+    @property
+    def startup_id(self) -> str:
+        return self._configuration.startup_id
+
+    @property
+    def browser_url(self) -> str:
+        return self._server.browser_url
 
     async def start(self) -> None:
         if self._started:

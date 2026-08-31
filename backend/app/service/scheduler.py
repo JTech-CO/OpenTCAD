@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from uuid import UUID, uuid5
 
 from backend.app.broker.backup_control import (
@@ -19,9 +20,30 @@ from backend.app.broker.backup_service import (
 
 
 SCHEDULED_BACKUP_AUTOMATION_PRODUCT_ENABLED = True
-SchedulerFailureCode = BackupControlErrorCode | AuthenticatedBackupErrorCode
+
+
+class SchedulerErrorCode(StrEnum):
+    UNEXPECTED_FAILURE = "scheduled-backup-unexpected-failure"
+
+
+class SchedulerError(Exception):
+    """Stable scheduler failure that never exposes the original exception."""
+
+    def __init__(self, code: SchedulerErrorCode) -> None:
+        if not isinstance(code, SchedulerErrorCode):
+            raise TypeError("SchedulerError requires SchedulerErrorCode.")
+        self.code = code
+        super().__init__(code.value)
+
+    def as_dict(self) -> dict[str, str]:
+        return {"code": self.code.value}
+
+
+SchedulerFailureCode = (
+    BackupControlErrorCode | AuthenticatedBackupErrorCode | SchedulerErrorCode
+)
 SchedulerErrorSink = Callable[
-    [str, BackupControlError | AuthenticatedBackupError],
+    [str, BackupControlError | AuthenticatedBackupError | SchedulerError],
     None,
 ]
 
@@ -108,7 +130,7 @@ class ScheduledBackupLoop:
     def _record_failure(
         self,
         schedule_id: str,
-        error: BackupControlError | AuthenticatedBackupError,
+        error: BackupControlError | AuthenticatedBackupError | SchedulerError,
     ) -> None:
         self._failures[schedule_id] = error.code
         if self._error_sink:
@@ -145,6 +167,11 @@ class ScheduledBackupLoop:
                     self._record_failure(schedule_id, error)
             except AuthenticatedBackupError as error:
                 self._record_failure(schedule_id, error)
+            except Exception:
+                self._record_failure(
+                    schedule_id,
+                    SchedulerError(SchedulerErrorCode.UNEXPECTED_FAILURE),
+                )
         return completed
 
     async def _run(self) -> None:
