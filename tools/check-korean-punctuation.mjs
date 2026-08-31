@@ -26,6 +26,9 @@ async function markdownFiles(directory) {
 const paths = [
   ...koreanDocuments.map((path) => join(projectRoot, path)),
   ...(await markdownFiles(join(projectRoot, "docs", "ko"))),
+  ...(await markdownFiles(join(projectRoot, "validation"))).filter((path) =>
+    path.endsWith(".ko.md"),
+  ),
 ];
 
 const violations = [];

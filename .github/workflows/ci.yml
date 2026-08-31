@@ -9,6 +9,7 @@ on:
       - "fix/**"
       - "docs/**"
       - "chore/**"
+      - "codex/**"
 
 permissions:
   contents: read
@@ -18,6 +19,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  platform-contracts:
+    name: Host contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run M3 host contract suite
+        run: >-
+          python -m unittest
+          backend.tests.product.test_gates
+          backend.tests.runtime.test_oci_backend
+          backend.tests.service.test_credentials
+          backend.tests.service.test_anti_rollback
+          backend.tests.service.test_worker_scheduler
+          backend.tests.service.test_local_api
+          backend.tests.service.test_application
+
+      - name: Observe host runtimes without granting approval
+        continue-on-error: true
+        run: python tools/qualify-runtime.py --output validation/evidence/m3/runtime-host-ci.json
+
+      - name: Upload unapproved host observation
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: runtime-host-observation-${{ matrix.os }}
+          path: validation/evidence/m3/runtime-host-ci.json
+          if-no-files-found: warn
+
   web:
     name: Static web quality gates
     runs-on: ubuntu-latest
@@ -42,7 +84,7 @@ jobs:
         run: npm ci
 
       - name: Check contract records
-        run: npm run check:m0 && npm run check:m1 && npm run check:m2
+        run: npm run check:m0 && npm run check:m1 && npm run check:m2 && npm run check:m3
 
       - name: Check Korean punctuation
         run: npm run check:ko-copy

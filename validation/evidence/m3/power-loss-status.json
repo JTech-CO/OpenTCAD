@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "power-loss-qualification-status",
+  "status": "blocked-external-lab-required",
+  "requiredCutPoints": [
+    "control-commit",
+    "state-backup",
+    "authority-backup",
+    "authentication-record",
+    "export-publication",
+    "restore-floor-commit",
+    "state-restore",
+    "authority-restore",
+    "import-record",
+    "import-publication"
+  ],
+  "requiredRepetitionsPerCut": 10,
+  "requiredPhysicalCutRuns": 100,
+  "actualPhysicalCutRuns": 0,
+  "abruptPowerCut": false,
+  "writeCacheConfigurationRecorded": false,
+  "everyRebootCompleted": false,
+  "processHardExitSurrogate": {
+    "hardExitCheckpoints": 8,
+    "suiteTestCases": 38,
+    "passed": true,
+    "qualifiesAsPhysicalPowerLoss": false
+  },
+  "qualified": false
+}

@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "productEnabled": false,
+  "approvalId": null,
+  "approvedBy": null,
+  "approvedAt": null,
+  "gates": [
+    {
+      "id": "runtime-adapters",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/implementation-contracts.json",
+          "sha256": "3fa0b1dafe7876cfb715cd9ecf2b3fda53f20b2c9982f309e0100bdac42ba732"
+        },
+        {
+          "path": "validation/evidence/m3/runtime-host-windows.json",
+          "sha256": "57e0e390a81de0f0e88b231fae115c85e51954f42bb4bf1f6cd4d4f0b7a90134"
+        }
+      ]
+    },
+    {
+      "id": "native-fencing",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/implementation-contracts.json",
+          "sha256": "3fa0b1dafe7876cfb715cd9ecf2b3fda53f20b2c9982f309e0100bdac42ba732"
+        }
+      ]
+    },
+    {
+      "id": "local-transport",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/implementation-contracts.json",
+          "sha256": "3fa0b1dafe7876cfb715cd9ecf2b3fda53f20b2c9982f309e0100bdac42ba732"
+        }
+      ]
+    },
+    {
+      "id": "lifecycle-integration",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/implementation-contracts.json",
+          "sha256": "3fa0b1dafe7876cfb715cd9ecf2b3fda53f20b2c9982f309e0100bdac42ba732"
+        }
+      ]
+    },
+    {
+      "id": "credentials-and-scheduler",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/implementation-contracts.json",
+          "sha256": "3fa0b1dafe7876cfb715cd9ecf2b3fda53f20b2c9982f309e0100bdac42ba732"
+        },
+        {
+          "path": "validation/evidence/m3/platform-matrix.json",
+          "sha256": "9188bc93b5ea7ec4f7229434d709bf08136694e1a473da84bdbeef06c5dcf28c"
+        }
+      ]
+    },
+    {
+      "id": "power-loss",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/power-loss-status.json",
+          "sha256": "debec907428c4e2ec36f2822a074876df02ff76acd06448369a6ba45132b1821"
+        }
+      ]
+    },
+    {
+      "id": "platform-qualification",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/platform-matrix.json",
+          "sha256": "9188bc93b5ea7ec4f7229434d709bf08136694e1a473da84bdbeef06c5dcf28c"
+        },
+        {
+          "path": "validation/evidence/m3/runtime-host-windows.json",
+          "sha256": "57e0e390a81de0f0e88b231fae115c85e51954f42bb4bf1f6cd4d4f0b7a90134"
+        }
+      ]
+    },
+    {
+      "id": "solver-release",
+      "approved": false,
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": [
+        {
+          "path": "validation/evidence/m3/solver-release-status.json",
+          "sha256": "da40d66feb6bd1c6a706c056163f20d7263559ea1101f38bba9e8cd2fb30e718"
+        }
+      ]
+    }
+  ],
+  "runtime": {
+    "grants": []
+  }
+}

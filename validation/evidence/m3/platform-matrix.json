@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "cross-platform-runtime-qualification",
+  "status": "blocked",
+  "requiredPlatforms": ["windows", "macos", "linux"],
+  "platforms": [
+    {
+      "platform": "windows",
+      "observation": "validation/evidence/m3/runtime-host-windows.json",
+      "dockerQualified": false,
+      "podmanQualified": false,
+      "solverQualified": false,
+      "powerLossQualified": false,
+      "qualified": false
+    },
+    {
+      "platform": "macos",
+      "observation": null,
+      "dockerQualified": false,
+      "podmanQualified": false,
+      "solverQualified": false,
+      "powerLossQualified": false,
+      "qualified": false
+    },
+    {
+      "platform": "linux",
+      "observation": null,
+      "dockerQualified": false,
+      "podmanQualified": false,
+      "solverQualified": false,
+      "powerLossQualified": false,
+      "qualified": false
+    }
+  ],
+  "qualified": false
+}

@@ -11,5 +11,7 @@ This directory contains engine-independent validation contracts and runtime-foun
 - `manifests/`: frozen contract evidence and quarantined image references
 - `plans/`: non-promoting external reference observation plans with no expected values
 - `schemas/`: JSON schemas for corpus, report, observation plan, and observation envelopes
+- `evidence/m3/`: hash-bound implementation, host, platform, power-loss, and solver-release status records
+- `power-loss/`: external physical power-cut qualification procedure
 
-Run `npm run test:validation`, `npm run test:runtime`, or the complete `npm run check`. Use `npm run observe:base001 -- --help` to inspect the external-only observation interface. There is intentionally no baseline-update command, and the observer cannot write evidence inside OpenTCAD.
+Run npm run test:validation, npm run test:runtime, npm run check:m3, or the complete npm run check. Use python tools/qualify-runtime.py --output validation/evidence/m3/runtime-host-local.json on a qualification host. A runtime observation does not grant approval. There is intentionally no baseline-update command.

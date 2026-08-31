@@ -23,8 +23,9 @@
     "coverage": "npm run coverage --workspace @opentcad/web",
     "check:m0": "node tools/check-m0.mjs",
     "check:m1": "node tools/check-m1.mjs",
+    "check:m3": "node tools/check-m3.mjs",
     "check:ko-copy": "node tools/check-korean-punctuation.mjs",
-    "check": "npm run check:m0 && npm run check:m1 && npm run check:m2 && npm run check:ko-copy && npm run lint && npm run test && npm run build",
+    "check": "npm run check:m0 && npm run check:m1 && npm run check:m2 && npm run check:m3 && npm run check:ko-copy && npm run lint && npm run test && npm run build",
     "test:runtime": "node tools/run-python-tests.mjs",
     "check:m2": "node tools/check-m2.mjs"
   }

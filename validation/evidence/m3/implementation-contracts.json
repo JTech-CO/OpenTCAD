@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "m3-implementation-contracts",
+  "observedAt": "2026-08-31T21:22:43.1869329+09:00",
+  "status": "implemented-contract-only",
+  "testCases": {
+    "productGateAndOciService": 28,
+    "durableCrashAndBackupSubset": 38,
+    "passed": true
+  },
+  "implemented": [
+    "docker-podman-oci-adapter",
+    "native-object-fencing",
+    "localhost-authenticated-api",
+    "bounded-worker-transport",
+    "maintenance-admission-heartbeat",
+    "offline-import-native-floor-arbitration",
+    "execution-cancellation-recovery-maintenance-backup-composition",
+    "windows-dpapi",
+    "windows-credential-manager",
+    "macos-keychain",
+    "linux-secret-service",
+    "versioned-secret-service-encoding",
+    "scheduled-backup-loop",
+    "os-protected-restore-floor"
+  ],
+  "qualificationScope": "No physical runtime, solver, cross-OS host, or abrupt-power evidence is inferred from contract tests."
+}

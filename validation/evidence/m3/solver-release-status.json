@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "solver-release-status",
+  "status": "blocked",
+  "solverLicenses": [
+    {
+      "solver": "suprem-iv.gs",
+      "licenseEvidence": null,
+      "review": "not-provided",
+      "approved": false
+    },
+    {
+      "solver": "devsim",
+      "licenseEvidence": null,
+      "review": "pending-release-review",
+      "approved": false
+    }
+  ],
+  "immutableImages": {
+    "source": "validation/manifests/image-lock.json",
+    "approvedCount": 0,
+    "allPinnedByDigest": false
+  },
+  "sbom": {
+    "approvedCount": 0,
+    "allHashesRecorded": false
+  },
+  "numericalCorpus": {
+    "source": "validation/corpus/index.json",
+    "candidateCases": 11,
+    "approvedBaselines": 0,
+    "approved": false
+  },
+  "releaseApproved": false
+}

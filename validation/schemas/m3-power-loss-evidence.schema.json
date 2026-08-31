@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opentcad.invalid/schemas/m3-power-loss-evidence.schema.json",
+  "title": "OpenTCAD M3 physical power-loss evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceId",
+    "platform",
+    "filesystem",
+    "storageDevice",
+    "writeCacheConfiguration",
+    "cutPoints",
+    "repetitionsPerCut",
+    "abruptPowerCut",
+    "everyRebootCompleted",
+    "partialPublications",
+    "sqliteIntegrityFailures",
+    "rollbackViolations",
+    "reviewer",
+    "reviewedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "evidenceId": { "type": "string", "format": "uuid" },
+    "platform": { "enum": ["windows", "macos", "linux"] },
+    "filesystem": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "storageDevice": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "writeCacheConfiguration": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "cutPoints": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "control-commit" },
+        { "const": "state-backup" },
+        { "const": "authority-backup" },
+        { "const": "authentication-record" },
+        { "const": "export-publication" },
+        { "const": "restore-floor-commit" },
+        { "const": "state-restore" },
+        { "const": "authority-restore" },
+        { "const": "import-record" },
+        { "const": "import-publication" }
+      ],
+      "items": false,
+      "minItems": 10,
+      "maxItems": 10
+    },
+    "repetitionsPerCut": { "type": "integer", "minimum": 10 },
+    "abruptPowerCut": { "const": true },
+    "everyRebootCompleted": { "const": true },
+    "partialPublications": { "const": 0 },
+    "sqliteIntegrityFailures": { "const": 0 },
+    "rollbackViolations": { "const": 0 },
+    "reviewer": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "reviewedAt": { "type": "string", "format": "date-time" }
+  }
+}

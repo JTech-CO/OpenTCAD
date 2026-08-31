@@ -1,0 +1,50 @@
+{
+  "approvedImageCount": 0,
+  "backends": {
+    "docker": {
+      "daemonReachable": false,
+      "installed": true,
+      "nativeConformancePassed": false,
+      "qualified": false,
+      "reason": "daemon-unavailable-or-invalid-info",
+      "runtimeInfoEligible": false,
+      "serverArchitecture": null,
+      "serverOs": null,
+      "serverVersion": null
+    },
+    "podman": {
+      "daemonReachable": false,
+      "installed": false,
+      "nativeConformancePassed": false,
+      "qualified": false,
+      "reason": "cli-not-installed",
+      "runtimeInfoEligible": false,
+      "serverArchitecture": null,
+      "serverOs": null,
+      "serverVersion": null
+    }
+  },
+  "contractSuite": {
+    "modules": [
+      "backend.tests.product.test_gates",
+      "backend.tests.runtime.test_oci_backend",
+      "backend.tests.service.test_credentials",
+      "backend.tests.service.test_anti_rollback",
+      "backend.tests.service.test_worker_scheduler",
+      "backend.tests.service.test_local_api",
+      "backend.tests.service.test_application"
+    ],
+    "passed": true
+  },
+  "evidenceType": "runtime-host-observation",
+  "host": {
+    "machine": "amd64",
+    "python": "3.12.13",
+    "release": "11",
+    "system": "windows"
+  },
+  "observedAt": "2026-08-31T12:23:21.672463Z",
+  "qualified": false,
+  "schemaVersion": 1,
+  "status": "blocked"
+}

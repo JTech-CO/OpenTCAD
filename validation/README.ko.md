@@ -11,5 +11,7 @@
 - `manifests/`: 고정 contract 증거와 격리된 image reference
 - `plans/`: expected value가 없고 승격하지 않는 외부 참조 관찰 계획
 - `schemas/`: corpus, report, 관찰 계획, 관찰 envelope의 JSON schema
+- `evidence/m3/`: hash로 고정한 구현, host, platform, 전원 차단, solver release 상태 기록
+- `power-loss/`: 외부 실제 전원 차단 자격 검증 절차
 
-`npm run test:validation`, `npm run test:runtime` 또는 전체 `npm run check`를 실행합니다. `npm run observe:base001 -- --help`로 외부 전용 관찰 interface를 확인할 수 있습니다. Baseline update command는 의도적으로 제공하지 않으며 observer는 OpenTCAD 내부에 증거를 쓸 수 없습니다.
+npm run test:validation, npm run test:runtime, npm run check:m3 또는 전체 npm run check를 실행합니다. 자격 host에서는 python tools/qualify-runtime.py --output validation/evidence/m3/runtime-host-local.json을 실행합니다. Runtime 관측 기록만으로 승인을 부여하지 않습니다. Baseline update command는 의도적으로 제공하지 않습니다.

@@ -1,0 +1,1 @@
+"""Product-boundary contract tests."""
