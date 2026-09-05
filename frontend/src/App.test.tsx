@@ -36,7 +36,7 @@ describe("OpenTCAD static experience", () => {
     ).toHaveAttribute("href", "#landing-main");
     expect(screen.getByText("Understand the device.")).toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: "Explore the workspace" }),
+      screen.getAllByRole("button", { name: "Open device laboratory" }),
     ).toHaveLength(2);
     expect(
       screen.getByText(
@@ -61,8 +61,9 @@ describe("OpenTCAD static experience", () => {
     render(<App />);
 
     fireEvent.click(
-      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+      screen.getAllByRole("button", { name: "Open device laboratory" })[0],
     );
+    fireEvent.click(screen.getByRole("button", {name: "Reference workspace"}));
 
     expect(document.querySelector(".app-shell")).toHaveAttribute(
       "data-ui",
@@ -88,8 +89,9 @@ describe("OpenTCAD static experience", () => {
     render(<App />);
 
     fireEvent.click(
-      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+      screen.getAllByRole("button", { name: "Open device laboratory" })[0],
     );
+    fireEvent.click(screen.getByRole("button", {name: "Reference workspace"}));
     fireEvent.click(
       screen.getByRole("button", { name: "Run reference workflow" }),
     );
@@ -116,8 +118,9 @@ describe("OpenTCAD static experience", () => {
     render(<App />);
 
     await user.click(
-      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+      screen.getAllByRole("button", { name: "Open device laboratory" })[0],
     );
+    await user.click(screen.getByRole("button", {name: "Reference workspace"}));
     await user.click(screen.getByRole("button", { name: "Runtime" }));
 
     expect(
@@ -169,8 +172,9 @@ describe("OpenTCAD static experience", () => {
     render(<App localBootstrap={{ token: "A".repeat(43) }} />);
 
     await user.click(
-      screen.getAllByRole("button", { name: "Explore the workspace" })[0],
+      screen.getAllByRole("button", { name: "Open device laboratory" })[0],
     );
+    await user.click(screen.getByRole("button", {name: "Reference workspace"}));
     await user.click(screen.getByRole("button", { name: "Runtime" }));
     expect(fetcher).not.toHaveBeenCalled();
     await user.click(

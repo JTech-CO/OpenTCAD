@@ -1,0 +1,28 @@
+name: Experimental DEVSIM laboratory
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  numerical:
+    name: Real DEVSIM (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install explicitly pinned research dependencies
+        run: python -m pip install -r backend/app/experimental/requirements.txt
+      - name: Run native numerical and HTTP acceptance tests (not M3 qualification)
+        env:
+          OPENTCAD_TEST_DEVSIM: '1'
+          PYTHONUTF8: '1'
+        run: python -m unittest backend.tests.experimental.test_numerical backend.tests.experimental.test_service -v

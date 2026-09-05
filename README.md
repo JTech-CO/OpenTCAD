@@ -12,9 +12,11 @@ The default public experience is English. Select **한국어** at any time to sw
 
 ## Current release
 
-This source builds a safe static workspace. The public preview follows the deployed `main` revision and may not yet include development-branch changes. The workspace includes:
+This source includes a working educational device laboratory and a separate reference workspace. The public preview follows the deployed `main` revision and may not yet include development-branch changes. Features include:
 
 - an English-first introduction page with a persistent Korean language option;
+- an immediate, parameter-driven long-channel NMOS calculator;
+- an opt-in local DEVSIM 2.11.0 PN-junction solver with I-V and spatial results, cancellation, numerical tests and replayable files;
 - process, device, curve-comparison, and runtime-boundary views;
 - project-file save/import, illustrative deck diagnostics, editable bias settings, and deterministic reference visuals;
 - material/terminal selection, cross-section zoom and pan, and read-only JSON/CSV result import and comparison;
@@ -24,7 +26,19 @@ This source builds a safe static workspace. The public preview follows the deplo
 - evidence-gated Docker and Podman adapters, durable fencing, an authenticated loopback service, OS credential adapters, lifecycle integration, and scheduled backup code with Python contract tests;
 - a static artifact that works under a GitHub Pages subpath or an ordinary local web server.
 
-This build does **not** execute submitted input, containers, SUPREM-IV.GS, Gmsh, or DEVSIM. The local product connection layer is implemented but activation is fail-closed: the committed M3 manifest grants no runtime authority because native runtime, three-platform, physical power-loss, solver-license, immutable-image, SBOM, and numerical-corpus approvals are incomplete. No third-party solver source or binary is distributed in this repository.
+The static build runs analytical calculations, not native solvers. The explicitly enabled experimental local service runs a fixed DEVSIM template using a separately installed solver; it never accepts arbitrary code or process decks. The M3 product remains fail-closed: its runtime, power-loss and solver-release approvals are unchanged. No third-party solver source or binary is distributed in this repository. This is not yet the complete SUPREM-to-DEVSIM process/device product.
+
+## Run the device laboratory
+
+See the [MVP laboratory guide](docs/en/mvp-laboratory.md) for Windows/macOS/Linux installation, physical assumptions, limits and reproducibility. The browser calculator needs only `npm ci` and `npm run dev`. After installing the pinned experimental Python requirements:
+
+```bash
+npm run build
+npm run test:mvp:solver
+npm run local:lab
+```
+
+Open the private URL printed by `local:lab`. Do not share its access token. This opt-in mode is separate from the M3-gated `local:serve` command.
 
 ## Explore the web app
 
@@ -43,7 +57,7 @@ npm install
 npm run dev
 ```
 
-Open the loopback URL printed by Vite. The introduction is the default route; `#workspace` opens the reference workspace directly.
+Open the loopback URL printed by Vite. The introduction is the default route; its primary action opens `#lab`. `#workspace` opens the separate reference workspace directly.
 
 To verify and preview the production build:
 
@@ -73,10 +87,11 @@ configuration paths, startup order, and current activation blockers.
 | GitHub Pages introduction and workspace | Yes | No |
 | Local static development and preview server | Yes | No |
 | Same-origin blocked local product preview | Yes | No |
+| Opt-in experimental local DEVSIM laboratory | Yes, separately installed solver | Fixed PN template only |
 | Runtime contracts and durable local service | Implemented, gate-disabled | No |
 | Connected Docker or Podman solver service | Awaiting external evidence | No |
 
-Every visible profile, cross-section, and I–V curve is deterministic reference data. It cannot be exported as a validated result and is never presented as converged solver output.
+The reference workspace remains illustrative. The laboratory separately labels analytical calculations and actual DEVSIM results. Its limited numerical tests are not M3 corpus approval or fabrication sign-off.
 
 ## Repository layout
 

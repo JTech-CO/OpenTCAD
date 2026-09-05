@@ -61,6 +61,14 @@ i18n
     }
   });
 
+for (const entry of await readdir(join(projectRoot, "frontend", "src", "mvp"))) {
+  if (!/\.tsx?$/u.test(entry)) continue;
+  const content = await readFile(join(projectRoot, "frontend", "src", "mvp", entry), "utf8");
+  content.split(/\r?\n/).forEach((line, index) => {
+    if (line.includes(emDash)) violations.push(`frontend/src/mvp/${entry}:${index + 1}`);
+  });
+}
+
 if (violations.length > 0) {
   console.error("Korean copy contains Unicode em dash punctuation:");
   violations.forEach((violation) => console.error(`- ${violation}`));

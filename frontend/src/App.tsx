@@ -24,6 +24,7 @@ import { initialMockRun, mockReducer, type MockRun } from "./m4/mock-workflow";
 import type { ImportedResult } from "./m4/results";
 import "./m4/workspace.css";
 import { LandingPage } from "./LandingPage";
+import { Laboratory } from "./mvp/Laboratory";
 import {
   fetchLocalProductStatus,
   type LocalProductStatus,
@@ -42,7 +43,7 @@ const productGateLabelKeys: Record<ProductGateId, MessageKey> = {
   "platform-qualification": "gatePlatformQualification",
   "solver-release": "gateSolverRelease",
 };
-type AppSurface = "intro" | "workspace";
+type AppSurface = "intro" | "workspace" | "lab";
 type LocalConnectionState =
   | "unavailable"
   | "available"
@@ -52,13 +53,15 @@ type LocalConnectionState =
 
 interface AppProps {
   localBootstrap?: LocalServiceBootstrap | null;
+  experimentToken?: string | null;
 }
 
 function getInitialSurface(): AppSurface {
+  if (window.location.hash === "#lab") return "lab";
   return window.location.hash === "#workspace" ? "workspace" : "intro";
 }
 
-function App({ localBootstrap = null }: AppProps) {
+function App({ localBootstrap = null, experimentToken = null }: AppProps) {
   const [locale, setLocale] = useState<Locale>(getInitialLocale);
   const [surface, setSurface] = useState<AppSurface>(getInitialSurface);
   const [view, setView] = useState<WorkspaceView>("process");
@@ -94,7 +97,7 @@ function App({ localBootstrap = null }: AppProps) {
 
   useEffect(() => {
     const syncSurface = () => {
-      setSurface(window.location.hash === "#workspace" ? "workspace" : "intro");
+      setSurface(getInitialSurface());
     };
 
     window.addEventListener("hashchange", syncSurface);
@@ -175,10 +178,12 @@ function App({ localBootstrap = null }: AppProps) {
         locale={locale}
         text={text}
         onLocaleChange={setLocale}
-        onOpenWorkspace={openWorkspace}
+        onOpenWorkspace={() => { window.location.hash = "lab"; setSurface("lab"); }}
       />
     );
   }
+
+  if (surface === "lab") return <Laboratory locale={locale} onLocaleChange={setLocale} onWorkspace={openWorkspace} onOverview={openOverview} experimentToken={experimentToken} />;
 
   return (
     <div className="app-shell" data-ui="precision-cad">
@@ -217,6 +222,9 @@ function App({ localBootstrap = null }: AppProps) {
         </div>
 
         <div className="topbar-actions">
+          <button type="button" className="overview-link" onClick={() => { window.location.hash = "lab"; setSurface("lab"); }}>
+            {locale === "ko" ? "소자 실험실" : "Device laboratory"}
+          </button>
           <button type="button" className="overview-link" onClick={openOverview}>
             {text("backToOverview")}
           </button>

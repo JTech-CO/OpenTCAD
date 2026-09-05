@@ -1,0 +1,9 @@
+devsim==2.11.0
+numpy==2.3.3
+mkl==2025.3.0; platform_system == "Windows"
+intel-openmp==2025.3.3; platform_system == "Windows"
+intel-cmplr-lib-ur==2025.3.3; platform_system == "Windows"
+onemkl-license==2025.3.0; platform_system == "Windows"
+tbb==2022.3.1; platform_system == "Windows"
+tcmlib==1.5.0; platform_system == "Windows"
+umf==1.0.3; platform_system == "Windows"

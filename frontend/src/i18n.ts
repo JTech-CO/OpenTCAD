@@ -233,11 +233,11 @@ export const en = {
   introTitleLead: "See the process.",
   introTitleAccent: "Understand the device.",
   introDescription:
-    "OpenTCAD brings process decks, device structures, and electrical response into one bilingual learning workspace. This public build is a safe, deterministic preview of the product experience.",
-  introOpenWorkspace: "Explore the workspace",
+    "Explore a parameter-driven NMOS calculator, run a fixed PN-junction template with your local DEVSIM installation, and save reproducible inputs and results. Process-deck execution remains separate and unapproved.",
+  introOpenWorkspace: "Open device laboratory",
   introViewSource: "View source",
   introStatus: "Current release",
-  introStatusValue: "Static reference workspace · no solver execution",
+  introStatusValue: "Browser calculator · opt-in local DEVSIM laboratory",
   introVisualLabel: "Reference visualization",
   introVisualState: "Static and safe",
   introVisualAlt:
@@ -248,19 +248,19 @@ export const en = {
   introCapabilitiesEyebrow: "Explore",
   introCapabilitiesTitle: "One workspace, from process intent to device response.",
   introCapabilitiesDescription:
-    "A focused product preview connects the language of fabrication, structure, bias, and electrical behavior without presenting illustrative data as solver results.",
+    "Separate analytical calculations, real local numerical solutions, and illustrative process references without mixing their claims.",
   introProcessTitle: "Process workspace",
   introProcessDetail:
     "Edit and check an illustrative deck, save project files, and inspect deterministic depth profiles.",
-  introDeviceTitle: "Device structure",
+  introDeviceTitle: "Calculate and solve",
   introDeviceDetail:
-    "Select material regions and terminals, zoom and pan the cross-section, and edit example bias conditions.",
+    "Change NMOS geometry and bias to recalculate curves immediately, or solve a 1D PN junction using the experimental local DEVSIM service.",
   introCompareTitle: "Curve comparison",
   introCompareDetail:
     "Import bounded JSON or CSV results and compare curves, profiles, or material maps without treating them as approved results.",
   introBoundaryTitle: "Runtime boundary",
   introBoundaryDetail:
-    "See exactly where the static site ends and a future isolated local engine begins.",
+    "Browser calculations require no server. Experimental DEVSIM uses fixed templates on localhost; the M3 product stays gated.",
   introWorkflowEyebrow: "Reference flow",
   introWorkflowTitle: "A clear path through the simulation story.",
   introWorkflowDescription:
@@ -276,13 +276,13 @@ export const en = {
   introScopeEyebrow: "Honest scope",
   introScopeTitle: "Useful today, explicit about what is not running.",
   introAvailableLabel: "Available now",
-  introAvailableTitle: "Bilingual static product preview",
+  introAvailableTitle: "Bilingual device laboratory",
   introAvailableDetail:
-    "Responsive UI, deterministic scientific visuals, paired documentation, automated checks, and GitHub Pages distribution are included.",
+    "Immediate analytical NMOS calculations, opt-in local DEVSIM PN solves, result replay, paired documentation and automated checks are included.",
   introUnavailableLabel: "Not in this build",
   introUnavailableTitle: "No browser-side solver execution",
   introUnavailableDetail:
-    "GitHub Pages does not execute submitted decks, shell commands, containers, SUPREM-IV.GS, or DEVSIM. The visible curves are reference data.",
+    "GitHub Pages does not execute submitted decks, shell commands, containers, SUPREM-IV.GS, or DEVSIM. It runs the analytical calculator; native DEVSIM requires the opt-in local laboratory.",
   introFooter:
     "Open-source software for learning semiconductor process and device simulation concepts.",
 } as const;
@@ -525,11 +525,11 @@ export const ko: Record<MessageKey, string> = {
   introTitleLead: "공정을 보고,",
   introTitleAccent: "소자를 이해합니다.",
   introDescription:
-    "OpenTCAD은 공정 덱, 소자 구조, 전기적 응답을 하나의 한·영 학습 작업공간으로 연결합니다. 이 공개 빌드는 제품 경험을 안전하고 결정론적으로 보여 주는 미리보기입니다.",
-  introOpenWorkspace: "작업공간 둘러보기",
+    "NMOS 파라미터 계산기를 사용하고 로컬에 설치한 DEVSIM으로 고정 PN 접합 템플릿을 해석하며 입력과 결과를 저장하세요. 공정 덱 실행은 별도 미승인 기능입니다.",
+  introOpenWorkspace: "소자 실험실 열기",
   introViewSource: "소스 보기",
   introStatus: "현재 릴리스",
-  introStatusValue: "정적 참조 작업공간 · 솔버 실행 없음",
+  introStatusValue: "브라우저 계산기 · 선택형 로컬 DEVSIM 실험실",
   introVisualLabel: "참조 시각화",
   introVisualState: "정적·안전 모드",
   introVisualAlt: "추상 반도체 단면과 과학 곡선으로 구성된 OpenTCAD 표지",
@@ -539,17 +539,17 @@ export const ko: Record<MessageKey, string> = {
   introCapabilitiesEyebrow: "둘러보기",
   introCapabilitiesTitle: "공정 의도부터 소자 응답까지 하나의 작업공간에서 확인합니다.",
   introCapabilitiesDescription:
-    "집중된 제품 미리보기에서 제조 공정, 구조, 바이어스, 전기적 동작의 언어를 연결하며 설명용 데이터를 솔버 결과처럼 제시하지 않습니다.",
+    "해석식 계산, 실제 로컬 수치 해석, 설명용 공정 참조를 구분해 각 결과의 의미를 명확하게 표시합니다.",
   introProcessTitle: "공정 작업공간",
   introProcessDetail:
     "설명용 덱을 편집·검사하고 프로젝트 파일을 저장하며 결정론적 깊이 프로파일을 확인합니다.",
-  introDeviceTitle: "소자 구조",
-  introDeviceDetail: "재료와 전극을 선택하고 단면을 확대·이동하며 예시 바이어스 조건을 편집합니다.",
+  introDeviceTitle: "계산과 해석",
+  introDeviceDetail: "NMOS 치수와 바이어스를 바꾸면 곡선이 즉시 다시 계산됩니다. 실험용 로컬 DEVSIM 서비스로 1D PN 접합도 해석할 수 있습니다.",
   introCompareTitle: "곡선 비교",
   introCompareDetail: "크기가 제한된 JSON 또는 CSV 결과를 가져와 곡선, 프로파일, 재료 배치도를 비교하며 승인된 결과로 간주하지 않습니다.",
   introBoundaryTitle: "런타임 경계",
   introBoundaryDetail:
-    "정적 사이트의 끝과 향후 격리된 로컬 엔진의 시작 지점을 명확히 보여 줍니다.",
+    "브라우저 계산에는 서버가 필요하지 않습니다. 실험용 DEVSIM은 localhost에서 고정 템플릿을 실행하며 M3 제품 승인 조건은 유지됩니다.",
   introWorkflowEyebrow: "참조 흐름",
   introWorkflowTitle: "시뮬레이션 흐름을 명확한 순서로 살펴봅니다.",
   introWorkflowDescription:
@@ -565,13 +565,13 @@ export const ko: Record<MessageKey, string> = {
   introScopeEyebrow: "정확한 제공 범위",
   introScopeTitle: "현재 쓸 수 있는 기능과 실행되지 않는 기능을 구분합니다.",
   introAvailableLabel: "현재 제공",
-  introAvailableTitle: "한·영 정적 제품 미리보기",
+  introAvailableTitle: "한·영 소자 실험실",
   introAvailableDetail:
-    "반응형 UI, 결정론적 과학 시각화, 한·영 문서, 자동 검사, GitHub Pages 배포를 제공합니다.",
+    "즉시 NMOS 해석식 계산, 선택형 로컬 DEVSIM PN 해석, 결과 재실행, 한·영 문서, 자동 검사를 제공합니다.",
   introUnavailableLabel: "현재 미제공",
   introUnavailableTitle: "브라우저 내부 솔버 실행 없음",
   introUnavailableDetail:
-    "GitHub Pages에서는 제출한 덱, 셸 명령, 컨테이너, SUPREM-IV.GS 또는 DEVSIM을 실행하지 않습니다. 화면의 곡선은 참조 데이터입니다.",
+    "GitHub Pages에서는 제출한 덱, 셸 명령, 컨테이너, SUPREM-IV.GS 또는 DEVSIM을 실행하지 않습니다. 해석식 계산기는 동작하며 네이티브 DEVSIM에는 선택형 로컬 실험실이 필요합니다.",
   introFooter: "반도체 공정과 소자 시뮬레이션 개념 학습을 위한 오픈 소스 소프트웨어입니다.",
 };
 
