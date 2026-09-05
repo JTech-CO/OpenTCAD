@@ -15,11 +15,8 @@ import {
   type Locale,
   type MessageKey,
 } from "./i18n";
-import {
-  DeviceCanvas,
-  IvCanvas,
-  ProfileCanvas,
-} from "./components/ScientificCanvas";
+import { IvCanvas, ProfileCanvas } from "./components/ScientificCanvas";
+import { DeviceCrossSection } from "./components/DeviceCrossSection";
 import { LandingPage } from "./LandingPage";
 import {
   fetchLocalProductStatus,
@@ -278,10 +275,10 @@ function App({ localBootstrap = null }: AppProps) {
           ))}
         </nav>
 
-        <section className="workflow-card" aria-labelledby="workflow-heading">
-          <div className="section-label" id="workflow-heading">
+        <details className="workflow-card">
+          <summary>
             {text("workflow")}
-          </div>
+          </summary>
           <ol className="workflow-list">
             {workflowSteps.map((step, index) => {
               const isComplete =
@@ -316,7 +313,7 @@ function App({ localBootstrap = null }: AppProps) {
               );
             })}
           </ol>
-        </section>
+        </details>
 
         <div className="education-note">
           <span className="education-icon" aria-hidden="true">
@@ -393,74 +390,77 @@ function App({ localBootstrap = null }: AppProps) {
         )}
       </main>
 
-      <aside className="inspector" aria-label={text("runDetails")}>
-        <section className="inspector-section">
-          <div className="section-label">{text("runDetails")}</div>
-          <div className="run-state" aria-live="polite" role="status">
-            <span className={`run-state-dot ${runState}`} aria-hidden="true" />
-            <div>
-              <strong>{text(runState)}</strong>
-              <span>ref-ui-0001</span>
+      <details className="inspector">
+        <summary>{text("runDetails")} · {text("provenance")}</summary>
+        <div className="inspector-content">
+          <section className="inspector-section">
+            <div className="section-label">{text("runDetails")}</div>
+            <div className="run-state" aria-live="polite" role="status">
+              <span className={`run-state-dot ${runState}`} aria-hidden="true" />
+              <div>
+                <strong>{text(runState)}</strong>
+                <span>ref-ui-0001</span>
+              </div>
             </div>
-          </div>
-          <div className="progress-track" aria-hidden="true">
-            <span style={{ width: `${progress}%` }} />
-          </div>
-          <dl className="detail-list">
-            <div>
-              <dt>{text("mode")}</dt>
-              <dd>{text(localSurface ? "localService" : "staticPreview")}</dd>
+            <div className="progress-track" aria-hidden="true">
+              <span style={{ width: `${progress}%` }} />
             </div>
-            <div>
-              <dt>{text("engine")}</dt>
-              <dd className="muted-value">
-                {localConnection === "connected"
-                  ? localStatus?.backend ?? text("localServiceBlocked")
-                  : text("disconnected")}
-              </dd>
-            </div>
-            <div>
-              <dt>{text("job")}</dt>
-              <dd>{text("referenceOnly")}</dd>
-            </div>
-          </dl>
-          <p className="inspector-help">
-            {text(
-              localConnection === "connected"
-                ? localAuthorized
-                  ? "localServiceAuthorized"
-                  : "localServiceBlocked"
-                : localSurface
-                  ? "localConnectionPrompt"
-                  : "engineUnavailable",
-            )}
-          </p>
-        </section>
+            <dl className="detail-list">
+              <div>
+                <dt>{text("mode")}</dt>
+                <dd>{text(localSurface ? "localService" : "staticPreview")}</dd>
+              </div>
+              <div>
+                <dt>{text("engine")}</dt>
+                <dd className="muted-value">
+                  {localConnection === "connected"
+                    ? localStatus?.backend ?? text("localServiceBlocked")
+                    : text("disconnected")}
+                </dd>
+              </div>
+              <div>
+                <dt>{text("job")}</dt>
+                <dd>{text("referenceOnly")}</dd>
+              </div>
+            </dl>
+            <p className="inspector-help">
+              {text(
+                localConnection === "connected"
+                  ? localAuthorized
+                    ? "localServiceAuthorized"
+                    : "localServiceBlocked"
+                  : localSurface
+                    ? "localConnectionPrompt"
+                    : "engineUnavailable",
+              )}
+            </p>
+          </section>
 
-        <section className="inspector-section">
-          <div className="section-label">{text("provenance")}</div>
-          <dl className="detail-list">
-            <div>
-              <dt>{text("appRevision")}</dt>
-              <dd>preview-r01</dd>
-            </div>
-            <div>
-              <dt>{text("dataset")}</dt>
-              <dd>{text("referenceDataset")}</dd>
-            </div>
-          </dl>
-        </section>
+          <section className="inspector-section">
+            <div className="section-label">{text("provenance")}</div>
+            <dl className="detail-list">
+              <div>
+                <dt>{text("appRevision")}</dt>
+                <dd>preview-r01</dd>
+              </div>
+              <div>
+                <dt>{text("dataset")}</dt>
+                <dd>{text("referenceDataset")}</dd>
+              </div>
+            </dl>
+          </section>
 
-        <section className="guard-card">
-          <span className="guard-mark" aria-hidden="true">
-            ≠
-          </span>
-          <div>
-            <strong>{text("numericalGuard")}</strong>
-            <p>{text("numericalGuardDetail")}</p>
-          </div>
-        </section>
-      </aside>
+          <section className="guard-card">
+            <span className="guard-mark" aria-hidden="true">
+              ≠
+            </span>
+            <div>
+              <strong>{text("numericalGuard")}</strong>
+              <p>{text("numericalGuardDetail")}</p>
+            </div>
+          </section>
+        </div>
+      </details>
     </div>
   );
 }
@@ -599,12 +599,18 @@ function ProcessView({
 
 function DeviceView({ text }: SharedTextProps) {
   const materials: Array<[MessageKey, string]> = [
-    ["silicon", "#16475a"],
-    ["oxide", "#86a9ae"],
-    ["polysilicon", "#d79b43"],
-    ["contact", "#e4edef"],
+    ["silicon", "#b9d9ec"],
+    ["dopedRegion", "#386cb0"],
+    ["oxide", "#eee5b5"],
+    ["polysilicon", "#d9a23e"],
+    ["contact", "#596a78"],
   ];
-  const electrodes: MessageKey[] = ["source", "gate", "drain", "substrate"];
+  const electrodes: Array<[string, MessageKey]> = [
+    ["S", "source"],
+    ["G", "gate"],
+    ["D", "drain"],
+    ["B", "substrate"],
+  ];
 
   return (
     <div className="device-grid">
@@ -616,9 +622,7 @@ function DeviceView({ text }: SharedTextProps) {
           </div>
           <span className="mini-badge">{text("referenceOnly")}</span>
         </div>
-        <div className="canvas-frame">
-          <DeviceCanvas ariaLabel={text("deviceAria")} />
-        </div>
+        <DeviceCrossSection text={text} />
         <div className="material-legend" aria-label={text("material")}>
           {materials.map(([label, color]) => (
             <span key={label}>
@@ -638,11 +642,10 @@ function DeviceView({ text }: SharedTextProps) {
             </div>
           </div>
           <div className="electrode-list">
-            {electrodes.map((electrode, index) => (
+            {electrodes.map(([symbol, electrode]) => (
               <div key={electrode}>
-                <span className="electrode-index">{String(index + 1).padStart(2, "0")}</span>
+                <span className="electrode-index">{symbol}</span>
                 <strong>{text(electrode)}</strong>
-                <span className="contact-state">{text("contact")}</span>
               </div>
             ))}
           </div>

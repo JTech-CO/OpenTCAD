@@ -25,7 +25,8 @@ function useResponsiveCanvas(draw: DrawCanvas) {
     const render = () => {
       const parentWidth = canvas.parentElement?.clientWidth ?? 0;
       const width = Math.max(320, Math.floor(parentWidth || canvas.clientWidth || 640));
-      const height = Math.max(240, Number(canvas.dataset.height ?? 360));
+      const fontScale = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 18) / 18;
+      const height = Math.max(240, Number(canvas.dataset.height ?? 360) * fontScale);
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
       const context = canvas.getContext("2d");
 
@@ -102,7 +103,7 @@ interface ProfileCanvasProps extends CanvasProps {
 export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) {
   const draw = useCallback<DrawCanvas>(
     (context, width, height) => {
-      const tickSize = Math.round(Math.min(15, Math.max(12, width / 82)));
+      const tickSize = Math.max(14, Math.round((parseFloat(getComputedStyle(document.documentElement).fontSize) || 18) * 0.8));
       const axisSize = tickSize + 1;
       const margin = {
         left: tickSize * 4.8,
@@ -115,6 +116,7 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
       const minLog = 14;
       const maxLog = 21;
       const maxDepth = 0.8;
+      const xDivisions = plotWidth < tickSize * 16 ? 2 : plotWidth < tickSize * 32 ? 4 : 8;
 
       context.fillStyle = "#041015";
       context.fillRect(0, 0, width, height);
@@ -124,7 +126,7 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
         margin.top,
         plotWidth,
         plotHeight,
-        8,
+        xDivisions,
         maxLog - minLog,
       );
 
@@ -144,9 +146,9 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
 
       context.textAlign = "center";
       context.textBaseline = "top";
-      for (let index = 0; index <= 8; index += 1) {
-        const depth = (maxDepth * index) / 8;
-        const x = margin.left + (plotWidth * index) / 8;
+      for (let index = 0; index <= xDivisions; index += 1) {
+        const depth = (maxDepth * index) / xDivisions;
+        const x = margin.left + (plotWidth * index) / xDivisions;
         context.fillText(depth.toFixed(1), x, margin.top + plotHeight + 10);
       }
 
@@ -223,148 +225,10 @@ export function ProfileCanvas({ ariaLabel, selectedField }: ProfileCanvasProps) 
   );
 }
 
-export function DeviceCanvas({ ariaLabel }: CanvasProps) {
-  const draw = useCallback<DrawCanvas>((context, width, height) => {
-    const left = 38;
-    const right = 20;
-    const top = 26;
-    const bottom = 38;
-    const plotWidth = width - left - right;
-    const plotHeight = height - top - bottom;
-    const surfaceY = top + plotHeight * 0.28;
-
-    const labelSize = Math.round(Math.min(16, Math.max(12, width / 74)));
-
-    context.fillStyle = "#041015";
-    context.fillRect(0, 0, width, height);
-
-    const siliconGradient = context.createLinearGradient(0, surfaceY, 0, top + plotHeight);
-    siliconGradient.addColorStop(0, "#153f50");
-    siliconGradient.addColorStop(0.42, "#12313f");
-    siliconGradient.addColorStop(1, "#0b222d");
-    context.fillStyle = siliconGradient;
-    context.fillRect(left, surfaceY, plotWidth, top + plotHeight - surfaceY);
-
-    context.fillStyle = "#7b9fa4";
-    context.fillRect(left, surfaceY - 9, plotWidth, 9);
-
-    const gateLeft = left + plotWidth * 0.39;
-    const gateWidth = plotWidth * 0.22;
-    context.fillStyle = "#d79b43";
-    context.fillRect(gateLeft, surfaceY - plotHeight * 0.22, gateWidth, plotHeight * 0.19);
-    context.fillStyle = "#f2c36a";
-    context.fillRect(gateLeft, surfaceY - plotHeight * 0.22, gateWidth, 5);
-
-    const drawJunction = (centerX: number, color: string) => {
-      const gradient = context.createRadialGradient(
-        centerX,
-        surfaceY + 18,
-        2,
-        centerX,
-        surfaceY + 18,
-        plotWidth * 0.19,
-      );
-      gradient.addColorStop(0, color);
-      gradient.addColorStop(0.36, `${color}a8`);
-      gradient.addColorStop(1, "rgba(10, 31, 40, 0)");
-      context.fillStyle = gradient;
-      context.beginPath();
-      context.ellipse(
-        centerX,
-        surfaceY + plotHeight * 0.13,
-        plotWidth * 0.19,
-        plotHeight * 0.23,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      context.fill();
-    };
-
-    drawJunction(left + plotWidth * 0.22, "#ff496d");
-    drawJunction(left + plotWidth * 0.78, "#ff496d");
-
-    context.fillStyle = "#dbe8e9";
-    const contactWidth = plotWidth * 0.12;
-    context.fillRect(left + plotWidth * 0.14, surfaceY - 6, contactWidth, 6);
-    context.fillRect(left + plotWidth * 0.74, surfaceY - 6, contactWidth, 6);
-
-    context.save();
-    context.strokeStyle = "rgba(140, 204, 211, 0.2)";
-    context.lineWidth = 0.8;
-    const columns = 24;
-    const rows = 12;
-    for (let row = 0; row <= rows; row += 1) {
-      const y = surfaceY + ((top + plotHeight - surfaceY) * row) / rows;
-      const offset = row % 2 === 0 ? 0 : plotWidth / columns / 2;
-      context.beginPath();
-      context.moveTo(left, y);
-      context.lineTo(left + plotWidth, y);
-      context.stroke();
-
-      for (let column = 0; column <= columns; column += 1) {
-        const x = Math.min(left + plotWidth, left + (plotWidth * column) / columns + offset);
-        if (row < rows) {
-          const nextY =
-            surfaceY + ((top + plotHeight - surfaceY) * (row + 1)) / rows;
-          const nextX =
-            left +
-            (plotWidth * Math.min(columns, column + (row % 2 === 0 ? 1 : 0))) /
-              columns;
-          context.beginPath();
-          context.moveTo(x, y);
-          context.lineTo(nextX, nextY);
-          context.stroke();
-        }
-      }
-    }
-    context.restore();
-
-    context.save();
-    context.strokeStyle = "rgba(104, 211, 208, 0.38)";
-    context.setLineDash([5, 5]);
-    for (let index = 1; index <= 3; index += 1) {
-      context.beginPath();
-      context.ellipse(
-        left + plotWidth / 2,
-        surfaceY + plotHeight * (0.28 + index * 0.08),
-        plotWidth * (0.12 + index * 0.11),
-        plotHeight * (0.06 + index * 0.045),
-        0,
-        0,
-        Math.PI * 2,
-      );
-      context.stroke();
-    }
-    context.restore();
-
-    context.font = `700 ${labelSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
-    context.textAlign = "center";
-    context.fillStyle = "#e9f3f4";
-    context.fillText("S", left + plotWidth * 0.2, surfaceY - 14);
-    context.fillText("G", left + plotWidth * 0.5, surfaceY - plotHeight * 0.25);
-    context.fillText("D", left + plotWidth * 0.8, surfaceY - 14);
-    context.fillStyle = "#708d98";
-    context.font = `${Math.max(12, labelSize - 1)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
-    context.fillText("1.20 μm", left + plotWidth / 2, height - 14);
-  }, []);
-
-  const ref = useResponsiveCanvas(draw);
-
-  return (
-    <canvas
-      ref={ref}
-      className="science-canvas device-canvas"
-      data-height="430"
-      role="img"
-      aria-label={ariaLabel}
-    />
-  );
-}
 
 export function IvCanvas({ ariaLabel }: CanvasProps) {
   const draw = useCallback<DrawCanvas>((context, width, height) => {
-    const tickSize = Math.round(Math.min(15, Math.max(12, width / 82)));
+    const tickSize = Math.max(14, Math.round((parseFloat(getComputedStyle(document.documentElement).fontSize) || 18) * 0.8));
     const axisSize = tickSize + 1;
     const margin = {
       left: tickSize * 4.8,
@@ -376,20 +240,21 @@ export function IvCanvas({ ariaLabel }: CanvasProps) {
     const plotHeight = height - margin.top - margin.bottom;
     const maxVoltage = 1.2;
     const maxCurrent = 0.32;
+    const xDivisions = plotWidth < tickSize * 12 ? 2 : plotWidth < tickSize * 24 ? 3 : 6;
     const colors = ["#6f8190", "#55c8be", "#f2b75e", "#ff7086"];
 
     context.fillStyle = "#041015";
     context.fillRect(0, 0, width, height);
-    drawGrid(context, margin.left, margin.top, plotWidth, plotHeight, 6, 5);
+    drawGrid(context, margin.left, margin.top, plotWidth, plotHeight, xDivisions, 5);
 
     context.save();
     context.font = `${tickSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
     context.fillStyle = "#9ab4bc";
     context.textAlign = "center";
     context.textBaseline = "top";
-    for (let index = 0; index <= 6; index += 1) {
-      const voltage = (maxVoltage * index) / 6;
-      const x = margin.left + (plotWidth * index) / 6;
+    for (let index = 0; index <= xDivisions; index += 1) {
+      const voltage = (maxVoltage * index) / xDivisions;
+      const x = margin.left + (plotWidth * index) / xDivisions;
       context.fillText(voltage.toFixed(1), x, margin.top + plotHeight + 10);
     }
 

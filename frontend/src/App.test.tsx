@@ -239,6 +239,33 @@ describe("OpenTCAD static experience", () => {
     ).toBeEnabled();
   });
 
+  it.each([false, true])("shows the same legible device map in the local surface: %s", (local) => {
+    window.history.replaceState(null, "", "/#workspace");
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    render(<App localBootstrap={local ? { token: "A".repeat(43) } : null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Device" }));
+
+    const drawing = screen.getByRole("img", { name: en.deviceAria });
+    expect(drawing.tagName.toLowerCase()).toBe("svg");
+    expect(drawing).toHaveAccessibleDescription(en.deviceDescription);
+    expect(drawing.querySelectorAll("[data-region]")).toHaveLength(8);
+    expect(drawing.querySelector("canvas, filter, radialGradient")).toBeNull();
+    expect(screen.getByText(en.schematicNotice)).toBeVisible();
+    expect(screen.getByRole("region", { name: en.crossSection })).toHaveAttribute("tabindex", "0");
+    const details = document.querySelector("details.inspector");
+    expect(details).not.toHaveAttribute("open");
+    fireEvent.click(details!.querySelector("summary")!);
+    expect(details).toHaveAttribute("open");
+
+    fireEvent.click(screen.getByRole("button", { name: "한국어" }));
+    const koreanDrawing = screen.getByRole("img", { name: ko.deviceAria });
+    expect(koreanDrawing).toHaveAccessibleDescription(ko.deviceDescription);
+    expect(within(koreanDrawing).getByText(ko.pTypeSilicon)).toBeInTheDocument();
+    expect(screen.getByText(ko.schematicNotice)).toBeVisible();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("keeps English and Korean translation keys in parity", () => {
     expect(Object.keys(ko).sort()).toEqual(Object.keys(en).sort());
   });
