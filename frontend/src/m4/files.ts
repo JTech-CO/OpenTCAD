@@ -5,7 +5,8 @@ export class WorkspaceFileError extends Error {
 }
 
 /** Bounded JSON with duplicate-key rejection, including escaped key aliases. */
-export function parseWorkspaceJson(source: string): unknown {
+export function parseWorkspaceJson(source: string, maximumNodes = 25000): unknown {
+  if (!Number.isInteger(maximumNodes) || maximumNodes < 1 || maximumNodes > 120000) throw new WorkspaceFileError();
   if (new TextEncoder().encode(source).length > MAX_FILE_BYTES) throw new WorkspaceFileError();
   let cursor = 0;
   let nodes = 0;
@@ -23,7 +24,7 @@ export function parseWorkspaceJson(source: string): unknown {
     return fail();
   };
   const value = (depth: number): unknown => {
-    if (depth > 12 || ++nodes > 25000) return fail();
+    if (depth > 12 || ++nodes > maximumNodes) return fail();
     whitespace();
     const character = source[cursor];
     if (character === '"') return string();

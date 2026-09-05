@@ -2,6 +2,7 @@ import type { Locale } from "../i18n";
 import { Calculator } from "./Calculator";
 import { mvpEn, mvpKo } from "./copy";
 import { SolverPanel } from "./SolverPanel";
+import { MosPanel } from "./MosPanel";
 
 export function Laboratory({ locale, onLocaleChange, onWorkspace, onOverview, experimentToken }: {
   locale: Locale; onLocaleChange: (value: Locale) => void; onWorkspace: () => void; onOverview: () => void;
@@ -16,6 +17,7 @@ export function Laboratory({ locale, onLocaleChange, onWorkspace, onOverview, ex
       <button className="quiet-button" onClick={() => onLocaleChange("ko")} aria-pressed={locale === "ko"}>한국어</button>
     </div></nav><header className="lab-heading"><div><h1>{t.title}</h1><p>{t.subtitle}</p></div></header>
     <Calculator locale={locale} />
+    <MosPanel locale={locale} token={experimentToken} />
     <SolverPanel locale={locale} token={experimentToken} />
   </main>;
 }

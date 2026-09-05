@@ -23,7 +23,7 @@ def validate_input(value):
     result["intervals"] = value["intervals"]
     return result
 
-def strict_json(source):
+def strict_json(source, maximum_bytes=8192):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -31,7 +31,7 @@ def strict_json(source):
                 raise ValueError("duplicate-key")
             result[key] = value
         return result
-    if len(source) > 8192:
+    if len(source) > maximum_bytes:
         raise ValueError("input-size")
     return json.loads(source, object_pairs_hook=pairs, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite")))
 
@@ -40,3 +40,9 @@ def canonical(value):
 
 def digest(value):
     return hashlib.sha256(canonical(value)).hexdigest()
+
+def validate_job_input(value):
+    if isinstance(value, dict) and "model" in value:
+        from .mos_contract import validate_mos
+        return validate_mos(value)
+    return validate_input(value)

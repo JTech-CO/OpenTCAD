@@ -13,12 +13,15 @@ from uuid import UUID
 from backend.app.service.local_api import LocalApiBind, LocalApiServer, LocalBrokerApi
 from backend.app.service.static_assets import LocalStaticAssets
 from backend.app.service.cli import _stop_event
-from .contract import MODEL, canonical, digest, strict_json, validate_input
+from .contract import MODEL, canonical, digest, strict_json, validate_job_input
+from .mos_contract import MODEL as MOS_MODEL
 
 ROOT = Path(__file__).resolve().parents[3]
 
-async def run_solver(value, timeout=60):
-    payload = validate_input(value)
+async def run_solver(value, timeout=120, process_profile=None):
+    payload = validate_job_input(value)
+    if payload.get("dopingMode") == "suprem" and process_profile is None:
+        raise ValueError("suprem-not-configured")
     allowed = {"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE"}
     environment = {k: v for k, v in os.environ.items() if k.upper() in allowed}
     environment.update(PYTHONUTF8="1", PYTHONNOUSERSITE="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
@@ -45,7 +48,7 @@ async def run_solver(value, timeout=60):
         await process.wait()
         raise
     async def communicate():
-        process.stdin.write(canonical(payload))
+        process.stdin.write(canonical({"input":payload,"processProfile":process_profile}) if payload.get("dopingMode")=="suprem" else canonical(payload))
         await process.stdin.drain()
         process.stdin.close()
         chunks, size = [], 0
@@ -88,15 +91,16 @@ class LaboratoryApi(LocalBrokerApi):
     Reuses the HTTP server's loopback/Host/Origin/Bearer/size checks. Only one
     child process may run. History is bounded and session-local, not durable.
     """
-    def __init__(self, runner=run_solver):
+    def __init__(self, runner=run_solver, process_profile=None):
         self.jobs = {}
         self.tasks = {}
         self.runner = runner
+        self.process_profile = process_profile
 
     async def _run(self, identifier, inputs):
         record = self.jobs[identifier]
         try:
-            result = await self.runner(inputs)
+            result = await self.runner(inputs, process_profile=self.process_profile) if inputs.get("dopingMode")=="suprem" else await self.runner(inputs)
             record.update(state="complete", result=result)
         except asyncio.CancelledError:
             record.update(state="cancelled")
@@ -106,12 +110,14 @@ class LaboratoryApi(LocalBrokerApi):
     async def handle(self, method, path, body):
         try:
             if method == "GET" and path == "/v1/lab/status":
-                return 200, {"schemaVersion": 1, "mode": "experimental", "model": MODEL, "productEnabled": False}
+                return 200, {"schemaVersion": 1, "mode": "experimental", "model": MODEL, "models":[MODEL,MOS_MODEL], "supremProfileSha256":self.process_profile["sourceSha256"] if self.process_profile else None, "productEnabled": False}
             if method == "POST" and path == "/v1/lab/jobs":
                 value = strict_json(body)
                 if not isinstance(value, dict) or set(value) != {"requestId", "input"}:
                     raise ValueError("request-shape")
-                identifier, inputs = job_id(value["requestId"]), validate_input(value["input"])
+                identifier, inputs = job_id(value["requestId"]), validate_job_input(value["input"])
+                if inputs.get("dopingMode")=="suprem" and self.process_profile is None:
+                    return 409, {"error":"suprem-not-configured"}
                 if identifier in self.jobs:
                     if self.jobs[identifier]["inputSha256"] != digest(inputs):
                         return 409, {"error": "request-conflict"}
@@ -156,7 +162,9 @@ async def serve(args):
     # Run a real solve before claiming the service is ready. No mock fallback.
     from .contract import DEFAULT
     await run_solver({**DEFAULT, "voltageV": 0, "intervals": 100})
-    api = LaboratoryApi()
+    from .suprem import read_structure
+    profile = read_structure(args.suprem_structure) if args.suprem_structure else None
+    api = LaboratoryApi(process_profile=profile)
     server = LocalApiServer(api, secrets.token_bytes(32), LocalApiBind("127.0.0.1", args.port),
                             static_assets=LocalStaticAssets(args.assets), maximum_body_bytes=8192,
                             maximum_connections=8, request_timeout_seconds=10)
@@ -175,6 +183,7 @@ def main():
     parser.add_argument("--enable-experimental-devsim", action="store_true", required=True)
     parser.add_argument("--assets", type=Path, default=ROOT / "frontend" / "dist")
     parser.add_argument("--port", type=int, default=0)
+    parser.add_argument("--suprem-structure", type=Path, help="Read-only SUPREM B.9305 2D structure snapshot; never executes uploaded code")
     args = parser.parse_args()
     try:
         asyncio.run(serve(args))

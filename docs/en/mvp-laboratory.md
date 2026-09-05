@@ -8,6 +8,10 @@ simulation, and numerical checks with replayable result records. It is not the f
 SUPREM-IV.GS-to-DEVSIM process/device product. M3 activation, image redistribution,
 physical power-loss qualification, and the approved numerical corpus remain unchanged.
 
+The laboratory also includes a real 2D MOSFET template and a bounded SUPREM
+active-doping transfer path. See [2D MOSFET and process coupling](mos-process.md)
+for model limits, commands and the local SUPREM-to-DEVSIM observation.
+
 The optional DEVSIM package and its helpers are Apache-2.0; their authoritative
 LICENSE and NOTICE ship with the upstream package. NumPy and Windows MKL/runtime
 dependencies retain their own installed license notices. No solver source or binary
@@ -107,7 +111,7 @@ The model excludes avalanche, self-heating, tunneling, degenerate statistics and
 process-derived doping. See [DEVSIM's PN example](https://github.com/devsim/devsim/blob/main/examples/diode/diode_1d.py).
 
 Inputs are locked during a run. Cancel terminates and reaps the child process.
-Each process has a 60-second deadline and a 2 MiB diagnostic/output limit; one solve
+Each process has a 120-second deadline and a 2 MiB diagnostic/output limit; one solve
 can run at a time. The service retains at most 32 jobs until restart. A failed solve
 has no success result. Communication failure is not proof of cancellation: use Cancel
 or Recheck status. This is not an OS sandbox, durable broker or restart-safe job service.

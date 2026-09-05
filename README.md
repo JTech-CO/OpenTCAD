@@ -17,6 +17,8 @@ This source includes a working educational device laboratory and a separate refe
 - an English-first introduction page with a persistent Korean language option;
 - an immediate, parameter-driven long-channel NMOS calculator;
 - an opt-in local DEVSIM 2.11.0 PN-junction solver with I-V and spatial results, cancellation, numerical tests and replayable files;
+- a real 2D DEVSIM MOSFET template with editable geometry/bias, triangular-mesh potential/carrier/doping maps and drain I-V curves;
+- experimental SUPREM active-doping import and a fixed-deck process CLI, with a real Podman SUPREM-to-2D-DEVSIM observation;
 - process, device, curve-comparison, and runtime-boundary views;
 - project-file save/import, illustrative deck diagnostics, editable bias settings, and deterministic reference visuals;
 - material/terminal selection, cross-section zoom and pan, and read-only JSON/CSV result import and comparison;
@@ -39,6 +41,8 @@ npm run local:lab
 ```
 
 Open the private URL printed by `local:lab`. Do not share its access token. This opt-in mode is separate from the M3-gated `local:serve` command.
+
+See [2D MOSFET and SUPREM coupling](docs/en/mos-process.md) for the supported geometry, process CLI, structure transfer, numerical checks and remaining limitations.
 
 ## Explore the web app
 

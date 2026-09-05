@@ -233,7 +233,7 @@ export const en = {
   introTitleLead: "See the process.",
   introTitleAccent: "Understand the device.",
   introDescription:
-    "Explore a parameter-driven NMOS calculator, run a fixed PN-junction template with your local DEVSIM installation, and save reproducible inputs and results. Process-deck execution remains separate and unapproved.",
+    "Calculate NMOS curves, run real 1D PN or 2D MOSFET templates with local DEVSIM, and save reproducible inputs and results. Experimental SUPREM coupling transfers active doping from a separately run process.",
   introOpenWorkspace: "Open device laboratory",
   introViewSource: "View source",
   introStatus: "Current release",
@@ -254,7 +254,7 @@ export const en = {
     "Edit and check an illustrative deck, save project files, and inspect deterministic depth profiles.",
   introDeviceTitle: "Calculate and solve",
   introDeviceDetail:
-    "Change NMOS geometry and bias to recalculate curves immediately, or solve a 1D PN junction using the experimental local DEVSIM service.",
+    "Recalculate analytical NMOS curves immediately, or run a local 1D PN or 2D MOSFET solve with computed spatial fields.",
   introCompareTitle: "Curve comparison",
   introCompareDetail:
     "Import bounded JSON or CSV results and compare curves, profiles, or material maps without treating them as approved results.",
@@ -278,7 +278,7 @@ export const en = {
   introAvailableLabel: "Available now",
   introAvailableTitle: "Bilingual device laboratory",
   introAvailableDetail:
-    "Immediate analytical NMOS calculations, opt-in local DEVSIM PN solves, result replay, paired documentation and automated checks are included.",
+    "Immediate NMOS calculations, local DEVSIM PN and 2D MOSFET solves, experimental SUPREM doping import, result replay and paired documentation are included.",
   introUnavailableLabel: "Not in this build",
   introUnavailableTitle: "No browser-side solver execution",
   introUnavailableDetail:
@@ -525,7 +525,7 @@ export const ko: Record<MessageKey, string> = {
   introTitleLead: "공정을 보고,",
   introTitleAccent: "소자를 이해합니다.",
   introDescription:
-    "NMOS 파라미터 계산기를 사용하고 로컬에 설치한 DEVSIM으로 고정 PN 접합 템플릿을 해석하며 입력과 결과를 저장하세요. 공정 덱 실행은 별도 미승인 기능입니다.",
+    "NMOS 곡선을 계산하고 로컬 DEVSIM으로 실제 1D PN·2D MOSFET 템플릿을 해석하며 입력과 결과를 저장하세요. 실험용 SUPREM 연계는 별도로 실행한 공정의 활성 도핑을 전달합니다.",
   introOpenWorkspace: "소자 실험실 열기",
   introViewSource: "소스 보기",
   introStatus: "현재 릴리스",
@@ -544,7 +544,7 @@ export const ko: Record<MessageKey, string> = {
   introProcessDetail:
     "설명용 덱을 편집·검사하고 프로젝트 파일을 저장하며 결정론적 깊이 프로파일을 확인합니다.",
   introDeviceTitle: "계산과 해석",
-  introDeviceDetail: "NMOS 치수와 바이어스를 바꾸면 곡선이 즉시 다시 계산됩니다. 실험용 로컬 DEVSIM 서비스로 1D PN 접합도 해석할 수 있습니다.",
+  introDeviceDetail: "NMOS 해석식 곡선을 즉시 다시 계산하거나, 로컬 1D PN·2D MOSFET 해석을 실행해 계산된 공간 분포를 확인합니다.",
   introCompareTitle: "곡선 비교",
   introCompareDetail: "크기가 제한된 JSON 또는 CSV 결과를 가져와 곡선, 프로파일, 재료 배치도를 비교하며 승인된 결과로 간주하지 않습니다.",
   introBoundaryTitle: "런타임 경계",
@@ -567,7 +567,7 @@ export const ko: Record<MessageKey, string> = {
   introAvailableLabel: "현재 제공",
   introAvailableTitle: "한·영 소자 실험실",
   introAvailableDetail:
-    "즉시 NMOS 해석식 계산, 선택형 로컬 DEVSIM PN 해석, 결과 재실행, 한·영 문서, 자동 검사를 제공합니다.",
+    "즉시 NMOS 계산, 로컬 DEVSIM PN·2D MOSFET 해석, 실험용 SUPREM 도핑 가져오기, 결과 재실행과 한·영 문서를 제공합니다.",
   introUnavailableLabel: "현재 미제공",
   introUnavailableTitle: "브라우저 내부 솔버 실행 없음",
   introUnavailableDetail:

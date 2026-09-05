@@ -1,5 +1,6 @@
 node_modules/
 .venv-mvp/
+.experimental-results/
 frontend/dist/
 frontend/coverage/
 frontend/playwright-report/

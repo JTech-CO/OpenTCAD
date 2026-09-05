@@ -28,7 +28,7 @@ jobs:
         env:
           OPENTCAD_TEST_DEVSIM: '1'
           PYTHONUTF8: '1'
-        run: python -m unittest backend.tests.experimental.test_numerical backend.tests.experimental.test_service -v
+        run: python -m unittest backend.tests.experimental.test_numerical backend.tests.experimental.test_service backend.tests.experimental.test_mos -v
       - name: Diagnose native loader on failed numerical checks
         if: failure()
         env:

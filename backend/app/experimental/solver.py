@@ -119,8 +119,15 @@ def solve_pn(value):
 
 def main():
     try:
-        data = strict_json(sys.stdin.buffer.read(8193))
-        result = solve_pn(data)
+        data = strict_json(sys.stdin.buffer.read(4_194_305), maximum_bytes=4_194_304)
+        profile = None
+        if isinstance(data, dict) and set(data)=={"input","processProfile"}:
+            profile, data = data["processProfile"], data["input"]
+        if isinstance(data, dict) and "model" in data:
+            from .mos_solver import solve_mos
+            result = solve_mos(data, profile)
+        else:
+            result = solve_pn(data)
         print("OPENTCAD_RESULT=" + canonical(result).decode("ascii"), flush=True)
     except Exception:
         # Native paths and diagnostics remain private to the child process.

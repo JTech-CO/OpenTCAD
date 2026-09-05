@@ -24,3 +24,9 @@
 .lab-solver .m4-toolbar { margin-block: 1rem; }.lab-inputs select { background: #061319; color: #edf6fa; border: 1px solid #60808e; font: inherit; padding: .55rem; }.lab-provenance { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; }
 @media (max-width: 65rem) { .lab-layout { grid-template-columns: 1fr; }.lab-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 40rem) { .lab-inputs, .lab-metrics { grid-template-columns: 1fr; }.laboratory { padding: .75rem; }.lab-calculator,.lab-solver {padding: .75rem;} }
+.mos-map { margin-inline: 0; overflow-x: auto; }
+.mos-map select { max-width: 100%; background: #061319; color: #edf6fa; font: inherit; padding: .55rem; }
+.mos-map svg { width: 100%; min-width: 540px; }
+.mos-map .m4-toolbar { align-items: center; }
+.mos-map input[type="checkbox"] { width: 1.2rem; height: 1.2rem; margin-right: .6rem; }
+.mos-hash { overflow-wrap: anywhere; }

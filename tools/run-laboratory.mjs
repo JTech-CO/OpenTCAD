@@ -10,7 +10,7 @@ if (!existsSync(python)) {
   process.exit(1);
 }
 const test = process.argv.includes("--test");
-const child = spawn(python, test ? ["-m", "unittest", "backend.tests.experimental.test_numerical", "-v"]
+const child = spawn(python, test ? ["-m", "unittest", "backend.tests.experimental.test_numerical", "backend.tests.experimental.test_mos", "-v"]
   : ["-m", "backend.app.experimental.service", "--enable-experimental-devsim", ...process.argv.slice(2)], {
   cwd: root, shell: false, windowsHide: true, stdio: "inherit",
   env: { ...process.env, PYTHONUTF8: "1", ...(test ? { OPENTCAD_TEST_DEVSIM: "1" } : {}) },

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "classification": "non-baseline-local-experimental-observation",
+  "productApproved": false,
+  "baselinePromotionAllowed": false,
+  "date": "2026-09-06",
+  "processRuntime": "Podman in Debian WSL on Windows",
+  "deviceRuntime": "DEVSIM 2.11.0 on Windows, Python 3.14",
+  "supremImageId": "sha256:b5007db97c9453a2e546f5b8ce10a912282973bc2662fee33e5cb46a560ed735",
+  "supremExecutableSha256": "9c6d7a0b842c908b06f001d9a077c8a1975ab962956397e5ec7361c918eb7805",
+  "deckSha256": "2e387aaaf3e482c51177493fe4bba9ff26ce803921b1f7880efc0bad19b71f97",
+  "structureSha256": "75cb2c97bb69be3c39171ebf1211c2eae908520bf7f5af42a5798e2d21a04199",
+  "repeatedStructureByteIdentical": true,
+  "process": {"gateLengthUm": 1, "doseCm2": 100000000000000, "energyKeV": 30, "annealMinutes": 10, "temperatureC": 950},
+  "device": {"model": "devsim-mos-2d-300K-v1", "gateV": 1, "drainV": 0.1, "widthUm": 10, "oxideNm": 10, "refinement": 1},
+  "drainCurrentA": 0.0001155487654401231,
+  "maxCurrentToleranceRatio": 0.0032276703187418773,
+  "doubledDose": {
+    "doseCm2": 200000000000000,
+    "structureSha256": "96ddf0a4209e1814d9f15c9e2e4cd818c532e77bbd2d1ac6ed2e63724a5f27a2",
+    "drainCurrentA": 0.00011922093521030303
+  },
+  "deviceReplayNumericallyReproduced": true,
+  "deviceReplayByteIdentical": true,
+  "authenticatedHttpSupremProfileToNativeMosVerified": true,
+  "managedContainersRemaining": 0,
+  "geometryTransfer": "active-doping-only, barycentric interpolation onto rectangular template",
+  "rawArtifacts": "local ignored .experimental-results; not redistributed or promoted",
+  "limitations": ["not calibrated process/device accuracy", "not full process geometry or contact transfer", "not native multi-OS SUPREM qualification", "not M3 approval"]
+}
