@@ -62,7 +62,7 @@ OpenTCAD now contains the product connection layer for a local service, but prod
 | Native fencing | Implemented and tamper/stale-owner tested; native observer available | Blocked: reviewed platform qualification is incomplete |
 | Local API and worker transport | Implemented, bounded, and loopback-socket tested | Blocked: product manifest and release profile disabled |
 | Lifecycle integration | Implemented and SQLite assembly tested | Blocked: product manifest and release profile disabled |
-| OS credentials and scheduled backup | Three host adapters and scheduler implemented | Blocked: only Windows DPAPI test evidence is present; three-OS native evidence is incomplete |
+| OS credentials and scheduled backup | Three host adapters, scheduler, and opt-in native cross-process tests implemented | Blocked: three-OS reviewed native evidence is incomplete |
 | Power loss and abnormal termination | Eight process hard-exit seams pass | Blocked: physical abrupt-power runs are 0 of the required 100 per evidence record |
 | Windows, macOS, and Linux qualification | CI host-contract matrix and manual self-hosted observation workflow implemented | Blocked: the six OS/runtime rows are not qualified |
 | Solver release | Fail-closed gate implemented | Blocked: no approved solver license record, immutable image digest, SBOM, or numerical baseline |
@@ -86,6 +86,10 @@ and [solver release contract](m3-solver-release-qualification.md) when preparing
 reviewed evidence. Their fixture tests are included in `npm run check`.
 
 ## Activation rule
+
+The [native credential suite](m3-native-credentials.md) tests the actual product
+provider across fresh processes, including restore-floor rollback rejection.
+Its explicit opt-in prevents routine tests from silently accessing OS stores.
 
 Activation requires all eight gates to carry reviewed, hash-bound evidence; Docker and Podman grants for exact image and entrypoint tuples; and global approval metadata. A missing file, changed hash, duplicate JSON key, partial approval, or disabled product marker prevents token creation before any runtime socket is contacted.
 

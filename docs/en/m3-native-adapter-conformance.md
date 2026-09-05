@@ -43,6 +43,10 @@ On Linux or macOS, Podman is invoked directly and `--wsl-distribution` is forbid
 
 ## Protected manual workflow
 
+The workflow first requires the opt-in [native credential conformance suite](m3-native-credentials.md)
+on the dedicated runner account. An unavailable or locked product credential
+provider fails the run; it is not replaced by an in-memory provider.
+
 The `M3 native qualification` workflow dispatches the same observer on a protected self-hosted runner. Supply the exact candidate revision and all four immutable image identity values. The selected platform and backend are also runner labels, and the workflow verifies the actual host before observation. On Windows Podman, it adds the reviewed `--wsl-distribution Debian` argument automatically.
 
 The output path is a new directory under `runner.temp`, outside the checkout. The artifact contains `manifest.json` on a completed observation or `failure.json` on a blocked or failed observation. The final workflow step requires `observedConformancePassed` to be `true`, exact runtime and image identity agreement, zero remaining managed containers and volumes, and every authority-bearing field to remain `false`. Therefore a green workflow run records adapter behavior but grants no qualification or product authority.

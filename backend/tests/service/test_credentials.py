@@ -63,6 +63,46 @@ class CredentialStoreTests(unittest.TestCase):
         self.assertNotIn(secret, stored)
         self.assertEqual(store.get("opentcad", "backup-v1"), secret)
 
+    def test_secret_tool_keeps_session_bus_but_not_unrelated_secrets(self) -> None:
+        with (
+            patch("backend.app.service.credentials.sys.platform", "linux"),
+            patch("backend.app.service.credentials.shutil.which", return_value="/usr/bin/secret-tool"),
+            patch.dict("os.environ", {
+                "PATH": "/usr/bin", "HOME": "/home/probe",
+                "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/123/bus",
+                "XDG_RUNTIME_DIR": "/run/user/123",
+                "UNRELATED_API_TOKEN": "not-in-child", "LD_PRELOAD": "not-in-child",
+            }, clear=True),
+            patch("backend.app.service.credentials.subprocess.run") as run,
+        ):
+            store = SecretToolCredentialStore()
+            store._run(("lookup", "service", "opentcad", "credential", "probe"))
+            environment = run.call_args.kwargs["env"]
+            self.assertEqual(environment["DBUS_SESSION_BUS_ADDRESS"], "unix:path=/run/user/123/bus")
+            self.assertEqual(environment["XDG_RUNTIME_DIR"], "/run/user/123")
+            self.assertEqual(environment["HOME"], "/home/probe")
+            self.assertNotIn("UNRELATED_API_TOKEN", environment)
+            self.assertNotIn("LD_PRELOAD", environment)
+
+    def test_secret_tool_failure_is_not_a_missing_credential(self) -> None:
+        with (
+            patch("backend.app.service.credentials.sys.platform", "linux"),
+            patch("backend.app.service.credentials.shutil.which", return_value="/usr/bin/secret-tool"),
+        ):
+            store = SecretToolCredentialStore()
+        for status, stderr, expected in (
+            (0, b"", CredentialStoreErrorCode.UNAVAILABLE),
+            (1, b"", CredentialStoreErrorCode.NOT_FOUND),
+            (1, b"session service error", CredentialStoreErrorCode.UNAVAILABLE),
+            (2, b"", CredentialStoreErrorCode.UNAVAILABLE),
+        ):
+            with self.subTest(status=status), patch.object(
+                store, "_run", return_value=subprocess.CompletedProcess([], status, b"", stderr),
+            ):
+                with self.assertRaises(CredentialStoreError) as raised:
+                    store.get("opentcad", "probe")
+                self.assertEqual(raised.exception.code, expected)
+
     @unittest.skipUnless(sys.platform == "win32", "Windows DPAPI only")
     def test_windows_dpapi_round_trip_persists_ciphertext_only(self) -> None:
         with TemporaryDirectory() as directory:

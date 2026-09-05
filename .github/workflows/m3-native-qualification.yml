@@ -124,6 +124,11 @@ jobs:
           backend.tests.service.test_application
           backend.tests.service.test_local_product_bootstrap
 
+      - name: Verify the real OS credential provider across processes
+        env:
+          OPENTCAD_NATIVE_CREDENTIAL_TESTS: "1"
+        run: python -m unittest backend.tests.service.test_native_credentials -v
+
       - name: Collect non-promoting native adapter observation
         id: observe
         continue-on-error: true

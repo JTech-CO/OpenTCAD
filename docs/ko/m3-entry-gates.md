@@ -52,7 +52,7 @@ OpenTCAD에는 로컬 제품 서비스 연결 계층이 구현되어 있지만 �
 | Native fencing | 구현 및 label 변조, stale owner test 완료, native 관찰기 제공 | 차단: 검토된 플랫폼 자격 증거 미완료 |
 | 로컬 API 및 worker transport | 구현, 상한 적용, loopback socket test 완료 | 차단: 제품 매니페스트와 릴리스 프로필 비활성 |
 | Lifecycle 통합 | 구현 및 SQLite assembly test 완료 | 차단: 제품 매니페스트와 릴리스 프로필 비활성 |
-| OS 자격 증명 및 예약 backup | 3개 OS 어댑터와 scheduler 구현 | 차단: Windows DPAPI test만 있으며 3개 OS native 증거 미완료 |
+| OS 자격 증명 및 예약 backup | 3개 OS 어댑터, scheduler, 명시적 네이티브 프로세스 간 테스트 구현 | 차단: 검토된 3개 OS 네이티브 증거 미완료 |
 | 전원 차단 및 비정상 종료 | process hard exit 경계 8곳 통과 | 차단: 실제 abrupt power run은 요구된 100회 중 0회 |
 | Windows, macOS, Linux 자격 | CI host contract matrix와 수동 self-hosted 관찰 workflow 구현 | 차단: 6개 OS 및 runtime 조합 미승인 |
 | Solver release | 실패 폐쇄 게이트 구현 | 차단: 승인된 solver license 기록, 불변 image digest, SBOM, 수치 baseline 없음 |
@@ -71,6 +71,10 @@ OpenTCAD에는 로컬 제품 서비스 연결 계층이 구현되어 있지만 �
 [네이티브 어댑터 실행 절차](m3-native-adapter-conformance.md)는 엔진이 없는 fixture로 정규 archive 전송, 비정상 종료 코드, 취소, 제한 시간, 스트리밍 출력 상한, 오래된 fencing, 동시 정리를 확인합니다. 결과는 저장소 밖에 보관합니다. 검토할 증거를 준비할 때는 [승격 준비 계약](m3-promotion-readiness.md)과 [솔버 릴리스 계약](m3-solver-release-qualification.md)을 따릅니다. 해당 fixture 테스트는 `npm run check`에 포함됩니다.
 
 ## 활성화 규칙
+
+[네이티브 자격 증명 테스트](m3-native-credentials.md)는 새 프로세스에서 실제 제품용
+저장소를 검증하며 복원 하한의 롤백 거부도 확인합니다. 명시적 실행 설정이 필요하므로
+일반 테스트가 OS 저장소에 조용히 접근하지 않습니다.
 
 8개 게이트 모두 검토된 hash 기반 증거를 가져야 합니다. Docker와 Podman에는 image 및 entrypoint 조합별 grant가 필요하며 전역 승인 정보도 있어야 합니다. 파일 누락, hash 변경, 중복 JSON key, 부분 승인 또는 비활성 제품 표시는 런타임 socket에 접촉하기 전에 token 생성을 차단합니다.
 

@@ -370,6 +370,9 @@ test("manual native workflow is exact-revision and non-promoting", async () => {
   assert.doesNotMatch(workflow, /qualify-runtime\.py/u);
   assert.match(workflow, /tools\/observe-m3-native-adapter\.py/u);
   assert.match(workflow, /environment: m3-native-qualification/u);
+  assert.match(workflow, /OPENTCAD_NATIVE_CREDENTIAL_TESTS: "1"/u);
+  assert.match(workflow, /python -m unittest backend\.tests\.service\.test_native_credentials -v/u);
+  assert.ok(workflow.indexOf("Verify the real OS credential provider") < workflow.indexOf("Collect non-promoting native adapter observation"));
   assert.match(workflow, /- self-hosted/u);
   assert.match(workflow, /persist-credentials: false/u);
   assert.match(workflow, /git", "status", "--porcelain=v1"/u);

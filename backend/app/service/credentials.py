@@ -394,6 +394,14 @@ class SecretToolCredentialStore:
         *,
         input_value: bytes | None = None,
     ) -> subprocess.CompletedProcess[bytes]:
+        # Secret Service is on the user's session bus, not the system bus.
+        # Do not inherit unrelated application secrets or loader overrides.
+        environment = {
+            key: os.environ[key]
+            for key in ("PATH", "HOME", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR")
+            if key in os.environ
+        }
+        environment.update({"LANG": "C", "LC_ALL": "C"})
         try:
             return subprocess.run(
                 (self._executable, *arguments),
@@ -401,7 +409,7 @@ class SecretToolCredentialStore:
                 capture_output=True,
                 timeout=15,
                 check=False,
-                env={"PATH": os.environ.get("PATH", ""), "LANG": "C", "LC_ALL": "C"},
+                env=environment,
             )
         except (OSError, subprocess.TimeoutExpired):
             raise CredentialStoreError(CredentialStoreErrorCode.UNAVAILABLE) from None
@@ -411,9 +419,11 @@ class SecretToolCredentialStore:
         result = self._run(
             ("lookup", "service", service, "credential", credential_id),
         )
-        if result.returncode == 1 or not result.stdout:
+        if result.returncode == 1 and not result.stdout and not result.stderr:
             raise CredentialStoreError(CredentialStoreErrorCode.NOT_FOUND)
         if result.returncode != 0:
+            raise CredentialStoreError(CredentialStoreErrorCode.UNAVAILABLE)
+        if not result.stdout:
             raise CredentialStoreError(CredentialStoreErrorCode.UNAVAILABLE)
         raw = result.stdout
         if len(raw) > (_MAX_SECRET_BYTES * 2) + len(_SECRET_TOOL_PREFIX) + 8:

@@ -43,6 +43,10 @@ Linux 또는 macOS에서는 Podman을 직접 호출하며 `--wsl-distribution`�
 
 ## 보호된 수동 workflow
 
+워크플로는 전용 러너 계정에서 명시적으로 실행하는
+[네이티브 자격 증명 테스트](m3-native-credentials.md)를 먼저 요구합니다.
+제품용 저장소가 없거나 잠겨 있으면 실패하며 메모리 저장소로 대체하지 않습니다.
+
 `M3 native qualification` workflow는 보호된 self-hosted runner에서 같은 observer를 실행합니다. 정확한 후보 revision과 불변 image identity 값 4개를 입력해야 합니다. 선택한 platform과 backend는 runner label로도 사용하며 workflow는 관측 전에 실제 host를 확인합니다. Windows Podman에서는 검토된 `--wsl-distribution Debian` 인자를 자동으로 추가합니다.
 
 Output path는 checkout 외부인 `runner.temp` 아래의 새 디렉터리입니다. 관측이 끝나면 artifact에 `manifest.json`이 들어가며 차단 또는 실패 시에는 `failure.json`이 들어갑니다. 마지막 workflow 단계는 `observedConformancePassed`가 `true`인지, runtime과 image identity가 정확히 일치하는지, managed container와 volume이 0개인지, 권한과 관련된 모든 필드가 `false`인지 검사합니다. 따라서 성공한 workflow run도 adapter 동작만 기록하며 자격이나 제품 권한을 부여하지 않습니다.
