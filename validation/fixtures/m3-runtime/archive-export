@@ -1,0 +1,82 @@
+#!/bin/sh
+# OpenTCAD M3 engine-free conformance fixture. This is not a solver entrypoint.
+set -eu
+
+if [ "$#" -lt 1 ] || [ "$#" -gt 8 ]; then
+  echo "fixture output count rejected" >&2
+  exit 50
+fi
+
+seen='|'
+for name in "$@"; do
+  case "$name" in
+    [A-Za-z0-9]*) ;;
+    *) echo "fixture output name rejected" >&2; exit 51 ;;
+  esac
+  case "$name" in
+    *[!A-Za-z0-9._-]*) echo "fixture output name rejected" >&2; exit 51 ;;
+  esac
+  case "$seen" in
+    *"|$name|"*) echo "fixture duplicate output rejected" >&2; exit 52 ;;
+  esac
+  seen="${seen}${name}|"
+  if [ ! -f "/opentcad/work/$name" ] || [ -L "/opentcad/work/$name" ]; then
+    echo "fixture output file rejected" >&2
+    exit 53
+  fi
+done
+
+header=/tmp/opentcad-m3-output-header.$$
+trap 'rm -f "$header"' EXIT HUP INT TERM
+total=0
+
+write_field() {
+  offset=$1
+  shift
+  printf "$@" \
+    | /usr/bin/dd of="$header" bs=1 seek="$offset" conv=notrunc status=none
+}
+
+zero_bytes() {
+  count=$1
+  if [ "$count" -gt 0 ]; then
+    /usr/bin/dd if=/dev/zero bs=1 count="$count" status=none
+  fi
+}
+
+cd /opentcad/work
+for name in "$@"; do
+  size=$(/usr/bin/wc -c < "$name")
+  if [ "$size" -gt 1048576 ] || [ "${#name}" -gt 100 ]; then
+    echo "fixture output size or name rejected" >&2
+    exit 54
+  fi
+
+  /usr/bin/dd if=/dev/zero of="$header" bs=512 count=1 status=none
+  write_field 0 '%s' "$name"
+  write_field 100 '0000400\000'
+  write_field 108 '0177776\000'
+  write_field 116 '0177776\000'
+  write_field 124 '%011o\000' "$size"
+  write_field 136 '00000000000\000'
+  write_field 148 '        '
+  write_field 156 '0'
+  write_field 257 'ustar\00000'
+
+  checksum=$(
+    /usr/bin/od -An -v -tu1 "$header" \
+      | /usr/bin/awk '{ for (field = 1; field <= NF; field += 1) sum += $field } END { print sum }'
+  )
+  write_field 148 '%06o\000 ' "$checksum"
+
+  /usr/bin/dd if="$header" bs=512 count=1 status=none
+  /usr/bin/dd if="$name" bs=65536 status=none
+  padding=$(( (512 - (size % 512)) % 512 ))
+  zero_bytes "$padding"
+  total=$(( total + 512 + size + padding ))
+done
+
+zero_bytes 1024
+total=$(( total + 1024 ))
+record_padding=$(( (10240 - (total % 10240)) % 10240 ))
+zero_bytes "$record_padding"

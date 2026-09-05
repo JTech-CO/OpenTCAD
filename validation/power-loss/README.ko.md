@@ -26,6 +26,18 @@ backend/app/broker/durability.py에 선언된 순서대로 cut point 10곳을 �
 6. Docker 및 Podman label을 조회하고 설명되지 않은 managed object가 0개인지 확인합니다.
 7. 결과를 외부 evidence ledger에 추가합니다.
 
+집계용 v1 schema는 최소 요약 형식으로 유지합니다. 행 형식은
+`validation/schemas/m3-power-loss-ledger.schema.json`에 정의합니다. 제품 게이트 검토에는
+다음 명령으로 확인한 v2 행 단위 ledger도 필요합니다.
+
+    node tools/check-m3-power-loss.mjs <ledger.json>
+
+v2 검증기는 모든 cut point와 반복 번호에 대한 고유 행, 독립 제어되는
+실제 PDU, relay 또는 battery cut, 서로 다른 boot identity, SQLite DB 3개의
+검사 결과, rollback과 publication 결과, 정확한 revision, runtime, image
+결합, 관측자와 다른 검토자를 요구합니다. 검증 통과는 게이트 검토 자격만
+부여하며 제품을 자동으로 활성화하지 않습니다.
+
 모든 reboot가 완료되고 partial publication, SQLite integrity failure, rollback violation이 각각 0이어야 합니다. 또한 validation/schemas/m3-power-loss-evidence.schema.json과 일치해야 검토 대상이 됩니다.
 
 현재 저장소에는 실제 전원 차단 0회인 blocked 상태 기록이 있습니다. Unit test나 process hard exit 결과로 이 수치를 변경하지 않습니다.

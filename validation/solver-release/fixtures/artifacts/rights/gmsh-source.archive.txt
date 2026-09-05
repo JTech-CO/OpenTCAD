@@ -1,0 +1,1 @@
+Contract fixture source archive record for Gmsh.

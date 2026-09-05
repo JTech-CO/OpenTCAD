@@ -1,0 +1,69 @@
+#!/bin/sh
+# OpenTCAD M3 engine-free conformance fixture. This is not a solver entrypoint.
+set -eu
+
+archive=/tmp/opentcad-m3-input.tar
+names=/tmp/opentcad-m3-input.names
+types=/tmp/opentcad-m3-input.types
+trap 'rm -f "$archive" "$names" "$types"' EXIT HUP INT TERM
+umask 077
+
+/usr/bin/head -c 1048577 > "$archive"
+bytes=$(/usr/bin/wc -c < "$archive")
+if [ "$bytes" -lt 10240 ] || [ "$bytes" -gt 1048576 ]; then
+  echo "fixture input archive size rejected" >&2
+  exit 40
+fi
+
+/usr/bin/tar --list --file "$archive" > "$names"
+/usr/bin/tar --list --verbose --file "$archive" > "$types"
+
+count=0
+seen='|'
+while IFS= read -r name; do
+  case "$name" in
+    [A-Za-z0-9]*) ;;
+    *) echo "fixture input name rejected" >&2; exit 41 ;;
+  esac
+  case "$name" in
+    *[!A-Za-z0-9._-]*) echo "fixture input name rejected" >&2; exit 41 ;;
+  esac
+  case "$seen" in
+    *"|$name|"*) echo "fixture duplicate input rejected" >&2; exit 42 ;;
+  esac
+  seen="${seen}${name}|"
+  count=$((count + 1))
+  if [ "$count" -gt 8 ]; then
+    echo "fixture input count rejected" >&2
+    exit 43
+  fi
+done < "$names"
+if [ "$count" -lt 1 ]; then
+  echo "fixture empty input rejected" >&2
+  exit 44
+fi
+
+type_count=0
+while IFS= read -r record; do
+  case "$record" in
+    -*) ;;
+    *) echo "fixture non-regular input rejected" >&2; exit 45 ;;
+  esac
+  type_count=$((type_count + 1))
+done < "$types"
+if [ "$type_count" -ne "$count" ]; then
+  echo "fixture input listing mismatch" >&2
+  exit 46
+fi
+
+/usr/bin/tar \
+  --extract \
+  --file "$archive" \
+  --directory /opentcad/work \
+  --keep-old-files \
+  --no-same-owner \
+  --no-same-permissions
+
+while IFS= read -r name; do
+  /usr/bin/chmod 0400 "/opentcad/work/$name"
+done < "$names"

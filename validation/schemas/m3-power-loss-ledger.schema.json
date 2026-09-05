@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opentcad.invalid/schemas/m3-power-loss-ledger.schema.json",
+  "title": "OpenTCAD M3 row-level physical power-loss ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceId",
+    "revision",
+    "activationManifestSha256",
+    "runtimeGrantsSha256",
+    "imageLockSha256",
+    "platform",
+    "architecture",
+    "osVersion",
+    "filesystem",
+    "storage",
+    "powerController",
+    "observer",
+    "cutPoints",
+    "repetitionsPerCut",
+    "runs",
+    "summary",
+    "review"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "evidenceId": { "type": "string", "format": "uuid" },
+    "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "activationManifestSha256": { "$ref": "#/$defs/hash" },
+    "runtimeGrantsSha256": { "$ref": "#/$defs/hash" },
+    "imageLockSha256": { "$ref": "#/$defs/hash" },
+    "platform": { "enum": ["windows", "macos", "linux"] },
+    "architecture": { "enum": ["amd64", "arm64"] },
+    "osVersion": { "$ref": "#/$defs/text" },
+    "filesystem": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "firmware",
+        "serialSha256",
+        "controller",
+        "writeCacheConfiguration"
+      ],
+      "properties": {
+        "model": { "$ref": "#/$defs/text" },
+        "firmware": { "$ref": "#/$defs/text" },
+        "serialSha256": { "$ref": "#/$defs/hash" },
+        "controller": { "$ref": "#/$defs/text" },
+        "writeCacheConfiguration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      }
+    },
+    "powerController": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "model",
+        "assetIdSha256",
+        "independentlyControlled"
+      ],
+      "properties": {
+        "kind": { "enum": ["pdu", "relay", "battery-cut"] },
+        "model": { "$ref": "#/$defs/text" },
+        "assetIdSha256": { "$ref": "#/$defs/hash" },
+        "independentlyControlled": { "const": true }
+      }
+    },
+    "observer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "organization"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "organization": { "$ref": "#/$defs/text" }
+      }
+    },
+    "cutPoints": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "control-commit" },
+        { "const": "state-backup" },
+        { "const": "authority-backup" },
+        { "const": "authentication-record" },
+        { "const": "export-publication" },
+        { "const": "restore-floor-commit" },
+        { "const": "state-restore" },
+        { "const": "authority-restore" },
+        { "const": "import-record" },
+        { "const": "import-publication" }
+      ],
+      "items": false,
+      "minItems": 10,
+      "maxItems": 10
+    },
+    "repetitionsPerCut": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 100
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 100,
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/run" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actualPhysicalCuts",
+        "everyRebootCompleted",
+        "partialPublications",
+        "sqliteIntegrityFailures",
+        "rollbackViolations",
+        "recoverySynthesisViolations",
+        "unexplainedManagedObjects"
+      ],
+      "properties": {
+        "actualPhysicalCuts": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 1000
+        },
+        "everyRebootCompleted": { "const": true },
+        "partialPublications": { "const": 0 },
+        "sqliteIntegrityFailures": { "const": 0 },
+        "rollbackViolations": { "const": 0 },
+        "recoverySynthesisViolations": { "const": 0 },
+        "unexplainedManagedObjects": { "const": 0 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer", "reviewedAt", "evidenceAccepted"],
+      "properties": {
+        "reviewer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "evidenceAccepted": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quickCheck", "integrityCheck"],
+      "properties": {
+        "quickCheck": { "const": "ok" },
+        "integrityCheck": { "const": "ok" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "cutPoint",
+        "repetition",
+        "abruptPowerCut",
+        "armedAt",
+        "rebootObservedAt",
+        "preCutBootId",
+        "postCutBootId",
+        "preCutMarkerSha256",
+        "hostLogSha256",
+        "observerRecordSha256",
+        "sqlite",
+        "partialPublicationAccepted",
+        "rollbackViolation",
+        "recoverySynthesizedSuccess",
+        "unexplainedManagedObjects"
+      ],
+      "properties": {
+        "runId": { "type": "string", "format": "uuid" },
+        "cutPoint": {
+          "enum": [
+            "control-commit",
+            "state-backup",
+            "authority-backup",
+            "authentication-record",
+            "export-publication",
+            "restore-floor-commit",
+            "state-restore",
+            "authority-restore",
+            "import-record",
+            "import-publication"
+          ]
+        },
+        "repetition": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "abruptPowerCut": { "const": true },
+        "armedAt": { "type": "string", "format": "date-time" },
+        "rebootObservedAt": { "type": "string", "format": "date-time" },
+        "preCutBootId": { "$ref": "#/$defs/text" },
+        "postCutBootId": { "$ref": "#/$defs/text" },
+        "preCutMarkerSha256": { "$ref": "#/$defs/hash" },
+        "hostLogSha256": { "$ref": "#/$defs/hash" },
+        "observerRecordSha256": { "$ref": "#/$defs/hash" },
+        "sqlite": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control", "state", "fence"],
+          "properties": {
+            "control": { "$ref": "#/$defs/integrity" },
+            "state": { "$ref": "#/$defs/integrity" },
+            "fence": { "$ref": "#/$defs/integrity" }
+          }
+        },
+        "partialPublicationAccepted": { "const": false },
+        "rollbackViolation": { "const": false },
+        "recoverySynthesizedSuccess": { "const": false },
+        "unexplainedManagedObjects": { "const": 0 }
+      }
+    }
+  }
+}

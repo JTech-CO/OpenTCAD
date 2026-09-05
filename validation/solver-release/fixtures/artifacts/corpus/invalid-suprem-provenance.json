@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "caseId": "suprem-junction-depth",
+  "engine": "SUPREM-IV.GS",
+  "inputSha256": "ca03e20125f77e8a41c7c92582bb1a2754d84503f47be8f254e39a2e7bbc02bc",
+  "expectedSha256": "f685baa070f106a4e02d562f873b80fbc401adaf2472c3543b70d277a12d2664",
+  "imageRole": "suprem",
+  "imageIndexDigest": "sha256:cd980ac1a15ae6469e1610b84d442b1f1e6d6bd4902aae2a10cd6d389614070e",
+  "platform": "linux/amd64",
+  "platformManifestDigest": "sha256:3471a33cc4188be8780c045dc3a3c0154058f5b9a37941d17e1872614516f71f",
+  "engineVersion": "invalid-contract-fixture-suprem"
+}

@@ -1,0 +1,18 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "container",
+      "name": "opentcad-devsim-contract-fixture",
+      "properties": [
+        {
+          "name": "opentcad:subject-manifest-digest",
+          "value": "sha256:529701bee17a172e5b296f7cf55536c2269cd1d6456513a25f4b9e7491e72da8"
+        }
+      ]
+    }
+  },
+  "components": []
+}

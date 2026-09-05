@@ -25,9 +25,20 @@ import {
   fetchLocalProductStatus,
   type LocalProductStatus,
   type LocalServiceBootstrap,
+  type ProductGateId,
 } from "./local-service";
 
 const repositoryUrl = "https://github.com/JTech-CO/OpenTCAD";
+const productGateLabelKeys: Record<ProductGateId, MessageKey> = {
+  "runtime-adapters": "gateRuntimeAdapters",
+  "native-fencing": "gateNativeFencing",
+  "local-transport": "gateLocalTransport",
+  "lifecycle-integration": "gateLifecycleIntegration",
+  "credentials-and-scheduler": "gateCredentialsScheduler",
+  "power-loss": "gatePowerLoss",
+  "platform-qualification": "gatePlatformQualification",
+  "solver-release": "gateSolverRelease",
+};
 type AppSurface = "intro" | "workspace";
 type LocalConnectionState =
   | "unavailable"
@@ -730,6 +741,7 @@ function RuntimeView({
 }: RuntimeViewProps) {
   const path: MessageKey[] = ["browser", "api", "worker", "broker", "ociRuntime"];
   const architectureUrl = `${repositoryUrl}/blob/main/docs/${locale}/architecture.md`;
+  const m3EntryGatesUrl = `${repositoryUrl}/blob/main/docs/${locale}/m3-entry-gates.md`;
 
   return (
     <div className="runtime-stack">
@@ -769,6 +781,14 @@ function RuntimeView({
               </span>
             </div>
             <p>{text("localEngineDetail")}</p>
+            <a
+              className="quiet-link gate-readiness-link"
+              href={m3EntryGatesUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {text("reviewM3EntryGates")} <span aria-hidden="true">↗</span>
+            </a>
             {connection !== "unavailable" && (
               <div className="local-connection" role="status" aria-live="polite">
                 {connection === "connected" && status ? (
@@ -791,7 +811,17 @@ function RuntimeView({
                       <dt>{text("gateBlockers")}</dt>
                       <dd>
                         {status.blockedGates.length > 0
-                          ? status.blockedGates.join(", ")
+                          ? (
+                              <ul
+                                className="gate-label-list"
+                                role="list"
+                                aria-label={text("gateBlockers")}
+                              >
+                                {status.blockedGates.map((gate) => (
+                                  <li key={gate}>{text(productGateLabelKeys[gate])}</li>
+                                ))}
+                              </ul>
+                            )
                           : text("noGateBlockers")}
                       </dd>
                     </div>

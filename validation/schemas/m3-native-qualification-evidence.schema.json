@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opentcad.invalid/schemas/m3-native-qualification-evidence.schema.json",
+  "title": "OpenTCAD M3 native runtime qualification evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceType",
+    "evidenceId",
+    "revision",
+    "platform",
+    "backend",
+    "observedAt",
+    "reviewer",
+    "reviewedAt",
+    "runtime",
+    "contractSuitePassed",
+    "nativeConformancePassed",
+    "images"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "evidenceType": { "const": "m3-native-runtime-qualification" },
+    "evidenceId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "revision": { "$ref": "#/$defs/revision" },
+    "platform": { "enum": ["windows", "macos", "linux"] },
+    "backend": { "enum": ["docker", "podman"] },
+    "observedAt": { "$ref": "#/$defs/approvalTime" },
+    "reviewer": { "$ref": "#/$defs/reviewer" },
+    "reviewedAt": { "$ref": "#/$defs/approvalTime" },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientVersion",
+        "serverVersion",
+        "serverOs",
+        "serverArchitecture",
+        "executableSha256"
+      ],
+      "properties": {
+        "clientVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serverVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serverOs": { "const": "linux" },
+        "serverArchitecture": { "enum": ["amd64", "arm64"] },
+        "executableSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "contractSuitePassed": { "const": true },
+    "nativeConformancePassed": { "const": true },
+    "images": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/qualifiedImage" }
+    }
+  },
+  "$defs": {
+    "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9._/-]+$"
+    },
+    "reviewer": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "approvalTime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "hashReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "imageIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "indexDigest", "platformManifestDigest", "platform"],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\s@]+@sha256:[0-9a-f]{64}$"
+        },
+        "indexDigest": { "$ref": "#/$defs/digest" },
+        "platformManifestDigest": { "$ref": "#/$defs/digest" },
+        "platform": { "enum": ["linux/amd64", "linux/arm64"] }
+      }
+    },
+    "qualifiedImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "sbom", "entrypoints"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/imageIdentity" },
+        "sbom": { "$ref": "#/$defs/hashReference" },
+        "entrypoints": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,62}$"
+          }
+        }
+      }
+    }
+  }
+}

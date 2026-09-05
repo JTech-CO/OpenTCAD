@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 1,
+  "evidenceClass": "contract-fixture",
+  "releaseId": "m3-contract-fixture-v1",
+  "productVersion": "0.0.0-contract",
+  "productManifestSha256": "ac4f8cf507dd21ef4575291f8f43587121abb67141b3dc0c49fdd819299deebf",
+  "status": "approved",
+  "rights": {
+    "supremIvGs": {
+      "source": {
+        "repository": "https://source.fixture.invalid/suprem-iv-gs.git",
+        "commit": "60345e49d1680e61c4e66f748028cadd0ebf4b4a258d3cb5b782ad30e7bfce93",
+        "archive": {
+          "path": "validation/solver-release/fixtures/artifacts/rights/suprem-source.archive.txt",
+          "sha256": "b720bab8ae3702b8a33bfc5dffd25210cc33cfd11fc2d5db73772a3596135f3f",
+          "bytes": 57
+        }
+      },
+      "licenseText": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/suprem-license.txt",
+        "sha256": "382fd15c12c9543cacee6a83e420148a69bc5aa70e18cd5f77322aa46e4646ec",
+        "bytes": 55
+      },
+      "redistribution": {
+        "approved": true,
+        "basis": "rights-holder-permission",
+        "evidence": {
+          "path": "validation/solver-release/fixtures/artifacts/rights/suprem-redistribution.txt",
+          "sha256": "1eddd80c30f4b6c600bcc4ced433dc7136f69d6437c0346a57360b045a3e4853",
+          "bytes": 82
+        },
+        "review": { "approved": true, "approvedBy": "contract legal reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      }
+    },
+    "supremPatches": {
+      "patchSet": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/suprem-patches.diff",
+        "sha256": "fb1696980a1dc76e9789b9f204f88688422612d45cd83aad967a5c4ff51c83c4",
+        "bytes": 45
+      },
+      "provenance": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/suprem-patch-provenance.txt",
+        "sha256": "f7efa48913c4df55ed08ae310a617d149e7dc9a524ece0e3b00037e653e588fe",
+        "bytes": 89
+      },
+      "ownershipEvidence": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/suprem-patch-ownership.txt",
+        "sha256": "c9975b92ec6c925c43d7ff731b57258978edf76d618e7ed6cca1e73325af0af6",
+        "bytes": 68
+      },
+      "redistribution": {
+        "approved": true,
+        "basis": "qualified-legal-review",
+        "evidence": {
+          "path": "validation/solver-release/fixtures/artifacts/rights/suprem-patch-redistribution.txt",
+          "sha256": "7167ebfb47474c4dc6fe58489f1b8bac42a784b79b8b242766dd317f84813dd9",
+          "bytes": 80
+        },
+        "review": { "approved": true, "approvedBy": "contract legal reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      }
+    },
+    "devsim": {
+      "version": "contract-fixture-devsim",
+      "source": {
+        "repository": "https://source.fixture.invalid/devsim.git",
+        "commit": "4561a1a7e822d50ad1afa9c259817b168d0d4cd1837e4745b6f423d4a100bacb",
+        "archive": {
+          "path": "validation/solver-release/fixtures/artifacts/rights/devsim-source.archive.txt",
+          "sha256": "4044b8456714cafc287d938295663d008c725ab65a992d95d7bf71537201e0fc",
+          "bytes": 51
+        }
+      },
+      "binarySha256": "76ae8018c74348bb3b18177d69f9b8b4764be49c4bb978949df89c477b970caa",
+      "licenseText": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/devsim-license.txt",
+        "sha256": "8414dcd34ea6ca38fdfca6b1f8286e07483105fa1ee942e69ec51b0b722b57ef",
+        "bytes": 49
+      },
+      "notice": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/devsim-notice.txt",
+        "sha256": "55e076b1f41126cdde265e8632608d93f4066d717dfb7ffe3d57a8d55bd4b83c",
+        "bytes": 49
+      },
+      "obligationsReview": { "approved": true, "approvedBy": "contract legal reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+    },
+    "gmsh": {
+      "version": "contract-fixture-gmsh",
+      "source": {
+        "repository": "https://source.fixture.invalid/gmsh.git",
+        "commit": "d6a7aa9701ecd8b122c9c68fa6084e55de59f77816aeb5a78dd7b5bcc211b538",
+        "archive": {
+          "path": "validation/solver-release/fixtures/artifacts/rights/gmsh-source.archive.txt",
+          "sha256": "640426b57859597a7575c05d53a501732b96cbe2cab08cda5c2c48bcea49c42a",
+          "bytes": 49
+        }
+      },
+      "binarySha256": "6d0582264221cd1d6f6db13e9b9e20ed59784df155f2523dce5f519f0f7ac60e",
+      "licenseText": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/gmsh-license.txt",
+        "sha256": "c1d712f2a72b39b208c4b4cc9d6a717b3b2143329f7063ffb85a02aa955c6903",
+        "bytes": 47
+      },
+      "notice": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/gmsh-notice.txt",
+        "sha256": "9112efdf7b7d9cb460aa8e0590710962755aad494dc56311b787b349f953083c",
+        "bytes": 47
+      },
+      "correspondingSource": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/gmsh-corresponding-source.txt",
+        "sha256": "9ee1578365651def671ea59823274377d24ac051e824cf911f88af2b2c4ed4ae",
+        "bytes": 64
+      },
+      "obligationsReview": { "approved": true, "approvedBy": "contract legal reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+    },
+    "transitiveRuntime": {
+      "packageLicenseReport": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/transitive-license-report.txt",
+        "sha256": "1f30b72246e32910179369cbb3758ef103bc0268b98357f362fa78211aa95545",
+        "bytes": 92
+      },
+      "notices": {
+        "path": "validation/solver-release/fixtures/artifacts/rights/transitive-notices.txt",
+        "sha256": "4394c43b065daeee4bc558d95dd4b96c95c1748b17378ccdc9565abf1bd23211",
+        "bytes": 68
+      },
+      "unresolvedLicenseCount": 0,
+      "obligationsReview": { "approved": true, "approvedBy": "contract legal reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+    }
+  },
+  "images": [
+    {
+      "id": "transfer-contract",
+      "role": "transfer",
+      "reference": "registry.fixture.invalid/opentcad/transfer@sha256:2b9e36797cc03f4d5f8ddc086be3650e8f6bec9a572b1b7a2574b8fa133af973",
+      "indexDigest": "sha256:2b9e36797cc03f4d5f8ddc086be3650e8f6bec9a572b1b7a2574b8fa133af973",
+      "recipe": {
+        "path": "validation/solver-release/fixtures/artifacts/images/transfer-recipe.txt",
+        "sha256": "c0eefb1a13483ab6540713598a00d73be7a19957ee35adbbf06e76926b5aac3e",
+        "bytes": 61
+      },
+      "reproducibility": {
+        "buildCount": 2,
+        "identicalIndexDigest": true,
+        "evidence": {
+          "path": "validation/solver-release/fixtures/artifacts/images/transfer-reproducibility.txt",
+          "sha256": "09aa5f762cb733ca8db3ad9440525bdd1eae8e297f71813186ae950cf7016191",
+          "bytes": 97
+        },
+        "review": { "approved": true, "approvedBy": "contract build reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      },
+      "platforms": [
+        {
+          "platform": "linux/amd64",
+          "manifestDigest": "sha256:bfab7091bf4aaeb14bed12ff8758120d7add183de42aba799e0d5a8b4c14bf6f",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/transfer-linux-amd64.cdx.json",
+              "sha256": "0c1d5c4cda55cf47a9642836f93998a58b02eb49974813b53318b629088765fb",
+              "bytes": 413
+            },
+            "subjectDigest": "sha256:bfab7091bf4aaeb14bed12ff8758120d7add183de42aba799e0d5a8b4c14bf6f",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        },
+        {
+          "platform": "linux/arm64",
+          "manifestDigest": "sha256:9741ca47d693e009cbb25d36db0c58732348c253ba8ecfd54cd071eec7c6d5c3",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/transfer-linux-arm64.cdx.json",
+              "sha256": "bf64c4be7857c975c579a6ef3c2d7d15e22de42b9630cc9d40dd82d190aca2a4",
+              "bytes": 419
+            },
+            "subjectDigest": "sha256:9741ca47d693e009cbb25d36db0c58732348c253ba8ecfd54cd071eec7c6d5c3",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "suprem-contract",
+      "role": "suprem",
+      "reference": "registry.fixture.invalid/opentcad/suprem@sha256:cd980ac1a15ae6469e1610b84d442b1f1e6d6bd4902aae2a10cd6d389614070e",
+      "indexDigest": "sha256:cd980ac1a15ae6469e1610b84d442b1f1e6d6bd4902aae2a10cd6d389614070e",
+      "recipe": {
+        "path": "validation/solver-release/fixtures/artifacts/images/suprem-recipe.txt",
+        "sha256": "c131c9523b57042ce3bdfe8c1b3917cf8400052be54b34b748803469c70f5736",
+        "bytes": 65
+      },
+      "reproducibility": {
+        "buildCount": 2,
+        "identicalIndexDigest": true,
+        "evidence": {
+          "path": "validation/solver-release/fixtures/artifacts/images/suprem-reproducibility.txt",
+          "sha256": "e5c18cf132bd129dffc8f1ef8b4600614f5ccd05f8686653aaeaf0f05629e7d1",
+          "bytes": 101
+        },
+        "review": { "approved": true, "approvedBy": "contract build reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      },
+      "platforms": [
+        {
+          "platform": "linux/amd64",
+          "manifestDigest": "sha256:48f5b1211ea8fcadbc806ce374f392f91d16e18c1e51b165c6f6bb6899546fcb",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/suprem-linux-amd64.cdx.json",
+              "sha256": "4b65df570c6e8a7362dec9ade14b590e5c050127e28743f3e9e9da01e6ee4b13",
+              "bytes": 411
+            },
+            "subjectDigest": "sha256:48f5b1211ea8fcadbc806ce374f392f91d16e18c1e51b165c6f6bb6899546fcb",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        },
+        {
+          "platform": "linux/arm64",
+          "manifestDigest": "sha256:3471a33cc4188be8780c045dc3a3c0154058f5b9a37941d17e1872614516f71f",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/suprem-linux-arm64.cdx.json",
+              "sha256": "c46ce148feb07adb509391f59f609d8ead486f75e119e35fd858a937f9154be0",
+              "bytes": 417
+            },
+            "subjectDigest": "sha256:3471a33cc4188be8780c045dc3a3c0154058f5b9a37941d17e1872614516f71f",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "devsim-contract",
+      "role": "devsim",
+      "reference": "registry.fixture.invalid/opentcad/devsim@sha256:b049bab57cc7c2d7d777a3c1f54febd427dd316bcbafafd672a2d66c0b7a78da",
+      "indexDigest": "sha256:b049bab57cc7c2d7d777a3c1f54febd427dd316bcbafafd672a2d66c0b7a78da",
+      "recipe": {
+        "path": "validation/solver-release/fixtures/artifacts/images/devsim-recipe.txt",
+        "sha256": "5a2ac67b5bbfb5400d4246eb1c4ca3fdd1e8bf004cc8fde7ea9e0577c5e07e25",
+        "bytes": 59
+      },
+      "reproducibility": {
+        "buildCount": 2,
+        "identicalIndexDigest": true,
+        "evidence": {
+          "path": "validation/solver-release/fixtures/artifacts/images/devsim-reproducibility.txt",
+          "sha256": "234a22e27e1cc4c249d5cffd864c7d1f8439519e8af46d6a6ec2b08aae754ee3",
+          "bytes": 95
+        },
+        "review": { "approved": true, "approvedBy": "contract build reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      },
+      "platforms": [
+        {
+          "platform": "linux/amd64",
+          "manifestDigest": "sha256:529701bee17a172e5b296f7cf55536c2269cd1d6456513a25f4b9e7491e72da8",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/devsim-linux-amd64.cdx.json",
+              "sha256": "107aea2c2e1f4585be4aa3f84cdfc05d7d7f6b1404b284e030568e67014e14dd",
+              "bytes": 411
+            },
+            "subjectDigest": "sha256:529701bee17a172e5b296f7cf55536c2269cd1d6456513a25f4b9e7491e72da8",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        },
+        {
+          "platform": "linux/arm64",
+          "manifestDigest": "sha256:bfe18153d9b3bac041105282a71b50a735c500b13c7f85348bb2a08d21efe9f4",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/devsim-linux-arm64.cdx.json",
+              "sha256": "8c0627bebbb9eff1c9ffe7896725d67fe830fba8e46b2e4e0fba5c8fb4f66021",
+              "bytes": 417
+            },
+            "subjectDigest": "sha256:bfe18153d9b3bac041105282a71b50a735c500b13c7f85348bb2a08d21efe9f4",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "gmsh-contract",
+      "role": "gmsh",
+      "reference": "registry.fixture.invalid/opentcad/gmsh@sha256:edd05b9f099a78ae55c8e5da240647c04587293b4e00de6e2c4843f52637c03d",
+      "indexDigest": "sha256:edd05b9f099a78ae55c8e5da240647c04587293b4e00de6e2c4843f52637c03d",
+      "recipe": {
+        "path": "validation/solver-release/fixtures/artifacts/images/gmsh-recipe.txt",
+        "sha256": "4fecad26b8f1bbc38575a0f99ad3a49a6089ca0eed1b4bddb88de0eacc4849fa",
+        "bytes": 57
+      },
+      "reproducibility": {
+        "buildCount": 2,
+        "identicalIndexDigest": true,
+        "evidence": {
+          "path": "validation/solver-release/fixtures/artifacts/images/gmsh-reproducibility.txt",
+          "sha256": "5fa51ee06bd5989bde70c115a249908bcbe7f4243b53e08545724cdb850c27ae",
+          "bytes": 93
+        },
+        "review": { "approved": true, "approvedBy": "contract build reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      },
+      "platforms": [
+        {
+          "platform": "linux/amd64",
+          "manifestDigest": "sha256:6a71b65d63ae1aaf9d7bf0e120ec379e7348f5d72f285d73543c72e1a9efabe1",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/gmsh-linux-amd64.cdx.json",
+              "sha256": "494444695a9a6983e5a26fa623548aea8b03df903084bd7568ee13f1878799be",
+              "bytes": 409
+            },
+            "subjectDigest": "sha256:6a71b65d63ae1aaf9d7bf0e120ec379e7348f5d72f285d73543c72e1a9efabe1",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        },
+        {
+          "platform": "linux/arm64",
+          "manifestDigest": "sha256:b2704d8187b758b77b9f49d3ce28486a83b932722a04b5002a8fcfe35268091d",
+          "sbom": {
+            "format": "cyclonedx-json",
+            "artifact": {
+              "path": "validation/solver-release/fixtures/artifacts/images/gmsh-linux-arm64.cdx.json",
+              "sha256": "2c4c89c27f9e7c1e169a05fc4e8e937261e34ab37af134c69e2edc921481271d",
+              "bytes": 415
+            },
+            "subjectDigest": "sha256:b2704d8187b758b77b9f49d3ce28486a83b932722a04b5002a8fcfe35268091d",
+            "scanner": {
+              "name": "contract-scanner",
+              "version": "1.0-contract",
+              "imageReference": "registry.fixture.invalid/tools/sbom-scanner@sha256:8b9ba6e22e7188a4990abed3e04c7946a00b5ef5d32a3db7c3d3c2a3d6a21862"
+            },
+            "licenseReview": { "approved": true, "approvedBy": "contract SBOM reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+          }
+        }
+      ]
+    }
+  ],
+  "numericalCorpus": {
+    "baselineId": "m3-contract-baseline-v1",
+    "cases": [
+      {
+        "id": "suprem-junction-depth",
+        "engine": "SUPREM-IV.GS",
+        "input": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/suprem-input.txt",
+          "sha256": "ca03e20125f77e8a41c7c92582bb1a2754d84503f47be8f254e39a2e7bbc02bc",
+          "bytes": 45
+        },
+        "expected": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/suprem-expected.json",
+          "sha256": "f685baa070f106a4e02d562f873b80fbc401adaf2472c3543b70d277a12d2664",
+          "bytes": 34
+        },
+        "provenance": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/suprem-provenance.json",
+          "sha256": "c947085dd75023a48cf8d75cfd9105b56e509027cd8a57bf6ca409b489074620",
+          "bytes": 563
+        },
+        "results": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/suprem-results.json",
+          "sha256": "64bfda477168974cf0a9fb7d65535a142eb7862cec538596616f902e9e35e9e4",
+          "bytes": 248
+        },
+        "requiredComparators": ["absolute-relative"],
+        "tolerances": [
+          {
+            "metric": "junctionDepthMicrometers",
+            "unit": "micrometer",
+            "absolute": 0.001,
+            "relative": 0.01,
+            "rationale": "Contract fixture tolerance selected only to exercise validation."
+          }
+        ],
+        "repeats": 5,
+        "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+        "review": { "approved": true, "approvedBy": "contract numerical reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      },
+      {
+        "id": "devsim-drain-current",
+        "engine": "DEVSIM",
+        "input": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/devsim-input.txt",
+          "sha256": "a9719a606bffca26477700c8cb903cac2ac44b5fae820ce9876391bad366162f",
+          "bytes": 38
+        },
+        "expected": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/devsim-expected.json",
+          "sha256": "8dc4074c9b10855c1b9527ca37221ab7a9c6bbc28430095924dd732c71b2411e",
+          "bytes": 30
+        },
+        "provenance": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/devsim-provenance.json",
+          "sha256": "828c467f3b2d2bb145610756f175a44e5c27cf66fe5948431f234a9790dc1a43",
+          "bytes": 556
+        },
+        "results": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/devsim-results.json",
+          "sha256": "c80d6901f78d2fea475d7b597e34176571a6febf25d3fcde29440632a69e0ce2",
+          "bytes": 242
+        },
+        "requiredComparators": ["absolute-relative"],
+        "tolerances": [
+          {
+            "metric": "drainCurrentAmperes",
+            "unit": "ampere",
+            "absolute": 0.000001,
+            "relative": 0.01,
+            "rationale": "Contract fixture tolerance selected only to exercise validation."
+          }
+        ],
+        "repeats": 5,
+        "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+        "review": { "approved": true, "approvedBy": "contract numerical reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      },
+      {
+        "id": "gmsh-node-count",
+        "engine": "Gmsh",
+        "input": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/gmsh-input.txt",
+          "sha256": "4953af73f9345e823e783aa2411868776a11485fc10032489ba60ccf0ccb37b6",
+          "bytes": 34
+        },
+        "expected": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/gmsh-expected.json",
+          "sha256": "1e40ed85a3da1ad0f76540c0b925fb4dd16b3584cf88c40f81d7483c92b8e60f",
+          "bytes": 19
+        },
+        "provenance": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/gmsh-provenance.json",
+          "sha256": "31755d4cccf74ed38a796da268b09f94e09f418655423dadeadc2268685ccc02",
+          "bytes": 545
+        },
+        "results": {
+          "path": "validation/solver-release/fixtures/artifacts/corpus/gmsh-results.json",
+          "sha256": "0003bc3ab0267e9f55c98efbed46157265fd4d165b998c4342606f6d18da0beb",
+          "bytes": 223
+        },
+        "requiredComparators": ["exact-integer"],
+        "tolerances": [
+          {
+            "metric": "nodeCount",
+            "unit": "count",
+            "absolute": 0,
+            "relative": 0,
+            "rationale": "Contract fixture requires exact integer equality for node count."
+          }
+        ],
+        "repeats": 5,
+        "warningPolicy": { "mode": "fail-unlisted", "allowedCodes": [] },
+        "review": { "approved": true, "approvedBy": "contract numerical reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+      }
+    ],
+    "review": { "approved": true, "approvedBy": "contract corpus reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+  },
+  "releaseReview": { "approved": true, "approvedBy": "contract release reviewer", "approvedAt": "2026-09-01T00:00:00Z" }
+}

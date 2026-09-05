@@ -832,6 +832,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 }
 .mode-card.planned .mode-card-heading span { color: var(--amber); }
 .mode-card p { margin: 0.45rem 0 0; color: var(--text-soft); font-size: 0.78rem; }
+.gate-readiness-link { margin-top: 0.8rem; }
 .local-connection {
   display: grid;
   gap: 0.75rem;
@@ -857,6 +858,27 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
   overflow-wrap: anywhere;
   color: var(--text-soft);
   font-size: 0.7rem;
+}
+.gate-label-list {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gate-label-list li {
+  position: relative;
+  padding-left: 0.8rem;
+}
+.gate-label-list li::before {
+  content: "";
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 50%;
+  background: var(--amber);
 }
 .local-connect-button {
   justify-self: start;

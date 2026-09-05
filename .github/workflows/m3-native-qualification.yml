@@ -1,0 +1,258 @@
+name: M3 native qualification
+
+run-name: M3 native observation ${{ inputs.revision }} ${{ inputs.host_platform }} ${{ inputs.runtime_backend }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact lowercase 40-character commit to observe
+        required: true
+        type: string
+      host_platform:
+        description: Protected self-hosted runner platform label
+        required: true
+        type: choice
+        options:
+          - windows
+          - macos
+          - linux
+      runtime_backend:
+        description: Runtime adapter to observe
+        required: true
+        type: choice
+        options:
+          - docker
+          - podman
+      image_reference:
+        description: Digest-pinned reviewed fixture reference
+        required: true
+        type: string
+      index_digest:
+        description: Exact OCI index digest (sha256:...)
+        required: true
+        type: string
+      platform_manifest_digest:
+        description: Exact OCI platform manifest digest (sha256:...)
+        required: true
+        type: string
+      image_platform:
+        description: Preloaded fixture image platform
+        required: true
+        type: choice
+        options:
+          - linux/amd64
+          - linux/arm64
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-native-${{ inputs.revision }}-${{ inputs.host_platform }}-${{ inputs.runtime_backend }}
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    # Repository administrators must protect this environment with required
+    # reviewers and restrict these labels to dedicated qualification runners.
+    environment: m3-native-qualification
+    runs-on:
+      - self-hosted
+      - opentcad-m3
+      - ${{ inputs.host_platform }}
+      - ${{ inputs.runtime_backend }}
+    timeout-minutes: 90
+    env:
+      OBSERVATION_DIRECTORY: ${{ runner.temp }}/opentcad-m3-native-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.host_platform }}-${{ inputs.runtime_backend }}
+
+    steps:
+      - name: Check out the exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.revision }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Verify exact revision, clean checkout, and host
+        shell: python
+        env:
+          EXPECTED_REVISION: ${{ inputs.revision }}
+          EXPECTED_HOST_PLATFORM: ${{ inputs.host_platform }}
+        run: |
+          import os
+          import platform
+          import re
+          import subprocess
+
+          expected_revision = os.environ["EXPECTED_REVISION"]
+          actual_revision = subprocess.check_output(
+              ["git", "rev-parse", "--verify", "HEAD"],
+              text=True,
+          ).strip()
+          dirty = subprocess.check_output(
+              ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+              text=True,
+          )
+          expected_system = {
+              "windows": "windows",
+              "macos": "darwin",
+              "linux": "linux",
+          }[os.environ["EXPECTED_HOST_PLATFORM"]]
+          if (
+              re.fullmatch(r"[0-9a-f]{40}", expected_revision) is None
+              or actual_revision != expected_revision
+              or dirty != ""
+              or platform.system().casefold() != expected_system
+          ):
+              raise SystemExit("exact revision, clean checkout, or host verification failed")
+
+      - name: Run complete M3 host contract suite
+        run: >-
+          python -m unittest
+          backend.tests.product.test_gates
+          backend.tests.product.test_release_profile
+          backend.tests.runtime.test_oci_backend
+          backend.tests.runtime.test_m3_native_adapter_conformance
+          backend.tests.runtime.test_sqlite_fence_authority
+          backend.tests.service.test_credentials
+          backend.tests.service.test_anti_rollback
+          backend.tests.service.test_worker_scheduler
+          backend.tests.service.test_local_api
+          backend.tests.service.test_application
+          backend.tests.service.test_local_product_bootstrap
+
+      - name: Collect non-promoting native adapter observation
+        id: observe
+        continue-on-error: true
+        shell: python
+        env:
+          SELECTED_BACKEND: ${{ inputs.runtime_backend }}
+          SELECTED_HOST_PLATFORM: ${{ inputs.host_platform }}
+          IMAGE_REFERENCE: ${{ inputs.image_reference }}
+          INDEX_DIGEST: ${{ inputs.index_digest }}
+          PLATFORM_MANIFEST_DIGEST: ${{ inputs.platform_manifest_digest }}
+          IMAGE_PLATFORM: ${{ inputs.image_platform }}
+        run: |
+          import os
+          import subprocess
+          import sys
+
+          command = [
+              sys.executable,
+              "tools/observe-m3-native-adapter.py",
+              "--runtime",
+              os.environ["SELECTED_BACKEND"],
+              "--image-reference",
+              os.environ["IMAGE_REFERENCE"],
+              "--index-digest",
+              os.environ["INDEX_DIGEST"],
+              "--platform-manifest-digest",
+              os.environ["PLATFORM_MANIFEST_DIGEST"],
+              "--platform",
+              os.environ["IMAGE_PLATFORM"],
+              "--output",
+              os.environ["OBSERVATION_DIRECTORY"],
+          ]
+          if (
+              os.environ["SELECTED_HOST_PLATFORM"] == "windows"
+              and os.environ["SELECTED_BACKEND"] == "podman"
+          ):
+              command.extend(["--wsl-distribution", "Debian"])
+          raise SystemExit(subprocess.run(command, check=False).returncode)
+
+      - name: Upload the non-promoting manifest or failure record
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: m3-native-observation-${{ inputs.revision }}-${{ inputs.host_platform }}-${{ inputs.runtime_backend }}
+          path: |
+            ${{ env.OBSERVATION_DIRECTORY }}/manifest.json
+            ${{ env.OBSERVATION_DIRECTORY }}/failure.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Verify observation success without granting authority
+        if: always()
+        shell: python
+        env:
+          OBSERVE_OUTCOME: ${{ steps.observe.outcome }}
+          SELECTED_BACKEND: ${{ inputs.runtime_backend }}
+          SELECTED_HOST_PLATFORM: ${{ inputs.host_platform }}
+          IMAGE_REFERENCE: ${{ inputs.image_reference }}
+          INDEX_DIGEST: ${{ inputs.index_digest }}
+          PLATFORM_MANIFEST_DIGEST: ${{ inputs.platform_manifest_digest }}
+          IMAGE_PLATFORM: ${{ inputs.image_platform }}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path(os.environ["OBSERVATION_DIRECTORY"])
+          manifest_path = output / "manifest.json"
+          failure_path = output / "failure.json"
+          if (
+              os.environ["OBSERVE_OUTCOME"] != "success"
+              or not manifest_path.is_file()
+              or failure_path.exists()
+          ):
+              raise SystemExit("native adapter observation did not complete successfully")
+          with manifest_path.open(encoding="utf-8") as stream:
+              record = json.load(stream)
+
+          false_fields = (
+              "qualified",
+              "approvalGranted",
+              "baselinePromotionAllowed",
+              "releaseImageApproved",
+              "solverApprovalGranted",
+              "platformApprovalGranted",
+              "distributionAllowed",
+              "usesSolver",
+              "productEntryGateManifestModified",
+              "productReleaseProfileModified",
+          )
+          expected_system = {
+              "windows": "windows",
+              "macos": "darwin",
+              "linux": "linux",
+          }[os.environ["SELECTED_HOST_PLATFORM"]]
+          fixture = record.get("fixture", {})
+          runtime = record.get("runtime", {})
+          transport = runtime.get("transport", {})
+          expected_wsl = (
+              os.environ["SELECTED_HOST_PLATFORM"] == "windows"
+              and os.environ["SELECTED_BACKEND"] == "podman"
+          )
+          checks = (
+              record.get("status") == "passed",
+              record.get("observedConformancePassed") is True,
+              record.get("classification") == "non-promoting-native-adapter-conformance",
+              record.get("evidenceType") == "native-adapter-observation",
+              record.get("usesProductRuntimeAdapter") is True,
+              all(record.get(field) is False for field in false_fields),
+              record.get("host", {}).get("system") == expected_system,
+              runtime.get("backend") == os.environ["SELECTED_BACKEND"],
+              transport.get("runtimeExecutable") == os.environ["SELECTED_BACKEND"],
+              transport.get("launcher") == ("wsl" if expected_wsl else os.environ["SELECTED_BACKEND"]),
+              transport.get("distribution") == ("Debian" if expected_wsl else None),
+              transport.get("prefixApplied") is expected_wsl,
+              fixture.get("reference") == os.environ["IMAGE_REFERENCE"],
+              fixture.get("indexDigest") == os.environ["INDEX_DIGEST"],
+              fixture.get("platformManifestDigest") == os.environ["PLATFORM_MANIFEST_DIGEST"],
+              fixture.get("platform") == os.environ["IMAGE_PLATFORM"],
+              fixture.get("releaseImageApproved") is False,
+              record.get("activation", {}).get("productApprovalGranted") is False,
+              record.get("evidence", {}).get("automaticPromotion") is False,
+              record.get("evidence", {}).get("rawInsideRepository") is False,
+              record.get("cleanup", {}).get("pass") is True,
+              record.get("cleanup", {}).get("finalContainers") == 0,
+              record.get("cleanup", {}).get("finalVolumes") == 0,
+              record.get("cleanup", {}).get("globalPruneUsed") is False,
+          )
+          if not all(checks):
+              raise SystemExit("observation or non-promotion contract verification failed")

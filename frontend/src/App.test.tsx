@@ -1,4 +1,11 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -123,6 +130,12 @@ describe("OpenTCAD static experience", () => {
       expect.stringContaining("/docs/en/architecture.md"),
     );
     expect(
+      screen.getByRole("link", { name: /Review M3 entry gates/ }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining("/docs/en/m3-entry-gates.md"),
+    );
+    expect(
       screen.queryByRole("button", { name: "Connect local service" }),
     ).not.toBeInTheDocument();
   });
@@ -138,7 +151,16 @@ describe("OpenTCAD static experience", () => {
         executionState: "blocked",
         manifestSha256: "a".repeat(64),
         backend: null,
-        blockedGates: ["runtime-adapters", "solver-release"],
+        blockedGates: [
+          "runtime-adapters",
+          "native-fencing",
+          "local-transport",
+          "lifecycle-integration",
+          "credentials-and-scheduler",
+          "power-loss",
+          "platform-qualification",
+          "solver-release",
+        ],
         recoveryState: "not-applicable",
         schedulerState: "not-started",
       }),
@@ -159,11 +181,61 @@ describe("OpenTCAD static experience", () => {
     expect(
       screen.getAllByText("Execution blocked by release gates").length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText("runtime-adapters, solver-release")).toBeInTheDocument();
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    await user.click(screen.getByRole("button", { name: "Process" }));
+    for (const label of [
+      "Runtime adapters",
+      "Native fencing",
+      "Local transport",
+      "Lifecycle integration",
+      "Credentials and scheduler",
+      "Power-loss recovery",
+      "Platform qualification",
+      "Solver release",
+    ]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
     expect(
-      screen.getByRole("button", { name: "Run reference workflow" }),
+      within(screen.getByRole("list", { name: "Blocking gates" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(8);
+    expect(
+      screen.queryByText(/runtime-adapters|solver-release/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Review M3 entry gates/ }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining("/docs/en/m3-entry-gates.md"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "한국어" }));
+    for (const label of [
+      "런타임 어댑터",
+      "네이티브 펜싱",
+      "로컬 전송",
+      "수명 주기 통합",
+      "자격 증명 및 예약 실행",
+      "전원 장애 복구",
+      "플랫폼 자격 검증",
+      "솔버 릴리스",
+    ]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+    expect(
+      within(screen.getByRole("list", { name: "차단 게이트" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(8);
+    expect(
+      screen.getByRole("link", { name: /M3 진입 게이트 확인/ }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining("/docs/ko/m3-entry-gates.md"),
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "공정" }));
+    expect(
+      screen.getByRole("button", { name: "참조 워크플로 실행" }),
     ).toBeEnabled();
   });
 

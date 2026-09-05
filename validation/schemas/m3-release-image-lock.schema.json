@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opentcad.invalid/schemas/m3-release-image-lock.schema.json",
+  "title": "OpenTCAD M3 release image lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "evidenceType", "revision", "images"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "evidenceType": { "const": "m3-release-image-lock" },
+    "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "images": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/releaseImage" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9._/-]+$"
+    },
+    "hashReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "imageIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "indexDigest", "platformManifestDigest", "platform"],
+      "properties": {
+        "reference": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "indexDigest": { "$ref": "#/$defs/digest" },
+        "platformManifestDigest": { "$ref": "#/$defs/digest" },
+        "platform": { "enum": ["linux/amd64", "linux/arm64"] }
+      }
+    },
+    "releaseImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "identity", "sbom", "licenseEvidence", "releaseApproved"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+        "identity": { "$ref": "#/$defs/imageIdentity" },
+        "sbom": { "$ref": "#/$defs/hashReference" },
+        "licenseEvidence": { "$ref": "#/$defs/hashReference" },
+        "releaseApproved": { "const": true }
+      }
+    }
+  }
+}

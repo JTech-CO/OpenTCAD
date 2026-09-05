@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "caseId": "suprem-junction-depth",
+  "baselineId": "m3-contract-baseline-v1",
+  "status": "passed",
+  "repeats": 5,
+  "comparators": ["absolute-relative"],
+  "metrics": ["junctionDepthMicrometers"],
+  "warningCodes": []
+}

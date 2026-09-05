@@ -7,6 +7,12 @@ OpenTCAD now contains the product connection layer for a local service, but prod
 ## Implemented product path
 
 - Docker and Podman OCI adapters use shell-free bounded subprocess transport.
+- Workload wait and log streaming run concurrently. Timeout and output overflow
+  trigger a fenced native kill. Archive helpers keep stdin open for import and
+  have a bounded transfer timeout independent of short workload timeouts.
+- Preloaded images are verified locally against the approved index digest and
+  platform without registry manifest requests. Docker and Podman command and
+  version-response differences are covered explicitly.
 - Every runtime object carries the exact job ID, owner ID, and fencing
   generation. Product operations hold a job-specific cross-process lock across
   durable authority verification and native mutation, verify native labels
@@ -43,18 +49,22 @@ OpenTCAD now contains the product connection layer for a local service, but prod
 | `backend/app/service/static_assets.py` | Bounded same-origin static asset serving |
 | `backend/app/service/status.py` | Versioned and redacted browser status contract |
 | `tools/qualify-runtime.py` | Non-promoting host observation tool |
+| `tools/observe-m3-native-adapter.py` | Seven real product-adapter scenarios with exact cleanup and external evidence |
+| `tools/check-m3-promotion.mjs` | Atomic, revision-bound readiness check for all eight gates and six OS/runtime rows |
+| `tools/check-m3-solver-release.mjs` | Rights, image, SBOM, provenance, and numerical corpus evidence validation |
+| `tools/check-m3-power-loss.mjs` | Independently reviewed physical power-cut ledger validation |
 
 ## Gate status
 
 | Gate | Implementation | Qualification or approval |
 |---|---|---|
 | Docker and Podman adapters | Implemented and fake-CLI tested | Blocked: no approved native three-platform evidence in the manifest |
-| Native fencing | Implemented and tamper/stale-owner tested | Blocked: no native Docker or Podman object evidence |
+| Native fencing | Implemented and tamper/stale-owner tested; native observer available | Blocked: reviewed platform qualification is incomplete |
 | Local API and worker transport | Implemented, bounded, and loopback-socket tested | Blocked: product manifest and release profile disabled |
 | Lifecycle integration | Implemented and SQLite assembly tested | Blocked: product manifest and release profile disabled |
 | OS credentials and scheduled backup | Three host adapters and scheduler implemented | Blocked: only Windows DPAPI test evidence is present; three-OS native evidence is incomplete |
 | Power loss and abnormal termination | Eight process hard-exit seams pass | Blocked: physical abrupt-power runs are 0 of the required 100 per evidence record |
-| Windows, macOS, and Linux qualification | CI host-contract matrix and observation tool implemented | Blocked: the three native runtime rows are not qualified |
+| Windows, macOS, and Linux qualification | CI host-contract matrix and manual self-hosted observation workflow implemented | Blocked: the six OS/runtime rows are not qualified |
 | Solver release | Fail-closed gate implemented | Blocked: no approved solver license record, immutable image digest, SBOM, or numerical baseline |
 
 The authoritative status is [the M3 gate manifest](../../validation/manifests/m3-entry-gates.json). Its evidence hashes are checked by npm run check:m3. The manifest grants no runtime authority while productEnabled is false.
@@ -67,6 +77,13 @@ The authoritative status is [the M3 gate manifest](../../validation/manifests/m3
     python tools/qualify-runtime.py --output validation/evidence/m3/runtime-host-local.json
 
 The qualification command returns a nonzero blocked result until the runtime, approved image, contract suite, and native conformance evidence are all available. Its output is an observation, not an approval.
+
+The [native adapter runbook](m3-native-adapter-conformance.md) exercises canonical
+archive transfer, nonzero exit, cancellation, timeout, streaming output limits,
+stale fencing, and concurrent cleanup against an engine-free fixture. Results
+stay outside the repository. Follow the [promotion readiness contract](m3-promotion-readiness.md)
+and [solver release contract](m3-solver-release-qualification.md) when preparing
+reviewed evidence. Their fixture tests are included in `npm run check`.
 
 ## Activation rule
 

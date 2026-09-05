@@ -1,0 +1,5 @@
+#!/bin/sh
+# OpenTCAD M3 engine-free conformance fixture. This is not a solver entrypoint.
+set -eu
+echo "OpenTCAD M3 fixture declared nonzero exit" >&2
+exit 23

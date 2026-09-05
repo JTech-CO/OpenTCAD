@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "caseId": "gmsh-node-count",
+  "baselineId": "m3-contract-baseline-v1",
+  "status": "passed",
+  "repeats": 5,
+  "comparators": ["exact-integer"],
+  "metrics": ["nodeCount"],
+  "warningCodes": []
+}

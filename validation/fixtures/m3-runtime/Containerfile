@@ -1,0 +1,17 @@
+FROM docker.io/library/debian@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241
+
+LABEL org.opencontainers.image.title="OpenTCAD M3 runtime conformance fixture"
+LABEL org.opencontainers.image.description="Engine-free fixture for native adapter qualification"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/JTech-CO/OpenTCAD"
+LABEL org.opencontainers.image.vendor="JTech-CO"
+LABEL org.opentcad.fixture="m3-runtime-v1"
+
+COPY --chmod=0555 archive-import archive-export workload-success workload-nonzero workload-sleep workload-output-bomb /opentcad/bin/
+
+RUN ["/usr/bin/install", "-d", "-o", "65534", "-g", "65534", "-m", "0700", "/opentcad/work"]
+RUN ["/usr/bin/install", "-o", "65534", "-g", "65534", "-m", "0400", "/dev/null", "/opentcad/work/.opentcad-fixture-seed"]
+
+USER 65534:65534
+WORKDIR /opentcad/work
+ENTRYPOINT ["/usr/bin/true"]

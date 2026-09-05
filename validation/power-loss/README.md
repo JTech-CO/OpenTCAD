@@ -26,6 +26,19 @@ After every reboot:
 6. query Docker and Podman labels and require zero unexplained managed objects;
 7. append the result to the external evidence ledger.
 
+The aggregate v1 schema remains the minimum summary format. The row format is
+documented by `validation/schemas/m3-power-loss-ledger.schema.json`. Product gate review
+also requires a v2 row ledger validated with:
+
+    node tools/check-m3-power-loss.mjs <ledger.json>
+
+The v2 validator requires one unique row for every cut point and repetition,
+an independently controlled physical PDU, relay, or battery cut, distinct boot
+identities, all three SQLite checks, rollback and publication results, exact
+revision/runtime/image bindings, and a reviewer other than the observer.
+Passing it only makes the record eligible for gate review; it never activates
+the product.
+
 An evidence record is eligible for review only when every reboot completed, partial publications are zero, SQLite integrity failures are zero, rollback violations are zero, and the record matches validation/schemas/m3-power-loss-evidence.schema.json.
 
 The repository currently contains a blocked status record with zero physical cuts. Never edit that count based on unit tests or process hard exits.

@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JTech-CO/OpenTCAD/blob/main/validation/solver-release/schema.json",
+  "title": "OpenTCAD M3 solver release evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceClass",
+    "releaseId",
+    "productVersion",
+    "productManifestSha256",
+    "status",
+    "rights",
+    "images",
+    "numericalCorpus",
+    "releaseReview"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "evidenceClass": { "enum": ["release-evidence", "contract-fixture"] },
+    "releaseId": { "$ref": "#/$defs/text" },
+    "productVersion": { "$ref": "#/$defs/text" },
+    "productManifestSha256": { "$ref": "#/$defs/sha256" },
+    "status": { "const": "approved" },
+    "rights": { "$ref": "#/$defs/rights" },
+    "images": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/image" },
+      "allOf": [
+        { "contains": { "type": "object", "required": ["role"], "properties": { "role": { "const": "transfer" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "required": ["role"], "properties": { "role": { "const": "suprem" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "required": ["role"], "properties": { "role": { "const": "devsim" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "required": ["role"], "properties": { "role": { "const": "gmsh" } } }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "numericalCorpus": { "$ref": "#/$defs/corpus" },
+    "releaseReview": { "$ref": "#/$defs/review" }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 3, "maxLength": 360 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "approvedBy", "approvedAt"],
+      "properties": {
+        "approved": { "const": true },
+        "approvedBy": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "approvedAt": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "archive"],
+      "properties": {
+        "repository": { "type": "string", "pattern": "^https://[^\\s?#]+$" },
+        "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "archive": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "redistribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "basis", "evidence", "review"],
+      "properties": {
+        "approved": { "const": true },
+        "basis": { "enum": ["rights-holder-permission", "qualified-legal-review"] },
+        "evidence": { "$ref": "#/$defs/artifact" },
+        "review": { "$ref": "#/$defs/review" }
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supremIvGs", "supremPatches", "devsim", "gmsh", "transitiveRuntime"],
+      "properties": {
+        "supremIvGs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "licenseText", "redistribution"],
+          "properties": {
+            "source": { "$ref": "#/$defs/source" },
+            "licenseText": { "$ref": "#/$defs/artifact" },
+            "redistribution": { "$ref": "#/$defs/redistribution" }
+          }
+        },
+        "supremPatches": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["patchSet", "provenance", "ownershipEvidence", "redistribution"],
+          "properties": {
+            "patchSet": { "$ref": "#/$defs/artifact" },
+            "provenance": { "$ref": "#/$defs/artifact" },
+            "ownershipEvidence": { "$ref": "#/$defs/artifact" },
+            "redistribution": { "$ref": "#/$defs/redistribution" }
+          }
+        },
+        "devsim": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "source", "binarySha256", "licenseText", "notice", "obligationsReview"],
+          "properties": {
+            "version": { "$ref": "#/$defs/text" },
+            "source": { "$ref": "#/$defs/source" },
+            "binarySha256": { "$ref": "#/$defs/sha256" },
+            "licenseText": { "$ref": "#/$defs/artifact" },
+            "notice": { "$ref": "#/$defs/artifact" },
+            "obligationsReview": { "$ref": "#/$defs/review" }
+          }
+        },
+        "gmsh": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "source",
+            "binarySha256",
+            "licenseText",
+            "notice",
+            "correspondingSource",
+            "obligationsReview"
+          ],
+          "properties": {
+            "version": { "$ref": "#/$defs/text" },
+            "source": { "$ref": "#/$defs/source" },
+            "binarySha256": { "$ref": "#/$defs/sha256" },
+            "licenseText": { "$ref": "#/$defs/artifact" },
+            "notice": { "$ref": "#/$defs/artifact" },
+            "correspondingSource": { "$ref": "#/$defs/artifact" },
+            "obligationsReview": { "$ref": "#/$defs/review" }
+          }
+        },
+        "transitiveRuntime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["packageLicenseReport", "notices", "unresolvedLicenseCount", "obligationsReview"],
+          "properties": {
+            "packageLicenseReport": { "$ref": "#/$defs/artifact" },
+            "notices": { "$ref": "#/$defs/artifact" },
+            "unresolvedLicenseCount": { "const": 0 },
+            "obligationsReview": { "$ref": "#/$defs/review" }
+          }
+        }
+      }
+    },
+    "scanner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "imageReference"],
+      "properties": {
+        "name": { "$ref": "#/$defs/text" },
+        "version": { "$ref": "#/$defs/text" },
+        "imageReference": { "type": "string", "pattern": "^[^\\s@]+@sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "sbom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "artifact", "subjectDigest", "scanner", "licenseReview"],
+      "properties": {
+        "format": { "const": "cyclonedx-json" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "scanner": { "$ref": "#/$defs/scanner" },
+        "licenseReview": { "$ref": "#/$defs/review" }
+      }
+    },
+    "imagePlatform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "manifestDigest", "sbom"],
+      "properties": {
+        "platform": { "enum": ["linux/amd64", "linux/arm64"] },
+        "manifestDigest": { "$ref": "#/$defs/digest" },
+        "sbom": { "$ref": "#/$defs/sbom" }
+      }
+    },
+    "reproducibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["buildCount", "identicalIndexDigest", "evidence", "review"],
+      "properties": {
+        "buildCount": { "type": "integer", "minimum": 2 },
+        "identicalIndexDigest": { "const": true },
+        "evidence": { "$ref": "#/$defs/artifact" },
+        "review": { "$ref": "#/$defs/review" }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "reference", "indexDigest", "recipe", "reproducibility", "platforms"],
+      "properties": {
+        "id": { "$ref": "#/$defs/text" },
+        "role": { "enum": ["transfer", "suprem", "devsim", "gmsh"] },
+        "reference": { "type": "string", "pattern": "^[^\\s@]+@sha256:[0-9a-f]{64}$" },
+        "indexDigest": { "$ref": "#/$defs/digest" },
+        "recipe": { "$ref": "#/$defs/artifact" },
+        "reproducibility": { "$ref": "#/$defs/reproducibility" },
+        "platforms": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/imagePlatform" },
+          "allOf": [
+            { "contains": { "type": "object", "required": ["platform"], "properties": { "platform": { "const": "linux/amd64" } } }, "minContains": 1, "maxContains": 1 },
+            { "contains": { "type": "object", "required": ["platform"], "properties": { "platform": { "const": "linux/arm64" } } }, "minContains": 1, "maxContains": 1 }
+          ]
+        }
+      }
+    },
+    "tolerance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "unit", "absolute", "relative", "rationale"],
+      "properties": {
+        "metric": { "$ref": "#/$defs/text" },
+        "unit": { "$ref": "#/$defs/text" },
+        "absolute": { "type": "number", "minimum": 0 },
+        "relative": { "type": "number", "minimum": 0 },
+        "rationale": { "type": "string", "minLength": 12, "maxLength": 512 }
+      }
+    },
+    "warningPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "allowedCodes"],
+      "properties": {
+        "mode": { "const": "fail-unlisted" },
+        "allowedCodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "corpusCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "engine",
+        "input",
+        "expected",
+        "provenance",
+        "results",
+        "requiredComparators",
+        "tolerances",
+        "repeats",
+        "warningPolicy",
+        "review"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/text" },
+        "engine": { "enum": ["SUPREM-IV.GS", "DEVSIM", "Gmsh"] },
+        "input": { "$ref": "#/$defs/artifact" },
+        "expected": { "$ref": "#/$defs/artifact" },
+        "provenance": { "$ref": "#/$defs/artifact" },
+        "results": { "$ref": "#/$defs/artifact" },
+        "requiredComparators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "tolerances": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/tolerance" }
+        },
+        "repeats": { "type": "integer", "minimum": 5 },
+        "warningPolicy": { "$ref": "#/$defs/warningPolicy" },
+        "review": { "$ref": "#/$defs/review" }
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baselineId", "cases", "review"],
+      "properties": {
+        "baselineId": { "$ref": "#/$defs/text" },
+        "cases": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/corpusCase" }
+        },
+        "review": { "$ref": "#/$defs/review" }
+      }
+    }
+  }
+}

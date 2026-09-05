@@ -1,0 +1,1 @@
+Contract fixture reproducible recipe for the Gmsh image.

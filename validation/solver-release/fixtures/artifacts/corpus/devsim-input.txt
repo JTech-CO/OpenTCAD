@@ -1,0 +1,1 @@
+Contract fixture DEVSIM device input.

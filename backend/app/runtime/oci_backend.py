@@ -95,6 +95,25 @@ class OciCommandResult:
         return self.captured_bytes < self.observed_bytes
 
 
+class OciCommandOutputLimitExceeded(Exception):
+    """Carries the bounded observation after stopping an overflowing CLI."""
+
+    def __init__(self, result: OciCommandResult) -> None:
+        self.result = result
+        super().__init__("OCI command output limit exceeded.")
+
+
+class _WorkloadTerminationRequired(Exception):
+    def __init__(
+        self,
+        reason: TerminationReason,
+        logs: OciCommandResult | None,
+    ) -> None:
+        self.reason = reason
+        self.logs = logs
+        super().__init__(reason.value)
+
+
 @runtime_checkable
 class OciCommandRunner(Protocol):
     async def run(
@@ -104,6 +123,7 @@ class OciCommandRunner(Protocol):
         input_bytes: bytes | None = None,
         timeout_ms: int = 30_000,
         output_limit: int = _CONTROL_OUTPUT_LIMIT,
+        terminate_on_output_limit: bool = False,
     ) -> OciCommandResult: ...
 
 
@@ -138,6 +158,7 @@ class SubprocessOciCommandRunner:
         input_bytes: bytes | None = None,
         timeout_ms: int = 30_000,
         output_limit: int = _CONTROL_OUTPUT_LIMIT,
+        terminate_on_output_limit: bool = False,
     ) -> OciCommandResult:
         values = tuple(arguments)
         if (
@@ -149,6 +170,7 @@ class SubprocessOciCommandRunner:
             or not isinstance(output_limit, int)
             or isinstance(output_limit, bool)
             or output_limit < 1
+            or not isinstance(terminate_on_output_limit, bool)
             or (input_bytes is not None and not isinstance(input_bytes, bytes))
         ):
             raise TypeError("OCI command request is invalid.")
@@ -163,9 +185,10 @@ class SubprocessOciCommandRunner:
             env=self._environment,
         )
         remaining = output_limit
+        limit_exceeded = False
 
         async def capture(stream: asyncio.StreamReader) -> tuple[bytes, int, str]:
-            nonlocal remaining
+            nonlocal limit_exceeded, remaining
             observed = 0
             digest = sha256()
             captured = bytearray()
@@ -179,6 +202,13 @@ class SubprocessOciCommandRunner:
                 if accepted:
                     captured.extend(block[:accepted])
                     remaining -= accepted
+                if accepted < len(block):
+                    limit_exceeded = True
+                    if terminate_on_output_limit and process.returncode is None:
+                        try:
+                            process.kill()
+                        except ProcessLookupError:
+                            pass
             return bytes(captured), observed, digest.hexdigest()
 
         async def send_input() -> None:
@@ -222,7 +252,7 @@ class SubprocessOciCommandRunner:
                 ),
             )
             raise
-        return OciCommandResult(
+        result = OciCommandResult(
             process.returncode,
             stdout[0],
             stderr[0],
@@ -232,6 +262,9 @@ class SubprocessOciCommandRunner:
             stderr[2],
             int((monotonic() - started) * 1_000),
         )
+        if terminate_on_output_limit and limit_exceeded:
+            raise OciCommandOutputLimitExceeded(result)
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -422,6 +455,8 @@ class OciRuntimeBackend:
         input_bytes: bytes | None = None,
         timeout_ms: int = 30_000,
         output_limit: int = _CONTROL_OUTPUT_LIMIT,
+        terminate_on_output_limit: bool = False,
+        propagate_timeout: bool = False,
         error_code: ErrorCode = ErrorCode.RUNTIME_UNAVAILABLE,
     ) -> OciCommandResult:
         try:
@@ -430,8 +465,18 @@ class OciRuntimeBackend:
                 input_bytes=input_bytes,
                 timeout_ms=timeout_ms,
                 output_limit=output_limit,
+                terminate_on_output_limit=terminate_on_output_limit,
             )
-        except (OSError, TimeoutError):
+        except TimeoutError:
+            if propagate_timeout:
+                raise
+            raise _runtime_error(
+                error_code,
+                phase,
+                self.name,
+                "runtime-command-unavailable",
+            ) from None
+        except OSError:
             raise _runtime_error(
                 error_code,
                 phase,
@@ -473,7 +518,10 @@ class OciRuntimeBackend:
                 operating_system = host.get("os")
                 architecture = _architecture(host.get("arch"))
                 version = (
-                    version_value.get("version")
+                    (
+                        version_value.get("version")
+                        or version_value.get("Version")
+                    )
                     if isinstance(version_value, dict)
                     else version_value
                 )
@@ -531,41 +579,6 @@ class OciRuntimeBackend:
             )
         return parsed[0]
 
-    @staticmethod
-    def _manifest_has_platform(
-        value: object,
-        image: ImageIdentity,
-    ) -> bool:
-        if not isinstance(value, dict):
-            return False
-        platform_os, platform_arch = image.platform.split("/", maxsplit=1)
-        manifests = value.get("manifests")
-        if isinstance(manifests, list):
-            for item in manifests:
-                if not isinstance(item, dict):
-                    continue
-                platform = item.get("platform")
-                if (
-                    item.get("digest") == image.platform_manifest_digest
-                    and isinstance(platform, dict)
-                    and platform.get("os") == platform_os
-                    and _architecture(platform.get("architecture")) == platform_arch
-                ):
-                    return True
-        descriptor = value.get("Descriptor")
-        digest = (
-            descriptor.get("digest")
-            if isinstance(descriptor, dict)
-            else value.get("Digest")
-        )
-        platform = value.get("OCIPlatform") or value.get("Platform")
-        return (
-            digest == image.platform_manifest_digest
-            and isinstance(platform, dict)
-            and platform.get("os") == platform_os
-            and _architecture(platform.get("architecture")) == platform_arch
-        )
-
     async def inspect_image(self, image: ImageIdentity) -> ImageIdentity:
         if not isinstance(image, ImageIdentity):
             raise TypeError("OCI image inspection requires ImageIdentity.")
@@ -578,12 +591,19 @@ class OciRuntimeBackend:
             )
         local = await self._local_image_record(image)
         repo_digests = local.get("RepoDigests")
+        descriptor = local.get("Descriptor")
+        local_index_digest = (
+            descriptor.get("digest")
+            if isinstance(descriptor, dict)
+            else local.get("Digest")
+        )
         operating_system = str(local.get("Os", "")).casefold()
         architecture = _architecture(local.get("Architecture"))
         expected_os, expected_arch = image.platform.split("/", maxsplit=1)
         if (
             not isinstance(repo_digests, list)
             or image.reference not in repo_digests
+            or local_index_digest != image.index_digest
             or operating_system != expected_os
             or architecture != expected_arch
         ):
@@ -592,24 +612,6 @@ class OciRuntimeBackend:
                 RuntimePhase.IMAGE,
                 self.name,
                 "local-image-identity-mismatch",
-            )
-        manifest_arguments = (
-            ("manifest", "inspect", "--verbose", image.reference)
-            if self.name is RuntimeKind.DOCKER
-            else ("manifest", "inspect", image.reference)
-        )
-        manifest = await self._command(
-            manifest_arguments,
-            phase=RuntimePhase.IMAGE,
-            error_code=ErrorCode.IMAGE_IDENTITY_MISMATCH,
-        )
-        manifest_value = _decode_json(manifest.stdout, RuntimePhase.IMAGE, self.name)
-        if not self._manifest_has_platform(manifest_value, image):
-            raise _runtime_error(
-                ErrorCode.IMAGE_IDENTITY_MISMATCH,
-                RuntimePhase.IMAGE,
-                self.name,
-                "platform-manifest-digest-mismatch",
             )
         return image
 
@@ -840,8 +842,8 @@ class OciRuntimeBackend:
             flattened.extend(("--label", f"{key}={value}"))
         return tuple(flattened)
 
-    @staticmethod
     def _security_arguments(
+        self,
         spec: ValidatedSandboxSpec,
         *,
         read_only_volume: bool,
@@ -850,6 +852,20 @@ class OciRuntimeBackend:
         mount = (
             f"type=volume,src={spec.identity.volume_name},"
             f"dst=/opentcad/work,readonly={'true' if read_only_volume else 'false'}"
+        )
+        runtime_controls = (
+            (
+                "--restart=no",
+                "--pull=never",
+                "--read-only-tmpfs=false",
+            )
+            if self.name is RuntimeKind.PODMAN
+            else (
+                "--restart",
+                "no",
+                "--pull",
+                "never",
+            )
         )
         return (
             "--network",
@@ -869,10 +885,7 @@ class OciRuntimeBackend:
             str(limits.memory_bytes),
             "--cpus",
             format(limits.cpu_millis / 1_000, ".3f"),
-            "--restart",
-            "no",
-            "--pull",
-            "never",
+            *runtime_controls,
             "--tmpfs",
             f"/tmp:rw,noexec,nosuid,nodev,size={limits.tmpfs_bytes}",
             "--mount",
@@ -899,12 +912,14 @@ class OciRuntimeBackend:
             "helper",
             ((ENTRYPOINT_LABEL, helper_id),),
         )
+        stdin_control = ("--interactive",) if suffix == "input" else ()
         command = (
             "container",
             "create",
             "--name",
             name,
             *labels,
+            *stdin_control,
             *self._security_arguments(spec, read_only_volume=read_only_volume),
             "--entrypoint",
             entrypoint.executable,
@@ -1017,7 +1032,10 @@ class OciRuntimeBackend:
             result = await self._command(
                 ("container", "start", "--attach", helper.opaque_id),
                 phase=RuntimePhase.ARTIFACT,
-                timeout_ms=spec.spec.limits.timeout_ms,
+                timeout_ms=max(
+                    spec.spec.limits.timeout_ms,
+                    _RECOVERY_WAIT_TIMEOUT_MS,
+                ),
                 output_limit=limit,
                 error_code=ErrorCode.OUTPUT_ARCHIVE_REJECTED,
             )
@@ -1080,7 +1098,7 @@ class _OciRuntimeJobBackend:
             name = self._fence.identity.volume_name
             labels = self._backend._labels(self._fence, "volume")
             result = await self._backend._command(
-                ("volume", "create", "--name", name, *labels),
+                ("volume", "create", *labels, name),
                 phase=RuntimePhase.VOLUME,
                 error_code=ErrorCode.START_FAILED,
             )
@@ -1157,7 +1175,10 @@ class _OciRuntimeJobBackend:
                     ),
                     phase=RuntimePhase.INPUT,
                     input_bytes=archive.payload,
-                    timeout_ms=spec.spec.limits.timeout_ms,
+                    timeout_ms=max(
+                        spec.spec.limits.timeout_ms,
+                        _RECOVERY_WAIT_TIMEOUT_MS,
+                    ),
                     output_limit=_CONTROL_OUTPUT_LIMIT,
                     error_code=ErrorCode.INPUT_ARCHIVE_REJECTED,
                 )
@@ -1291,12 +1312,87 @@ class _OciRuntimeJobBackend:
 
         await self._invoke(RuntimePhase.START, operation)
 
+    async def _wait_and_follow_logs(
+        self,
+        container: ContainerHandle,
+        *,
+        wait_timeout_ms: int,
+        output_limit: int,
+    ) -> tuple[OciCommandResult, OciCommandResult]:
+        wait_task = asyncio.create_task(
+            self._backend._command(
+                ("container", "wait", container.opaque_id),
+                phase=RuntimePhase.WAIT,
+                timeout_ms=wait_timeout_ms,
+                propagate_timeout=True,
+                error_code=ErrorCode.WAIT_FAILED,
+            ),
+        )
+        logs_task = asyncio.create_task(
+            self._backend._command(
+                (
+                    "container",
+                    "logs",
+                    "--follow",
+                    container.opaque_id,
+                ),
+                phase=RuntimePhase.WAIT,
+                timeout_ms=wait_timeout_ms + _RECOVERY_WAIT_TIMEOUT_MS,
+                output_limit=output_limit,
+                terminate_on_output_limit=True,
+                error_code=ErrorCode.WAIT_FAILED,
+            ),
+        )
+        wait_result: OciCommandResult | None = None
+        logs_result: OciCommandResult | None = None
+        try:
+            while wait_result is None or logs_result is None:
+                pending = {
+                    task
+                    for task, result in (
+                        (wait_task, wait_result),
+                        (logs_task, logs_result),
+                    )
+                    if result is None
+                }
+                done, _ = await asyncio.wait(
+                    pending,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if logs_task in done and logs_result is None:
+                    try:
+                        logs_result = logs_task.result()
+                    except OciCommandOutputLimitExceeded as error:
+                        raise _WorkloadTerminationRequired(
+                            TerminationReason.OUTPUT_LIMIT,
+                            error.result,
+                        ) from None
+                if wait_task in done and wait_result is None:
+                    try:
+                        wait_result = wait_task.result()
+                    except TimeoutError:
+                        raise _WorkloadTerminationRequired(
+                            TerminationReason.TIMEOUT,
+                            logs_result,
+                        ) from None
+            return wait_result, logs_result
+        finally:
+            for task in (wait_task, logs_task):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(
+                wait_task,
+                logs_task,
+                return_exceptions=True,
+            )
+
     async def _terminal_result(
         self,
         container: ContainerHandle,
         classification_override: TerminalClassification | None = None,
         *,
         export_artifacts: bool = True,
+        observed_logs: OciCommandResult | None = None,
     ) -> RunResult:
         spec = self._backend._specs.get(container.opaque_id)
         if spec is None and classification_override is None:
@@ -1319,12 +1415,32 @@ class _OciRuntimeJobBackend:
         else:
             output_limit = spec.spec.limits.output_bytes
             wait_timeout_ms = spec.spec.limits.timeout_ms
-        wait = await self._backend._command(
-            ("container", "wait", container.opaque_id),
-            phase=RuntimePhase.WAIT,
-            timeout_ms=wait_timeout_ms,
-            error_code=ErrorCode.WAIT_FAILED,
-        )
+        if classification_override is None:
+            wait, logs = await self._wait_and_follow_logs(
+                container,
+                wait_timeout_ms=wait_timeout_ms,
+                output_limit=output_limit,
+            )
+        else:
+            wait = await self._backend._command(
+                ("container", "wait", container.opaque_id),
+                phase=RuntimePhase.WAIT,
+                timeout_ms=max(wait_timeout_ms, _RECOVERY_WAIT_TIMEOUT_MS),
+                error_code=ErrorCode.WAIT_FAILED,
+            )
+            if observed_logs is not None:
+                logs = observed_logs
+            else:
+                try:
+                    logs = await self._backend._command(
+                        ("container", "logs", container.opaque_id),
+                        phase=RuntimePhase.WAIT,
+                        output_limit=output_limit,
+                        terminate_on_output_limit=True,
+                        error_code=ErrorCode.WAIT_FAILED,
+                    )
+                except OciCommandOutputLimitExceeded as error:
+                    logs = error.result
         try:
             exit_code = int(wait.stdout.decode("ascii").strip())
         except (UnicodeError, ValueError):
@@ -1334,12 +1450,6 @@ class _OciRuntimeJobBackend:
                 self._backend.name,
                 "runtime-exit-code-invalid",
             ) from None
-        logs = await self._backend._command(
-            ("container", "logs", container.opaque_id),
-            phase=RuntimePhase.WAIT,
-            output_limit=output_limit,
-            error_code=ErrorCode.WAIT_FAILED,
-        )
         inspect = await self._backend._command(
             (
                 "container",
@@ -1422,7 +1532,14 @@ class _OciRuntimeJobBackend:
                 export_artifacts=False,
             )
 
-        result = await self._invoke(RuntimePhase.WAIT, observe)
+        try:
+            result = await self._invoke(RuntimePhase.WAIT, observe)
+        except _WorkloadTerminationRequired as termination:
+            return await self._terminate(
+                container,
+                termination.reason,
+                observed_logs=termination.logs,
+            )
         if result.classification is not TerminalClassification.SUCCEEDED:
             return result
 
@@ -1454,14 +1571,13 @@ class _OciRuntimeJobBackend:
 
         return await self._invoke(RuntimePhase.ARTIFACT, export)
 
-    async def kill(
+    async def _terminate(
         self,
         container: ContainerHandle,
         reason: TerminationReason,
+        *,
+        observed_logs: OciCommandResult | None = None,
     ) -> RunResult:
-        if not isinstance(reason, TerminationReason):
-            raise TypeError("OCI kill requires TerminationReason.")
-
         async def operation() -> RunResult:
             observed = await self._backend._inspect_fence(
                 container,
@@ -1479,11 +1595,33 @@ class _OciRuntimeJobBackend:
                     RuntimePhase.WAIT,
                 )
                 _recovery_output_limit(labels, self._backend.name)
-            await self._backend._command(
-                ("container", "kill", container.opaque_id),
-                phase=RuntimePhase.KILL,
-                error_code=ErrorCode.KILL_FAILED,
-            )
+            try:
+                await self._backend._command(
+                    ("container", "kill", container.opaque_id),
+                    phase=RuntimePhase.KILL,
+                    error_code=ErrorCode.KILL_FAILED,
+                )
+            except RuntimeBackendError as error:
+                if error.code is not ErrorCode.KILL_FAILED:
+                    raise
+                state = await self._backend._command(
+                    (
+                        "container",
+                        "inspect",
+                        "--format",
+                        "{{json .State.Running}}",
+                        container.opaque_id,
+                    ),
+                    phase=RuntimePhase.KILL,
+                    error_code=ErrorCode.KILL_FAILED,
+                )
+                running = _decode_json(
+                    state.stdout,
+                    RuntimePhase.KILL,
+                    self._backend.name,
+                )
+                if running is not False:
+                    raise error
             classification = {
                 TerminationReason.TIMEOUT: TerminalClassification.TIMED_OUT,
                 TerminationReason.OUTPUT_LIMIT: (
@@ -1492,9 +1630,23 @@ class _OciRuntimeJobBackend:
                 TerminationReason.CANCELLATION: TerminalClassification.CANCELLED,
                 TerminationReason.SHUTDOWN: TerminalClassification.CANCELLED,
             }[reason]
-            return await self._terminal_result(container, classification)
+            return await self._terminal_result(
+                container,
+                classification,
+                observed_logs=observed_logs,
+            )
 
         return await self._invoke(RuntimePhase.KILL, operation)
+
+    async def kill(
+        self,
+        container: ContainerHandle,
+        reason: TerminationReason,
+    ) -> RunResult:
+        if not isinstance(reason, TerminationReason):
+            raise TypeError("OCI kill requires TerminationReason.")
+
+        return await self._terminate(container, reason)
 
     async def collect_artifacts(
         self,

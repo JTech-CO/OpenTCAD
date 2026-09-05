@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "caseId": "gmsh-node-count",
+  "engine": "Gmsh",
+  "inputSha256": "4953af73f9345e823e783aa2411868776a11485fc10032489ba60ccf0ccb37b6",
+  "expectedSha256": "1e40ed85a3da1ad0f76540c0b925fb4dd16b3584cf88c40f81d7483c92b8e60f",
+  "imageRole": "gmsh",
+  "imageIndexDigest": "sha256:edd05b9f099a78ae55c8e5da240647c04587293b4e00de6e2c4843f52637c03d",
+  "platform": "linux/amd64",
+  "platformManifestDigest": "sha256:6a71b65d63ae1aaf9d7bf0e120ec379e7348f5d72f285d73543c72e1a9efabe1",
+  "engineVersion": "contract-fixture-gmsh"
+}

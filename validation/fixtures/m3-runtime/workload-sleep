@@ -1,0 +1,4 @@
+#!/bin/sh
+# OpenTCAD M3 engine-free conformance fixture. This is not a solver entrypoint.
+set -eu
+exec /usr/bin/sleep 30

@@ -1,0 +1,1 @@
+Contract fixture report covering all runtime package licenses with zero unresolved entries.

@@ -1,0 +1,18 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "container",
+      "name": "opentcad-suprem-arm64-contract-fixture",
+      "properties": [
+        {
+          "name": "opentcad:subject-manifest-digest",
+          "value": "sha256:3471a33cc4188be8780c045dc3a3c0154058f5b9a37941d17e1872614516f71f"
+        }
+      ]
+    }
+  },
+  "components": []
+}

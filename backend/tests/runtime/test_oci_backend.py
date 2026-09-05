@@ -4,6 +4,7 @@ import asyncio
 from hashlib import sha256
 import json
 from pathlib import Path
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 from uuid import uuid4
@@ -30,9 +31,11 @@ from backend.app.runtime.models import (
 from backend.app.runtime.oci_backend import (
     OUTPUT_LIMIT_LABEL,
     OciAdapterConfiguration,
+    OciCommandOutputLimitExceeded,
     OciCommandResult,
     OciEntrypoint,
     OciRuntimeBackend,
+    SubprocessOciCommandRunner,
 )
 from backend.app.runtime.protocol import RuntimeBackend, RuntimeJobBackend
 from backend.tests.runtime.support import (
@@ -125,9 +128,11 @@ class FakeOciRunner:
     def __init__(self, kind: RuntimeKind) -> None:
         self.kind = kind
         self.calls: list[tuple[tuple[str, ...], bytes | None]] = []
+        self.timeouts: list[tuple[tuple[str, ...], int]] = []
         self.labels: dict[str, dict[str, str]] = {}
         self.volumes: set[str] = set()
         self.containers: set[str] = set()
+        self.image_index_digest = IMAGE.index_digest
 
     @staticmethod
     def _labels(arguments: tuple[str, ...]) -> dict[str, str]:
@@ -145,9 +150,11 @@ class FakeOciRunner:
         input_bytes=None,
         timeout_ms=30_000,
         output_limit=1_048_576,
+        terminate_on_output_limit=False,
     ) -> OciCommandResult:
         values = tuple(arguments)
         self.calls.append((values, input_bytes))
+        self.timeouts.append((values, timeout_ms))
         if values[:2] == ("info", "--format"):
             if self.kind is RuntimeKind.DOCKER:
                 payload = {
@@ -163,7 +170,7 @@ class FakeOciRunner:
                         "arch": "amd64",
                         "security": {"rootless": True},
                     },
-                    "version": {"version": "5.6.0"},
+                    "version": {"Version": "5.6.0"},
                 }
             return command_result(json.dumps(payload).encode())
         if values[:2] == ("image", "inspect"):
@@ -171,30 +178,18 @@ class FakeOciRunner:
                 json.dumps(
                     [{
                         "RepoDigests": [IMAGE.reference],
+                        "Descriptor": {
+                            "digest": self.image_index_digest,
+                        },
+                        "Digest": self.image_index_digest,
                         "Os": "linux",
                         "Architecture": "amd64",
                     }],
                 ).encode(),
             )
-        if values[:3] == ("manifest", "inspect", "--verbose") or values[:2] == (
-            "manifest",
-            "inspect",
-        ):
-            return command_result(
-                json.dumps(
-                    {
-                        "manifests": [{
-                            "digest": IMAGE.platform_manifest_digest,
-                            "platform": {
-                                "os": "linux",
-                                "architecture": "amd64",
-                            },
-                        }],
-                    },
-                ).encode(),
-            )
         if values[:2] == ("volume", "create"):
-            name = values[values.index("--name") + 1]
+            name = values[-1]
+            assert "--name" not in values
             self.volumes.add(name)
             self.labels[name] = self._labels(values)
             return command_result(name.encode())
@@ -280,6 +275,75 @@ class BlockingWaitRunner(FakeOciRunner):
         if values[:2] == ("container", "wait"):
             self.wait_started.set()
             await self.release_wait.wait()
+        return await super().run(arguments, **kwargs)
+
+
+class TimeoutWaitRunner(FakeOciRunner):
+    def __init__(self, kind: RuntimeKind) -> None:
+        super().__init__(kind)
+        self.killed = False
+        self.wait_timeouts = []
+
+    async def run(self, arguments, **kwargs):
+        values = tuple(arguments)
+        if values[:2] == ("container", "wait"):
+            self.wait_timeouts.append(kwargs["timeout_ms"])
+            self.calls.append((values, kwargs.get("input_bytes")))
+            if not self.killed:
+                raise TimeoutError
+            return command_result(b"137\n")
+        if values[:2] == ("container", "kill"):
+            self.killed = True
+        return await super().run(arguments, **kwargs)
+
+
+class OutputLimitRunner(FakeOciRunner):
+    def __init__(self, kind: RuntimeKind) -> None:
+        super().__init__(kind)
+        self.killed = False
+
+    async def run(self, arguments, **kwargs):
+        values = tuple(arguments)
+        if (
+            values[:2] == ("container", "logs")
+            and "--follow" in values
+            and not self.killed
+        ):
+            self.calls.append((values, kwargs.get("input_bytes")))
+            self.assert_bounded = kwargs.get("terminate_on_output_limit")
+            limit = kwargs["output_limit"]
+            observed = b"x" * (limit + 1)
+            result = OciCommandResult(
+                137,
+                observed[:limit],
+                b"",
+                len(observed),
+                0,
+                sha256(observed).hexdigest(),
+                sha256(b"").hexdigest(),
+                1,
+            )
+            raise OciCommandOutputLimitExceeded(result)
+        if values[:2] == ("container", "wait"):
+            self.calls.append((values, kwargs.get("input_bytes")))
+            return command_result(b"137\n" if self.killed else b"0\n")
+        if values[:2] == ("container", "kill"):
+            self.killed = True
+        return await super().run(arguments, **kwargs)
+
+
+class AlreadyStoppedKillRunner(FakeOciRunner):
+    async def run(self, arguments, **kwargs):
+        values = tuple(arguments)
+        if values[:2] == ("container", "kill"):
+            self.calls.append((values, kwargs.get("input_bytes")))
+            return command_result(stderr=b"container is not running", returncode=1)
+        if (
+            values[:3] == ("container", "inspect", "--format")
+            and values[3] == "{{json .State.Running}}"
+        ):
+            self.calls.append((values, kwargs.get("input_bytes")))
+            return command_result(b"false")
         return await super().run(arguments, **kwargs)
 
 
@@ -406,6 +470,48 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(probe.capabilities.backend, kind)
                 self.assertTrue(probe.capabilities.runtime_fencing)
 
+    async def test_image_identity_is_local_only_and_index_bound(self) -> None:
+        backend, runner, _ = self.backend()
+        self.assertEqual(await backend.ensure_image(IMAGE), IMAGE)
+        self.assertFalse(
+            any(call[:2] == ("manifest", "inspect") for call, _ in runner.calls),
+        )
+        runner.image_index_digest = f"sha256:{'f' * 64}"
+        with self.assertRaises(RuntimeBackendError) as raised:
+            await backend.ensure_image(IMAGE)
+        self.assertEqual(
+            raised.exception.code,
+            ErrorCode.IMAGE_IDENTITY_MISMATCH,
+        )
+
+    async def test_podman_create_uses_explicit_read_only_tmpfs_dialect(self) -> None:
+        backend, runner, authority = self.backend(RuntimeKind.PODMAN)
+        identity = JobIdentity(str(uuid4()))
+        fence = RuntimeFencingContext(identity, str(uuid4()), 1)
+        await authority.activate(
+            fence,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
+        bound = backend.bind_job(fence)
+        spec = POLICY.validate(
+            make_spec(identity.job_id),
+            (await backend.probe()).capabilities,
+        )
+        volume = await bound.create_volume()
+        await bound.stage_inputs(volume, spec, ARCHIVE)
+        await bound.create_container(spec, volume)
+        create = next(
+            arguments
+            for arguments, _ in runner.calls
+            if arguments[:2] == ("container", "create")
+            and arguments[arguments.index("--name") + 1]
+            == fence.identity.object_name
+        )
+        self.assertIn("--restart=no", create)
+        self.assertIn("--pull=never", create)
+        self.assertIn("--read-only-tmpfs=false", create)
+
     async def test_matching_activation_opens_durable_composition(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -462,10 +568,32 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
         await backend.ensure_image(IMAGE)
         volume = await bound.create_volume()
         await bound.stage_inputs(volume, spec, ARCHIVE)
+        input_helper_create = next(
+            arguments
+            for arguments, _ in runner.calls
+            if arguments[:2] == ("container", "create")
+            and arguments[arguments.index("--name") + 1]
+            == f"{fence.identity.object_name}-input"
+        )
+        self.assertIn("--interactive", input_helper_create)
+        input_helper_timeout = next(
+            timeout_ms
+            for arguments, timeout_ms in runner.timeouts
+            if arguments[:3] == ("container", "start", "--attach")
+            and "--interactive" in arguments
+        )
+        self.assertEqual(input_helper_timeout, 30_000)
         container = await bound.create_container(spec, volume)
         await bound.start(container)
         result = await bound.wait(container)
         archive = await bound.collect_artifacts(container)
+        output_helper_timeout = next(
+            timeout_ms
+            for arguments, timeout_ms in runner.timeouts
+            if arguments[:3] == ("container", "start", "--attach")
+            and "--interactive" not in arguments
+        )
+        self.assertEqual(output_helper_timeout, 30_000)
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(result.artifacts, (ARTIFACT,))
         self.assertEqual(archive.payload, ARTIFACT_ARCHIVE.payload)
@@ -499,6 +627,89 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
         await bound.remove_volume(volume)
         await bound.remove_volume(volume)
         self.assertEqual(await bound.list_managed(), await backend.list_managed())
+
+    async def test_wait_enforces_timeout_and_output_limit_through_kill(self) -> None:
+        cases = (
+            (TimeoutWaitRunner, TerminalClassification.TIMED_OUT),
+            (
+                OutputLimitRunner,
+                TerminalClassification.OUTPUT_LIMIT_EXCEEDED,
+            ),
+        )
+        for runner_type, expected in cases:
+            with self.subTest(expected=expected):
+                runner = runner_type(RuntimeKind.DOCKER)
+                authority = InMemoryRuntimeFenceAuthority()
+                backend = OciRuntimeBackend(
+                    configuration(RuntimeKind.DOCKER),
+                    activation_token(),
+                    authority,
+                    runner=runner,
+                )
+                identity = JobIdentity(str(uuid4()))
+                fence = RuntimeFencingContext(identity, str(uuid4()), 1)
+                await authority.activate(
+                    fence,
+                    phase=RuntimePhase.QUERY,
+                    backend=backend.name,
+                )
+                bound = backend.bind_job(fence)
+                spec = POLICY.validate(
+                    make_spec(identity.job_id),
+                    (await backend.probe()).capabilities,
+                )
+                volume = await bound.create_volume()
+                await bound.stage_inputs(volume, spec, ARCHIVE)
+                container = await bound.create_container(spec, volume)
+                await bound.start(container)
+
+                result = await bound.wait(container)
+
+                self.assertEqual(result.classification, expected)
+                self.assertTrue(runner.killed)
+                self.assertEqual(result.artifacts, ())
+                if isinstance(runner, TimeoutWaitRunner):
+                    self.assertEqual(
+                        runner.wait_timeouts,
+                        [spec.spec.limits.timeout_ms, 30_000],
+                    )
+                if isinstance(runner, OutputLimitRunner):
+                    self.assertTrue(runner.assert_bounded)
+                    self.assertTrue(result.output_truncated)
+                    self.assertEqual(
+                        result.captured_output_bytes,
+                        spec.spec.limits.output_bytes,
+                    )
+
+    async def test_kill_race_accepts_a_native_already_stopped_state(self) -> None:
+        runner = AlreadyStoppedKillRunner(RuntimeKind.DOCKER)
+        authority = InMemoryRuntimeFenceAuthority()
+        backend = OciRuntimeBackend(
+            configuration(RuntimeKind.DOCKER),
+            activation_token(),
+            authority,
+            runner=runner,
+        )
+        identity = JobIdentity(str(uuid4()))
+        fence = RuntimeFencingContext(identity, str(uuid4()), 1)
+        await authority.activate(
+            fence,
+            phase=RuntimePhase.QUERY,
+            backend=backend.name,
+        )
+        bound = backend.bind_job(fence)
+        spec = POLICY.validate(
+            make_spec(identity.job_id),
+            (await backend.probe()).capabilities,
+        )
+        volume = await bound.create_volume()
+        await bound.stage_inputs(volume, spec, ARCHIVE)
+        container = await bound.create_container(spec, volume)
+        await bound.start(container)
+
+        result = await bound.kill(container, TerminationReason.TIMEOUT)
+
+        self.assertEqual(result.classification, TerminalClassification.TIMED_OUT)
 
     async def test_stale_owner_is_rejected_before_native_command(self) -> None:
         backend, runner, authority = self.backend()
@@ -672,6 +883,25 @@ class OciRuntimeBackendTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(RuntimeBackendError) as raised:
             await bound.kill(container, TerminationReason.CANCELLATION)
         self.assertEqual(raised.exception.code, ErrorCode.OPERATION_FENCED)
+
+
+class SubprocessOciCommandRunnerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_terminates_cli_when_combined_output_exceeds_limit(self) -> None:
+        runner = SubprocessOciCommandRunner(sys.executable)
+        with self.assertRaises(OciCommandOutputLimitExceeded) as raised:
+            await runner.run(
+                (
+                    "-c",
+                    "import sys; sys.stdout.buffer.write(b'x' * 1048576)",
+                ),
+                timeout_ms=5_000,
+                output_limit=1_024,
+                terminate_on_output_limit=True,
+            )
+        result = raised.exception.result
+        self.assertEqual(result.captured_bytes, 1_024)
+        self.assertGreater(result.observed_bytes, result.captured_bytes)
+        self.assertTrue(result.truncated)
 
 
 if __name__ == "__main__":

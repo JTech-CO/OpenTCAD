@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M3",
+  "observationId": "M3-NATIVE-ADAPTER-001",
+  "classification": "non-promoting-native-adapter-conformance",
+  "qualified": false,
+  "approvalGranted": false,
+  "baselinePromotionAllowed": false,
+  "releaseImageApproved": false,
+  "solverApprovalGranted": false,
+  "platformApprovalGranted": false,
+  "podmanRootlessRequired": true,
+  "fixture": {
+    "engineFree": true,
+    "sourcePath": "validation/fixtures/m3-runtime",
+    "files": [
+      "Containerfile",
+      "archive-export",
+      "archive-import",
+      "workload-nonzero",
+      "workload-output-bomb",
+      "workload-sleep",
+      "workload-success"
+    ],
+    "sourceSha256": "29749cfd9a6c16d986edd3912f090cfe91a6699340142014f20fdef207028f0b",
+    "referenceBase": "localhost:5001/opentcad-m3-runtime-fixture",
+    "provisioning": "external-digest-preload",
+    "observerPullsImage": false,
+    "observerBuildsImage": false,
+    "observerRemovesImage": false,
+    "releaseImageApproved": false
+  },
+  "resourceLimits": {
+    "cpuMillis": 500,
+    "memoryBytes": 67108864,
+    "pids": 32,
+    "normalTimeoutMs": 10000,
+    "faultTimeoutMs": 1000,
+    "maximumTimeoutMs": 60000,
+    "outputBytes": 32768,
+    "fileCount": 8,
+    "artifactBytes": 1048576,
+    "tmpfsBytes": 8388608
+  },
+  "cancellationAfterMs": 250,
+  "scenarios": [
+    {
+      "id": "success-lifecycle",
+      "expected": "succeeded",
+      "requiresCanonicalInput": true,
+      "requiresCanonicalOutput": true
+    },
+    {
+      "id": "declared-nonzero",
+      "expected": "nonzero-exit",
+      "expectedExitCode": 23
+    },
+    {
+      "id": "external-cancellation",
+      "expected": "cancelled"
+    },
+    {
+      "id": "timeout-classification",
+      "expected": "timed-out"
+    },
+    {
+      "id": "output-bomb-classification",
+      "expected": "output-limit-exceeded",
+      "streamingOutputTerminationProven": true
+    },
+    {
+      "id": "stale-fence-no-native-call",
+      "expected": "operation-fenced-no-native-call"
+    },
+    {
+      "id": "concurrent-cleanup-idempotence",
+      "expected": "idempotent"
+    }
+  ],
+  "cleanup": {
+    "exactObjectRemoval": true,
+    "labelAndFenceVerificationRequired": true,
+    "globalPruneAllowed": false,
+    "preExistingImageRemovalAllowed": false,
+    "expectedContainers": 0,
+    "expectedVolumes": 0
+  },
+  "requiredProofs": {
+    "streamingOutputTerminationProven": true,
+    "offlineLocalImageInspectionProven": true,
+    "manifestInspectCommands": 0
+  },
+  "evidence": {
+    "rawInsideRepository": false,
+    "automaticPromotion": false,
+    "commandOutputCommitted": false,
+    "absoluteHostPathInSummary": false
+  }
+}

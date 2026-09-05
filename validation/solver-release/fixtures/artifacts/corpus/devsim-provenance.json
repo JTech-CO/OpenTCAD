@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "caseId": "devsim-drain-current",
+  "engine": "DEVSIM",
+  "inputSha256": "a9719a606bffca26477700c8cb903cac2ac44b5fae820ce9876391bad366162f",
+  "expectedSha256": "8dc4074c9b10855c1b9527ca37221ab7a9c6bbc28430095924dd732c71b2411e",
+  "imageRole": "devsim",
+  "imageIndexDigest": "sha256:b049bab57cc7c2d7d777a3c1f54febd427dd316bcbafafd672a2d66c0b7a78da",
+  "platform": "linux/amd64",
+  "platformManifestDigest": "sha256:529701bee17a172e5b296f7cf55536c2269cd1d6456513a25f4b9e7491e72da8",
+  "engineVersion": "contract-fixture-devsim"
+}

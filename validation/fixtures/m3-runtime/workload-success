@@ -1,0 +1,18 @@
+#!/bin/sh
+# OpenTCAD M3 engine-free conformance fixture. This is not a solver entrypoint.
+set -eu
+
+expected=/tmp/opentcad-m3-expected-input
+trap 'rm -f "$expected"' EXIT HUP INT TERM
+umask 077
+printf 'OpenTCAD M3 fixture input\n' > "$expected"
+if [ ! -f /opentcad/work/input.in ] \
+  || [ -L /opentcad/work/input.in ] \
+  || ! /usr/bin/cmp -s "$expected" /opentcad/work/input.in; then
+  echo "fixture input content rejected" >&2
+  exit 60
+fi
+
+printf 'OpenTCAD M3 fixture result\n' > /opentcad/work/result.str
+/usr/bin/chmod 0400 /opentcad/work/result.str
+printf 'OpenTCAD M3 fixture completed\n'

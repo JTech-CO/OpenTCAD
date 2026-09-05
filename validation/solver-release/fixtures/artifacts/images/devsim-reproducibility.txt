@@ -1,0 +1,1 @@
+Contract fixture record of two independent DEVSIM image builds with an identical index digest.

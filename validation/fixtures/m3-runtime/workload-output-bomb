@@ -1,0 +1,14 @@
+#!/bin/sh
+# OpenTCAD M3 engine-free conformance fixture. This is not a solver entrypoint.
+set -eu
+
+index=0
+while [ "$index" -lt 8192 ]; do
+  printf '0123456789abcdef'
+  index=$((index + 1))
+done
+
+# Stay alive after crossing the reviewed output limit. The adapter must stop the
+# streaming log client and terminate this workload; natural process exit cannot
+# satisfy the conformance scenario.
+exec /usr/bin/sleep 86400

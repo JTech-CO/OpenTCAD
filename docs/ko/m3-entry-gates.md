@@ -7,6 +7,8 @@ OpenTCAD에는 로컬 제품 서비스 연결 계층이 구현되어 있지만 �
 ## 구현된 제품 경로
 
 - Docker 및 Podman OCI 어댑터는 shell을 사용하지 않는 bounded subprocess transport를 사용합니다.
+- 실행 대기와 로그 스트리밍을 동시에 처리합니다. 시간 또는 출력 상한을 넘으면 fencing 검증을 거쳐 실제 프로세스를 종료합니다. 입력 helper는 stdin을 유지하며, 입출력 전송에는 짧은 작업 제한 시간과 별도의 제한 시간을 적용합니다.
+- 미리 적재한 이미지는 승인된 index digest와 플랫폼을 로컬에서 확인합니다. Docker와 Podman의 명령 및 버전 응답 차이를 별도로 처리합니다.
 - 모든 런타임 객체는 정확한 job ID, owner ID, fencing generation을 기록합니다. 제품 작업은 영속 authority 확인과 native mutation 전체에서 job별 cross-process lock을 유지하며 mutation 전에 실제 객체 label을 검사하고 객체 생성 직후에도 label을 검사합니다.
 - 재시작 후 취소는 native label에서 출력 상한 계약을 복원합니다. 복원 label이 없거나 잘못되면 kill 전에 요청을 fencing 처리합니다.
 - 런타임 권한은 backend, 불변 image identity, 설정된 entrypoint의 정확한 조합으로 부여됩니다. 개별 승인 목록을 임의로 조합하지 않습니다.
@@ -37,18 +39,22 @@ OpenTCAD에는 로컬 제품 서비스 연결 계층이 구현되어 있지만 �
 | `backend/app/service/static_assets.py` | 상한이 있는 동일 출처 정적 자산 제공 |
 | `backend/app/service/status.py` | 버전이 있고 정보가 제거된 브라우저 상태 계약 |
 | `tools/qualify-runtime.py` | 승격 권한이 없는 host 관측 도구 |
+| `tools/observe-m3-native-adapter.py` | 실제 제품 어댑터의 7개 시나리오, 정확한 객체 정리, 외부 증거 기록 |
+| `tools/check-m3-promotion.mjs` | 정확한 revision에 결속된 8개 게이트와 6개 OS 및 런타임 조합의 일괄 준비 상태 검사 |
+| `tools/check-m3-solver-release.mjs` | 권리, 이미지, SBOM, 출처, 수치 corpus 증거 검증 |
+| `tools/check-m3-power-loss.mjs` | 독립 검토를 거친 실제 전원 차단 원장 검증 |
 
 ## 게이트 상태
 
 | 게이트 | 구현 상태 | 자격 또는 승인 상태 |
 |---|---|---|
 | Docker 및 Podman 어댑터 | 구현 및 fake CLI test 완료 | 차단: 매니페스트에 승인된 3개 플랫폼 native 증거 없음 |
-| Native fencing | 구현 및 label 변조, stale owner test 완료 | 차단: 실제 Docker 또는 Podman 객체 증거 없음 |
+| Native fencing | 구현 및 label 변조, stale owner test 완료, native 관찰기 제공 | 차단: 검토된 플랫폼 자격 증거 미완료 |
 | 로컬 API 및 worker transport | 구현, 상한 적용, loopback socket test 완료 | 차단: 제품 매니페스트와 릴리스 프로필 비활성 |
 | Lifecycle 통합 | 구현 및 SQLite assembly test 완료 | 차단: 제품 매니페스트와 릴리스 프로필 비활성 |
 | OS 자격 증명 및 예약 backup | 3개 OS 어댑터와 scheduler 구현 | 차단: Windows DPAPI test만 있으며 3개 OS native 증거 미완료 |
 | 전원 차단 및 비정상 종료 | process hard exit 경계 8곳 통과 | 차단: 실제 abrupt power run은 요구된 100회 중 0회 |
-| Windows, macOS, Linux 자격 | CI host contract matrix와 관측 도구 구현 | 차단: 3개 native runtime 행 미승인 |
+| Windows, macOS, Linux 자격 | CI host contract matrix와 수동 self-hosted 관찰 workflow 구현 | 차단: 6개 OS 및 runtime 조합 미승인 |
 | Solver release | 실패 폐쇄 게이트 구현 | 차단: 승인된 solver license 기록, 불변 image digest, SBOM, 수치 baseline 없음 |
 
 권위 있는 상태는 [M3 게이트 매니페스트](../../validation/manifests/m3-entry-gates.json)에 있습니다. npm run check:m3가 증거 hash를 검사합니다. productEnabled가 false인 동안 매니페스트는 런타임 권한을 하나도 부여하지 않습니다.
@@ -61,6 +67,8 @@ OpenTCAD에는 로컬 제품 서비스 연결 계층이 구현되어 있지만 �
     python tools/qualify-runtime.py --output validation/evidence/m3/runtime-host-local.json
 
 런타임, 승인 image, 계약 test, native conformance 증거가 모두 준비될 때까지 자격 도구는 blocked 상태와 0이 아닌 종료 코드를 반환합니다. 생성한 파일은 관측 기록이며 승인 기록이 아닙니다.
+
+[네이티브 어댑터 실행 절차](m3-native-adapter-conformance.md)는 엔진이 없는 fixture로 정규 archive 전송, 비정상 종료 코드, 취소, 제한 시간, 스트리밍 출력 상한, 오래된 fencing, 동시 정리를 확인합니다. 결과는 저장소 밖에 보관합니다. 검토할 증거를 준비할 때는 [승격 준비 계약](m3-promotion-readiness.md)과 [솔버 릴리스 계약](m3-solver-release-qualification.md)을 따릅니다. 해당 fixture 테스트는 `npm run check`에 포함됩니다.
 
 ## 활성화 규칙
 
