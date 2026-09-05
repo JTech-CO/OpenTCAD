@@ -30,4 +30,5 @@ jobs:
         if: failure()
         env:
           PYTHONUTF8: '1'
-        run: python -c "from backend.app.experimental.solver import solve_pn; from backend.app.experimental.contract import DEFAULT; print(solve_pn({**DEFAULT, 'voltageV': 0})['checks'])"
+        run: |
+          python -c "from backend.app.experimental.solver import solve_pn; from backend.app.experimental.contract import DEFAULT; print(solve_pn({**DEFAULT, 'voltageV': 0})['checks'])"
