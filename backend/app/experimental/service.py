@@ -22,6 +22,10 @@ async def run_solver(value, timeout=60):
     allowed = {"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE"}
     environment = {k: v for k, v in os.environ.items() if k.upper() in allowed}
     environment.update(PYTHONUTF8="1", PYTHONNOUSERSITE="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    if sys.platform.startswith("linux"):
+        # A separately installed CPython may need its own shared libpython.
+        # Do not inherit arbitrary LD_LIBRARY_PATH from request or shell input.
+        environment["LD_LIBRARY_PATH"] = str(Path(sys.base_prefix) / "lib")
     launch = asyncio.create_task(asyncio.create_subprocess_exec(
         sys.executable, "-s", "-m", "backend.app.experimental.solver",
         cwd=ROOT, env=environment, stdin=asyncio.subprocess.PIPE,
