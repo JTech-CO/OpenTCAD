@@ -374,6 +374,10 @@ test("manual native workflow is exact-revision and non-promoting", async () => {
   assert.match(workflow, /persist-credentials: false/u);
   assert.match(workflow, /git", "status", "--porcelain=v1"/u);
   assert.match(workflow, /\$\{\{ runner\.temp \}\}/u);
+  // runner context is available in step env, but not in job env.
+  assert.doesNotMatch(workflow, /^    env:/mu);
+  assert.equal((workflow.match(/^          OBSERVATION_DIRECTORY:/gmu) ?? []).length, 2);
+  assert.doesNotMatch(workflow, /env\.OBSERVATION_DIRECTORY/u);
   for (const input of [
     "image_reference",
     "index_digest",
