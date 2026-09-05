@@ -12,11 +12,13 @@ The default public experience is English. Select **한국어** at any time to sw
 
 ## Current release
 
-The published GitHub Pages build is a safe static product preview. It includes:
+This source builds a safe static workspace. The public preview follows the deployed `main` revision and may not yet include development-branch changes. The workspace includes:
 
 - an English-first introduction page with a persistent Korean language option;
 - process, device, curve-comparison, and runtime-boundary views;
-- editable in-memory example input and deterministic scientific visuals;
+- project-file save/import, illustrative deck diagnostics, editable bias settings, and deterministic reference visuals;
+- material/terminal selection, cross-section zoom and pan, and read-only JSON/CSV result import and comparison;
+- an explicitly mock-only execution, cancellation, and interruption-recovery workflow;
 - explicit provenance and “not solver output” labels;
 - responsive layouts, keyboard-visible focus states, and automated UI tests;
 - evidence-gated Docker and Podman adapters, durable fencing, an authenticated loopback service, OS credential adapters, lifecycle integration, and scheduled backup code with Python contract tests;
@@ -25,6 +27,9 @@ The published GitHub Pages build is a safe static product preview. It includes:
 This build does **not** execute submitted input, containers, SUPREM-IV.GS, Gmsh, or DEVSIM. The local product connection layer is implemented but activation is fail-closed: the committed M3 manifest grants no runtime authority because native runtime, three-platform, physical power-loss, solver-license, immutable-image, SBOM, and numerical-corpus approvals are incomplete. No third-party solver source or binary is distributed in this repository.
 
 ## Explore the web app
+
+See the [M4 workspace guide](docs/en/m4-workspace.md) for file formats, examples,
+comparison rules, keyboard controls, and the M3-dependent work that remains deferred.
 
 Open the [live preview](https://jtech-co.github.io/OpenTCAD/) or run it locally.
 

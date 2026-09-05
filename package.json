@@ -24,6 +24,7 @@
     "test:validation": "node --test validation/baseline/observation.test.mjs validation/baseline/reference-image-build.test.mjs validation/comparators/comparators.test.mjs validation/faults/oci-fault-observation.test.mjs validation/faults/supervisor.test.mjs validation/m3-promotion/readiness.test.mjs validation/power-loss/ledger.test.mjs",
     "test:m3:promotion": "node --test validation/m3-promotion/readiness.test.mjs",
     "test:m3:solver-release": "node --test validation/solver-release/validator.test.mjs",
+    "test:m4": "npm run test --workspace @opentcad/web -- src/m4",
     "test": "npm run test:validation && npm run test:m3:solver-release && npm run test:runtime && npm run test --workspace @opentcad/web",
     "coverage": "npm run coverage --workspace @opentcad/web",
     "check:m0": "node tools/check-m0.mjs",

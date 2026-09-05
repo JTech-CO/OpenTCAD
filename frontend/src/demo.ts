@@ -2,7 +2,7 @@ import type { MessageKey } from "./i18n";
 
 export type ProfileField = "netActive" | "boron" | "arsenic" | "electrons";
 export type WorkspaceView = "process" | "device" | "compare" | "runtime";
-export type RunState = "idle" | "running" | "complete";
+export type RunState = "idle" | "running" | "complete" | "cancelled" | "interrupted";
 
 export const DEMO_DECK = `# Illustrative only — this static preview never executes input
 title "OpenTCAD planar NMOS reference"

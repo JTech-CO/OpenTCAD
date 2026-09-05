@@ -1,0 +1,89 @@
+/* M4 working surfaces share the existing CAD typography and color tokens. */
+.m4-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 0.65rem; }
+.m4-toolbar label, .bias-editor label { display: grid; gap: 0.3rem; font-size: 0.85rem; color: var(--text-soft); min-width: 0; }
+.app-shell input:not([type="checkbox"]), .app-shell select {
+  min-height: 2.5rem; max-width: 100%; min-width: 0; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border-strong); border-radius: 4px; background: #0b1d28; color: var(--text);
+}
+.app-shell input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--cyan); }
+.app-shell :is(input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.app-shell :disabled { cursor: not-allowed; opacity: 0.55; }
+.app-shell [aria-invalid="true"] { border-color: var(--red); }
+.project-tools { margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
+.project-name-field { flex: 1 1 12rem; }
+.file-field { display: grid; gap: 0.3rem; max-width: 100%; font-size: 0.85rem; color: var(--text-soft); }
+.file-field input { width: 100%; font-size: 0.8rem; }
+.file-field input::file-selector-button { min-height: 1.8rem; margin-right: 0.5rem; border: 0; border-radius: 3px; background: var(--text-soft); color: #10232e; cursor: pointer; }
+.m4-help, .mock-controls p { color: var(--text-soft); font-size: 0.85rem; line-height: 1.6; }
+.project-tools p:empty { display: none; }
+.project-tools [role="alert"], .results-body [role="alert"] { color: var(--amber); }
+.project-tools [role="status"] { color: var(--cyan); font-size: 0.85rem; }
+.import-review { padding: 1rem; margin-top: 0.75rem; border: 1px solid var(--amber); border-radius: 4px; }
+.import-review strong, .project-title, .result-record label { overflow-wrap: anywhere; }
+.pending-deck { max-height: 14rem; overflow: auto; font-size: 0.85rem; }
+.deck-diagnostics { margin-top: 1rem; padding: 1rem; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+.deck-diagnostics h2 { font-size: 1rem; margin: 0; }
+.deck-diagnostics p, .deck-diagnostics ul { font-size: 0.85rem; color: var(--text-soft); }
+.deck-diagnostics ul { max-height: 14rem; overflow: auto; padding-left: 1.4rem; }
+.deck-diagnostics button { background: none; border: 0; text-align: left; padding: 0.4rem; cursor: pointer; font-size: inherit; }
+.deck-diagnostics .error { color: var(--red); }
+.deck-diagnostics .warning { color: var(--amber); }
+.mock-label { color: var(--amber); margin: 1.2rem 0 -0.5rem; font-weight: 700; font-size: 0.85rem; }
+.mock-controls { padding: 0.25rem 1rem 1rem; }
+.mock-controls details { margin-top: 0.9rem; }
+.mock-controls summary, .reference-curves summary, .sample-details summary { cursor: pointer; padding: 0.6rem 0; }
+.mock-controls ol { max-height: 12rem; overflow: auto; font-size: 0.85rem; color: var(--text-soft); }
+.run-state-dot.cancelled { background: var(--red); box-shadow: none; }
+.run-state-dot.interrupted { background: var(--amber); box-shadow: none; }
+.bias-editor { padding: 1rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; }
+.drawing-tools { background: var(--panel); color: var(--text); padding: 0.75rem 1rem; }
+.drawing-tools output { align-self: center; min-width: 3.5rem; font-variant-numeric: tabular-nums; }
+.device-section-svg { cursor: grab; touch-action: pan-y; }
+.device-section-svg:active { cursor: grabbing; }
+.device-domain-lines:not([data-selection="all"]) > * { opacity: 0.3; }
+.device-domain-lines[data-selection="silicon"] > [data-region="silicon"],
+.device-domain-lines[data-selection="source"] > [data-region="source"],
+.device-domain-lines[data-selection="drain"] > [data-region="drain"],
+.device-domain-lines[data-selection="oxide"] > [data-region="oxide"],
+.device-domain-lines[data-selection="gate"] > [data-region="gate"],
+.device-domain-lines[data-selection="source-contact"] > [data-region="source-contact"],
+.device-domain-lines[data-selection="drain-contact"] > [data-region="drain-contact"],
+.device-domain-lines[data-selection="body-contact"] > [data-region="body-contact"] { opacity: 1; stroke: #9d263f; stroke-width: 4; }
+.device-drawing figcaption p { margin: 0.4rem 0 0; }
+.results-stack { display: grid; gap: 1rem; }
+.results-body { padding: 1rem; min-width: 0; }
+.result-empty { padding: 1.5rem; border: 1px dashed var(--border-strong); color: var(--text-soft); }
+.result-records { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 0.75rem; margin-top: 1rem; }
+.result-record { border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem; min-width: 0; }
+.result-record label { display: flex; align-items: center; gap: 0.5rem; font-weight: 650; }
+.result-record input { flex: 0 0 auto; }
+.unverified-label { display: block; margin-top: 0.5rem; color: var(--amber); font-size: 0.8rem; }
+.result-record dl { font-size: 0.8rem; }
+.result-record dt { color: var(--muted); }
+.result-record dd { margin: 0 0 0.5rem; overflow-wrap: anywhere; }
+.result-record dd:last-child { font-family: var(--mono); }
+.imported-comparison h3, .imported-structure h3 { font-size: 1rem; overflow-wrap: anywhere; }
+.result-plot-scroll { overflow-x: auto; }
+.result-plot { display: block; width: 100%; min-width: 36rem; max-height: 28rem; background: #07151c; }
+.result-plot text { fill: var(--text-soft); font: 16px var(--mono); }
+.result-grid-line { stroke: var(--border); fill: none; stroke-width: 1; }
+.result-key { display: flex; flex-wrap: wrap; gap: 0.75rem; list-style: none; margin: 0.65rem 0; padding: 0; font-size: 0.85rem; }
+.result-key li { display: flex; gap: 0.4rem; align-items: center; overflow-wrap: anywhere; }
+.result-key i { display: inline-block; width: 1rem; height: 1rem; flex: 0 0 auto; border: 1px solid var(--text-soft); }
+.comparison-metrics dl { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 1rem; background: var(--panel-raised); }
+.comparison-metrics dt { color: var(--muted); font-size: 0.85rem; }
+.comparison-metrics dd { margin: 0.25rem 0 0; font-family: var(--mono); }
+.structure-comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 1rem; }
+.imported-structure { min-width: 0; }
+.imported-structure svg { display: block; width: 100%; background: #eaf1f6; }
+.imported-structure svg text { fill: #152c40; font-size: 18px; }
+.sample-table { max-height: 18rem; overflow: auto; }
+.sample-table table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.sample-table :is(th, td) { border: 1px solid var(--border); padding: 0.4rem 0.65rem; text-align: left; overflow-wrap: anywhere; }
+.sample-table caption { text-align: left; padding: 0.5rem; font-weight: 650; }
+.sample-table th { background: var(--panel-raised); position: sticky; top: 0; }
+@media (max-width: 40em) {
+  .project-tools .m4-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .bias-editor { grid-template-columns: minmax(0, 1fr); }
+  .drawing-tools label { flex-basis: 100%; }
+}

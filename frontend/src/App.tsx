@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   DEMO_DECK,
   gateSweeps,
@@ -17,6 +17,12 @@ import {
 } from "./i18n";
 import { IvCanvas, ProfileCanvas } from "./components/ScientificCanvas";
 import { DeviceCrossSection } from "./components/DeviceCrossSection";
+import { ProjectTools } from "./m4/ProjectTools";
+import { ResultsWorkbench } from "./m4/ResultsWorkbench";
+import { MAX_DECK_LENGTH, newProject, projectValid, validateDeck, type WorkspaceProject } from "./m4/project";
+import { initialMockRun, mockReducer, type MockRun } from "./m4/mock-workflow";
+import type { ImportedResult } from "./m4/results";
+import "./m4/workspace.css";
 import { LandingPage } from "./LandingPage";
 import {
   fetchLocalProductStatus,
@@ -56,11 +62,20 @@ function App({ localBootstrap = null }: AppProps) {
   const [locale, setLocale] = useState<Locale>(getInitialLocale);
   const [surface, setSurface] = useState<AppSurface>(getInitialSurface);
   const [view, setView] = useState<WorkspaceView>("process");
-  const [deck, setDeck] = useState(DEMO_DECK);
+  const [project, setProject] = useState(newProject);
+  const deck = project.deck;
+  const [results, setResults] = useState<ImportedResult[]>([]);
   const [selectedField, setSelectedField] =
     useState<ProfileField>("netActive");
-  const [runState, setRunState] = useState<RunState>("idle");
-  const [activeStep, setActiveStep] = useState(0);
+  const [mockRun, dispatchMock] = useReducer(mockReducer, initialMockRun);
+  const runState = mockRun.phase;
+  const activeStep = mockRun.step;
+  const locked = runState === "running" || runState === "interrupted";
+  const changeProject = (next: WorkspaceProject) => {
+    if (locked) return;
+    setProject(next); dispatchMock({ type: "reset" });
+  };
+  const setDeck = (value: string) => changeProject({ ...project, deck: value });
   const [localConnection, setLocalConnection] = useState<LocalConnectionState>(
     localBootstrap ? "available" : "unavailable",
   );
@@ -92,18 +107,14 @@ function App({ localBootstrap = null }: AppProps) {
     }
 
     const timer = window.setTimeout(() => {
-      if (activeStep >= workflowSteps.length - 1) {
-        setRunState("complete");
-      } else {
-        setActiveStep((step) => step + 1);
-      }
+      dispatchMock({ type: "tick", generation: mockRun.generation });
     }, 620);
 
     return () => window.clearTimeout(timer);
-  }, [activeStep, runState, surface]);
+  }, [activeStep, runState, surface, mockRun.generation]);
 
   const lineCount = useMemo(
-    () => deck.split(/\r?\n/).filter((line) => line.length > 0).length,
+    () => deck.split(/\r?\n/).length,
     [deck],
   );
 
@@ -115,8 +126,7 @@ function App({ localBootstrap = null }: AppProps) {
         : Math.round(((activeStep + 1) / workflowSteps.length) * 100);
 
   const startReferenceRun = () => {
-    setActiveStep(0);
-    setRunState("running");
+    if (projectValid(project) && !validateDeck(deck).some((issue) => issue.severity === "error")) dispatchMock({ type: "start" });
   };
 
   const connectLocalService = async () => {
@@ -248,7 +258,7 @@ function App({ localBootstrap = null }: AppProps) {
       <aside className="sidebar">
         <section className="project-card" aria-label={text("referenceProject")}>
           <div className="eyebrow">{text("referenceProject")}</div>
-          <div className="project-title">{text("sampleProject")}</div>
+          <div className="project-title">{project.name || text("sampleProject")}</div>
           <div className="project-meta">
             <span className="project-dot" aria-hidden="true" />
             {text("projectRevision")}
@@ -340,6 +350,7 @@ function App({ localBootstrap = null }: AppProps) {
           </span>
         </div>
 
+        <ProjectTools project={project} locked={locked} onChange={changeProject} text={text} />
         <div className="workspace-heading">
           <div>
             <div className="eyebrow">
@@ -352,8 +363,8 @@ function App({ localBootstrap = null }: AppProps) {
             <div className="reference-badge">
               <span className="reference-pulse" aria-hidden="true" />
               <span>
-                <strong>{text("referenceOnly")}</strong>
-                <small>{text("notSolverOutput")}</small>
+                <strong>{text(view === "compare" && results.length ? "unverifiedImport" : "referenceOnly")}</strong>
+                <small>{text(view === "compare" && results.length ? "notVerifiedOutput" : "notSolverOutput")}</small>
               </span>
             </div>
           )}
@@ -372,12 +383,21 @@ function App({ localBootstrap = null }: AppProps) {
             onReset={() => setDeck(DEMO_DECK)}
             onFieldChange={setSelectedField}
             onRun={startReferenceRun}
+            locked={locked}
+            projectReady={projectValid(project)}
+            mockRun={mockRun}
+            onCancel={() => dispatchMock({ type: "cancel" })}
+            onInterrupt={() => dispatchMock({ type: "interrupt" })}
+            onRecover={() => dispatchMock({ type: "recover" })}
           />
         )}
 
-        {view === "device" && <DeviceView text={text} />}
+        {view === "device" && <DeviceView text={text} project={project} locked={locked} onChange={changeProject} />}
 
-        {view === "compare" && <CompareView text={text} />}
+        {view === "compare" && <div className="results-stack">
+          <ResultsWorkbench records={results} onChange={setResults} text={text} />
+          <details className="reference-curves"><summary>{text("referenceOnly")} · {text("ivCurves")}</summary><CompareView text={text} /></details>
+        </div>}
 
         {view === "runtime" && (
           <RuntimeView
@@ -399,7 +419,7 @@ function App({ localBootstrap = null }: AppProps) {
               <span className={`run-state-dot ${runState}`} aria-hidden="true" />
               <div>
                 <strong>{text(runState)}</strong>
-                <span>ref-ui-0001</span>
+                <span>mock-ui-{mockRun.generation}</span>
               </div>
             </div>
             <div className="progress-track" aria-hidden="true">
@@ -445,7 +465,7 @@ function App({ localBootstrap = null }: AppProps) {
               </div>
               <div>
                 <dt>{text("dataset")}</dt>
-                <dd>{text("referenceDataset")}</dd>
+                <dd>{text(view === "compare" && results.length ? "unverifiedImport" : "referenceDataset")}</dd>
               </div>
             </dl>
           </section>
@@ -480,6 +500,12 @@ interface ProcessViewProps extends SharedTextProps {
   onReset: () => void;
   onFieldChange: (field: ProfileField) => void;
   onRun: () => void;
+  locked: boolean;
+  projectReady: boolean;
+  mockRun: MockRun;
+  onCancel: () => void;
+  onInterrupt: () => void;
+  onRecover: () => void;
 }
 
 function ProcessView({
@@ -493,7 +519,11 @@ function ProcessView({
   onReset,
   onFieldChange,
   onRun,
+  locked, projectReady, mockRun, onCancel, onInterrupt, onRecover,
 }: ProcessViewProps) {
+  const editor = useRef<HTMLTextAreaElement>(null);
+  const diagnostics = useMemo(() => validateDeck(deck), [deck]);
+  const hasErrors = diagnostics.some((issue) => issue.severity === "error");
   return (
     <>
       <div className="process-grid">
@@ -503,7 +533,7 @@ function ProcessView({
               <h2>{text("illustrativeDeck")}</h2>
               <p>{text("deckDescription")}</p>
             </div>
-            <button type="button" className="quiet-button" onClick={onReset}>
+            <button type="button" className="quiet-button" disabled={locked} onClick={onReset}>
               {text("reset")}
             </button>
           </div>
@@ -514,6 +544,11 @@ function ProcessView({
               ))}
             </div>
             <textarea
+              ref={editor}
+              readOnly={locked}
+              maxLength={MAX_DECK_LENGTH}
+              aria-invalid={hasErrors}
+              aria-describedby="deck-check-help"
               value={deck}
               onChange={(event) => onDeckChange(event.target.value)}
               spellCheck={false}
@@ -565,6 +600,18 @@ function ProcessView({
         </section>
       </div>
 
+      <section className="deck-diagnostics" aria-label={text("checkDeck")}>
+        <h2>{text("checkDeck")}</h2><p id="deck-check-help">{text("deckCheckHelp")}</p>
+        {!diagnostics.length ? <p role="status">{text("deckValid")}</p> : <ul>
+          {diagnostics.map((issue, index) => <li key={index} className={issue.severity}>
+            <button type="button" onClick={() => {
+              const offset = deck.split("\n").slice(0, issue.line - 1).reduce((sum, line) => sum + line.length + 1, 0);
+              editor.current?.focus(); editor.current?.setSelectionRange(offset, offset + (deck.split("\n")[issue.line - 1]?.length ?? 0));
+            }}>{text("lineLabel")} {issue.line} · {text(issue.severity === "error" ? "errorLabel" : "warningLabel")}: {text(issue.code)}</button>
+          </li>)}
+        </ul>}
+      </section>
+      <p className="mock-label">{text("mockMode")}</p>
       <section className="run-console">
         <div className="run-console-state" aria-live="polite">
           <span className={`run-state-dot ${runState}`} aria-hidden="true" />
@@ -582,7 +629,7 @@ function ProcessView({
         <button
           type="button"
           className="primary-button"
-          disabled={runState === "running"}
+          disabled={locked || hasErrors || !projectReady}
           onClick={onRun}
         >
           <span className="run-icon" aria-hidden="true">
@@ -593,11 +640,22 @@ function ProcessView({
             : text("runReference")}
         </button>
       </section>
+      <div className="mock-controls">
+        <p>{text("mockHelp")}</p>
+        <div className="m4-toolbar">
+          <button type="button" className="quiet-button" disabled={!locked} onClick={onCancel}>{text("cancelMock")}</button>
+          <button type="button" className="quiet-button" disabled={runState !== "running"} onClick={onInterrupt}>{text("interruptMock")}</button>
+          <button type="button" className="quiet-button" disabled={runState !== "interrupted"} onClick={onRecover}>{text("recoverMock")}</button>
+        </div>
+        <details><summary>{text("mockEvents")}</summary><ol role="log" aria-live="polite" aria-label={text("mockEvents")}>
+          {mockRun.history.map((event, index) => <li key={index}>{text(event.phase)} · {text(workflowSteps[event.step])}</li>)}
+        </ol></details>
+      </div>
     </>
   );
 }
 
-function DeviceView({ text }: SharedTextProps) {
+function DeviceView({ text, project, locked, onChange }: SharedTextProps & { project: WorkspaceProject; locked: boolean; onChange: (project: WorkspaceProject) => void }) {
   const materials: Array<[MessageKey, string]> = [
     ["silicon", "#b9d9ec"],
     ["dopedRegion", "#386cb0"],
@@ -658,20 +716,14 @@ function DeviceView({ text }: SharedTextProps) {
               <p>{text("notSolverOutput")}</p>
             </div>
           </div>
-          <dl className="bias-grid">
-            <div>
-              <dt>{text("gateVoltage")}</dt>
-              <dd>0.80 V</dd>
-            </div>
-            <div>
-              <dt>{text("drainVoltage")}</dt>
-              <dd>1.00 V</dd>
-            </div>
-            <div>
-              <dt>{text("temperature")}</dt>
-              <dd>300 K</dd>
-            </div>
-          </dl>
+          <div className="bias-editor">
+            {(["gateVoltage", "drainVoltage", "temperature"] as const).map((key) => <label key={key}>
+              {text(key)} ({key === "temperature" ? "K" : "V"})
+              <input type="number" value={Number.isFinite(project.bias[key]) ? project.bias[key] : ""}
+                disabled={locked} min={key === "temperature" ? 1 : -10} max={key === "temperature" ? 1500 : 10} step="any"
+                onChange={(event) => onChange({ ...project, bias: { ...project.bias, [key]: event.target.valueAsNumber } })} />
+            </label>)}
+          </div>
         </section>
       </div>
     </div>
