@@ -53,6 +53,13 @@ npm run local:lab
 
 macOS / Linux:
 
+Debian/Ubuntu Linux는 먼저 `sudo apt-get update && sudo apt-get install -y libopenblas0`으로
+시스템 수학 런타임을 설치합니다. 다른 배포판은 해당 OpenBLAS 공유 라이브러리 패키지를
+사용합니다. 실행기는 OS 로더로 설치된 라이브러리를 찾습니다. macOS는 플랫폼 LAPACK과
+DEVSIM의 UMFPACK 콜백을 사용하며 import 후 이 콜백을 초기화하지 않습니다. 시스템
+수학 라이브러리는 pip로 고정되지 않으므로 플랫폼 간 재현은 환경의 바이너리 동일성이
+아닌 수치 허용 오차를 기준으로 비교합니다.
+
 ```bash
 python3 -m venv .venv-mvp
 .venv-mvp/bin/python -m pip install -r backend/app/experimental/requirements.txt

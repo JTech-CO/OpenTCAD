@@ -4,6 +4,7 @@ No submitted code is evaluated. All expression strings are code-owned. See
 docs/en/mvp-laboratory.md for constants, limits and upstream references.
 """
 import hashlib
+import ctypes.util
 import importlib.metadata
 import math
 import os
@@ -29,6 +30,11 @@ def load_devsim():
             os.environ["PATH"] = str(directory) + os.pathsep + os.environ.get("PATH", "")
             # Use the DLL name: DEVSIM's loader cannot handle every Unicode path.
             os.environ["DEVSIM_MATH_LIBS"] = "mkl_rt.2.dll"
+    elif sys.platform.startswith("linux"):
+        library = ctypes.util.find_library("openblas")
+        if not library:
+            raise RuntimeError("Install the system OpenBLAS shared library")
+        os.environ["DEVSIM_MATH_LIBS"] = library
     import devsim
     return devsim
 
@@ -37,7 +43,8 @@ def solve_pn(value):
     ds = load_devsim()
     from devsim.python_packages import simple_physics as physics
     from devsim.python_packages.model_create import CreateSolution
-    ds.reset_devsim()
+    # Every job already starts in a fresh process. reset_devsim would erase the
+    # UMFPACK callback registered during import on Linux/macOS.
     device, region, mesh = "pn", "silicon", "pn_mesh"
     length = p["lengthUm"] * 1e-4
     ds.create_1d_mesh(mesh=mesh)

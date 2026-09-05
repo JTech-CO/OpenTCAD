@@ -56,6 +56,14 @@ npm run local:lab
 
 macOS / Linux:
 
+On Debian/Ubuntu Linux, first install the system math runtime with
+`sudo apt-get update && sudo apt-get install -y libopenblas0` (other distributions:
+install their OpenBLAS shared-library package). The launcher resolves the installed
+versioned library through the OS loader. macOS uses its platform LAPACK and DEVSIM's
+UMFPACK callback; that callback must not be reset after import. System math libraries
+are not pinned by pip, so cross-platform replay uses numerical tolerances rather than
+promising binary-identical environments.
+
 ```bash
 python3 -m venv .venv-mvp
 .venv-mvp/bin/python -m pip install -r backend/app/experimental/requirements.txt
