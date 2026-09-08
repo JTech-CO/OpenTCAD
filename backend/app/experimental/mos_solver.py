@@ -52,13 +52,15 @@ def geometry(p):
 
 def solve_mos(value, process_profile=None):
     p = validate_mos(value)
-    if (p["dopingMode"]=="suprem") != (process_profile is not None):
+    if (p["dopingMode"] in ("suprem","suprem-mesh")) != (process_profile is not None):
         raise ValueError("mos-process-source-mismatch")
+    imported_mesh = process_profile.get("deviceMesh") if p["dopingMode"]=="suprem-mesh" else None
+    if p["dopingMode"]=="suprem-mesh" and imported_mesh is None:raise ValueError("mos-process-mesh-missing")
     ds = load_devsim()
     from devsim.python_packages import simple_physics as physics
     from devsim.python_packages.model_create import CreateSolution
     device, region = "mos", "silicon"
-    coords, elements, names = geometry(p)
+    coords, elements, names = (imported_mesh["coordinates"],imported_mesh["elements"],imported_mesh["names"]) if imported_mesh else geometry(p)
     ds.create_gmsh_mesh(mesh=device, coordinates=coords, elements=elements, physical_names=names)
     for name, material in ((region,"Silicon"),("oxide","Oxide")):
         ds.add_gmsh_region(mesh=device, gmsh_name=name, region=name, material=material)
@@ -78,6 +80,14 @@ def solve_mos(value, process_profile=None):
     provenance = {"kind":"analytic-template", "processSimulated":False}
     if process_profile is None:
         ds.node_model(device=device, region=region, name="NetDoping", equation="ND*(exp(-1*((max(x-left,0)/5e-6)^2))+exp(-1*((max(right-x,0)/5e-6)^2)))*exp(-1*((y/7e-6)^2))-NA")
+    elif imported_mesh:
+        from .process_mesh import nodal_doping
+        values=nodal_doping(imported_mesh,nodes("x"),nodes("y"))
+        ds.node_solution(device=device,region=region,name="NetDoping")
+        ds.set_node_values(device=device,region=region,name="NetDoping",values=values)
+        provenance={"kind":"suprem-str-import","processSimulated":False,"sourceSha256":process_profile["sourceSha256"],
+                    "transfer":"original-node-active-doping","geometry":"original-silicon-oxide-mesh",
+                    "meshSha256":imported_mesh["meshSha256"],"contactsSha256":imported_mesh["contactsSha256"]}
     else:
         from .suprem import interpolate_profile
         values = interpolate_profile(process_profile, list(zip([x*1e4 for x in nodes("x")], [y*1e4 for y in nodes("y")])))
@@ -141,12 +151,28 @@ def solve_mos(value, process_profile=None):
         regions[reg] = data
     result = {"format":"opentcad-mos-result", "schemaVersion":1, "model":MODEL, "input":p,
               "inputSha256":digest(p), "solver":"DEVSIM", "solverVersion":"2.11.0",
-              "templateSha256":hashlib.sha256(b"".join((Path(__file__).parent/name).read_bytes() for name in ("mos_solver.py","mos_contract.py","suprem.py","solver.py"))).hexdigest(),
+              "templateSha256":hashlib.sha256(b"".join((Path(__file__).parent/name).read_bytes() for name in ("mos_solver.py","mos_contract.py","suprem.py","solver.py","process_mesh.py"))).hexdigest(),
               "environment":{"python":platform.python_version(),"os":platform.system(),"machine":platform.machine()},
               "units":{"length":"um","potential":"V","density":"cm^-3","current":"A"},
               "constants":{"temperatureK":300,"gateOffsetV":.45,"muN":400,"muP":200,"niCm3":1e10},
               "dopingSource":provenance,"regions":regions,"iv":iv,"contactCurrentsA":currents,
               "checks":{"maxCurrentToleranceRatio":max(ratios),"siliconNodes":len(regions[region]["xUm"])},
               "productApproved":False}
+    if imported_mesh:
+        result["contactSegmentsUm"]=imported_mesh["contactSegmentsUm"]
+        raw=process_profile["meshSource"]
+        raw_points={i:(x,y) for i,x,y in raw["points"]}
+        raw_regions=dict(raw["regions"])
+        def triangle_key(points):
+            return tuple(sorted((format(x,".12g"),format(y,".12g")) for x,y in points))
+        for reg,data in regions.items():
+            material=3 if reg=="silicon" else 1
+            expected={triangle_key(raw_points[i] for i in (a,b,c)) for _,r,a,b,c in raw["triangles"] if raw_regions[r]==material}
+            actual={triangle_key((data["xUm"][i],data["yUm"][i]) for i in tri) for tri in data["triangles"]}
+            if expected!=actual:raise ValueError("mesh-triangle-transfer")
+            area=sum(abs((data["xUm"][b]-data["xUm"][a])*(data["yUm"][c]-data["yUm"][a])-(data["xUm"][c]-data["xUm"][a])*(data["yUm"][b]-data["yUm"][a]))/2 for a,b,c in data["triangles"])
+            if len(data["triangles"])!=imported_mesh["triangleCounts"][reg] or not math.isclose(area,imported_mesh["areasUm2"][reg],rel_tol=1e-10,abs_tol=1e-14):
+                raise ValueError("mesh-geometry-not-preserved")
+        result["meshChecks"]={"triangleCounts":imported_mesh["triangleCounts"],"areasUm2":imported_mesh["areasUm2"],"nodalDopingTransferredExactly":True}
     result["resultSha256"] = digest(result)
     return result

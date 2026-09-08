@@ -1,6 +1,6 @@
 import { cleanup,fireEvent,render,screen,waitFor } from "@testing-library/react";
 import { afterEach,describe,expect,it,vi } from "vitest";
-import { MosPanel } from "./MosPanel";
+import { MosMap, MosPanel } from "./MosPanel";
 import { decodeMosResult,defaultMos,MOS_MODEL,validateMos } from "./mos-client";
 import { parseWorkspaceJson } from "../m4/files";
 
@@ -14,6 +14,27 @@ function fixture(){
     iv:[0,.025,.05,.075,.1].map(v=>[v,v*.001]),contactCurrentsA:[0,.025,.05,.075,.1].map(v=>({drain:v*.001,source:-v*.001,body:0})),checks:{maxCurrentToleranceRatio:0,siliconNodes:4},productApproved:false};
 }
 describe("2D MOS laboratory",()=>{
+  it("validates original-mesh provenance and uses supplied contact coordinates",()=>{
+    const base=fixture();
+    const result={...base,input:{...defaultMos,dopingMode:"suprem-mesh"},
+      dopingSource:{kind:"suprem-str-import",processSimulated:false,sourceSha256:"d".repeat(64),meshSha256:"e".repeat(64),contactsSha256:"f".repeat(64),transfer:"original-node-active-doping",geometry:"original-silicon-oxide-mesh"},
+      contactSegmentsUm:{source:[[[0,0],[2,0]]],drain:[[[2,0],[2,.5]]],body:[[[0,.5],[2,.5]]],gate:[[[.5,-.01],[1.5,-.01]]]},
+      meshChecks:{triangleCounts:{silicon:2,oxide:2},areasUm2:{silicon:1,oxide:.01},nodalDopingTransferredExactly:true}};
+    expect(decodeMosResult(result).contactSegmentsUm?.gate).toEqual(result.contactSegmentsUm.gate);
+    render(<MosMap result={decodeMosResult(result)} ko={false}/>);
+    expect(screen.getByText("gate").parentElement).toHaveAttribute("d","M260 80 L660 80");
+    expect(()=>decodeMosResult({...result,dopingSource:{...result.dopingSource,meshSha256:"invalid"}})).toThrow();
+    expect(()=>decodeMosResult({...result,contactSegmentsUm:{...result.contactSegmentsUm,gate:[[[.4,-.01],[1.5,-.01]]]}})).toThrow();
+  });
+  it.each(["en","ko"] as const)("allows only bias and width edits for configured process geometry (%s)",async locale=>{
+    vi.stubGlobal("fetch",vi.fn(async()=>({ok:true,text:async()=>JSON.stringify({supremProfileSha256:"a".repeat(64),supremMeshSha256:"b".repeat(64)})})));
+    render(<MosPanel locale={locale} token={"A".repeat(43)}/>);
+    const name=locale==="ko"?"SUPREM 원본 메시·접촉":"Original SUPREM mesh and contacts";
+    await waitFor(()=>expect(screen.getByRole("option",{name})).toBeEnabled());
+    fireEvent.change(screen.getByRole("combobox",{name:locale==="ko"?"도핑·형상 출처":"Doping and geometry source"}),{target:{value:"suprem-mesh"}});
+    expect(screen.getAllByRole("spinbutton")).toHaveLength(3);
+    expect(screen.getByRole("button",{name:locale==="ko"?"2D MOSFET 실행":"Run 2D MOSFET"})).toBeEnabled();
+  });
   it("validates physical inputs, dimensions, materials and provenance",()=>{
     expect(decodeMosResult(fixture()).regions.silicon.triangles).toHaveLength(2);
     for(const p of [{...defaultMos,command:"id"},{...defaultMos,gateV:NaN},{...defaultMos,refinement:3}])expect(()=>validateMos(p)).toThrow();

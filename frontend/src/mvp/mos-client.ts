@@ -1,21 +1,23 @@
 import { boundedNumber, exactRecord } from "../m4/files";
 export const MOS_MODEL = "devsim-mos-2d-300K-v1";
 export const mosLimits = {gateLengthUm:[.5,2],widthUm:[1,100],oxideNm:[5,30],acceptorsCm3:[1e15,1e17],donorsCm3:[1e17,1e18],gateV:[0,1.5],drainV:[0,.5]} as const;
-export type MosInput = Record<keyof typeof mosLimits,number> & {model:typeof MOS_MODEL;refinement:number;dopingMode:"template"|"suprem"};
+export type MosInput = Record<keyof typeof mosLimits,number> & {model:typeof MOS_MODEL;refinement:number;dopingMode:"template"|"suprem"|"suprem-mesh"};
 export const defaultMos: MosInput = {model:MOS_MODEL,gateLengthUm:1,widthUm:10,oxideNm:10,acceptorsCm3:1e16,donorsCm3:1e18,gateV:1,drainV:.1,refinement:1,dopingMode:"template"};
 export function validateMos(value:unknown): MosInput {
   const r=exactRecord(value,[...Object.keys(mosLimits),"model","refinement","dopingMode"]);
-  if(r.model!==MOS_MODEL || ![1,2].includes(r.refinement as number) || !["template","suprem"].includes(r.dopingMode as string)) throw new Error("mos-input");
+  if(r.model!==MOS_MODEL || ![1,2].includes(r.refinement as number) || !["template","suprem","suprem-mesh"].includes(r.dopingMode as string)) throw new Error("mos-input");
   for(const [k,[a,b]] of Object.entries(mosLimits)) boundedNumber(r[k],a,b);
   return r as unknown as MosInput;
 }
 export interface MosRegion {xUm:number[];yUm:number[];triangles:[number,number,number][];potentialV:number[];electronsCm3?:number[];holesCm3?:number[];netDopingCm3?:number[]}
 export interface MosResult {format:"opentcad-mos-result";schemaVersion:1;model:typeof MOS_MODEL;input:MosInput;solver:"DEVSIM";solverVersion:string;
   inputSha256:string;templateSha256:string;resultSha256:string;environment:Record<string,string>;constants:Record<string,number>;units:Record<string,string>;
-  dopingSource:{kind:string;processSimulated:false;sourceSha256?:string};regions:{silicon:MosRegion;oxide:MosRegion};iv:[number,number][];
+  dopingSource:{kind:string;processSimulated:false;sourceSha256?:string;meshSha256?:string;contactsSha256?:string};regions:{silicon:MosRegion;oxide:MosRegion};iv:[number,number][];
+  contactSegmentsUm?:Record<string,[[number,number],[number,number]][]>;meshChecks?:{triangleCounts:Record<string,number>;areasUm2:Record<string,number>;nodalDopingTransferredExactly:true};
   contactCurrentsA:Record<string,number>[];checks:Record<string,number>;productApproved:false;}
 export function decodeMosResult(value:unknown):MosResult {
-  const r=exactRecord(value,["format","schemaVersion","model","input","solver","solverVersion","inputSha256","templateSha256","resultSha256","environment","constants","units","dopingSource","regions","iv","contactCurrentsA","checks","productApproved"]);
+  const processMesh=(value as {input?:{dopingMode?:unknown}} | null)?.input?.dopingMode==="suprem-mesh";
+  const r=exactRecord(value,["format","schemaVersion","model","input","solver","solverVersion","inputSha256","templateSha256","resultSha256","environment","constants","units","dopingSource","regions","iv","contactCurrentsA","checks","productApproved",...(processMesh?["contactSegmentsUm","meshChecks"]:[])]);
   const input=validateMos(r.input);
   if(r.format!=="opentcad-mos-result" || r.schemaVersion!==1 || r.model!==MOS_MODEL || r.solver!=="DEVSIM" || r.solverVersion!=="2.11.0" || r.productApproved!==false) throw new Error("mos-result");
   for(const key of ["inputSha256","templateSha256","resultSha256"]) if(typeof r[key]!=="string" || !/^[a-f0-9]{64}$/u.test(r[key])) throw new Error("digest");
@@ -25,9 +27,13 @@ export function decodeMosResult(value:unknown):MosResult {
   if(Object.values(env).some(v=>typeof v!=="string" || v.length>80)) throw new Error("environment");
   const constants=exactRecord(r.constants,["temperatureK","gateOffsetV","muN","muP","niCm3"]);
   if(constants.temperatureK!==300 || constants.gateOffsetV!==.45 || constants.muN!==400 || constants.muP!==200 || constants.niCm3!==1e10) throw new Error("constants");
-  const source=exactRecord(r.dopingSource,input.dopingMode==="template"?["kind","processSimulated"]:["kind","processSimulated","sourceSha256","transfer","geometry"]);
+  const source=exactRecord(r.dopingSource,input.dopingMode==="template"?["kind","processSimulated"]:["kind","processSimulated","sourceSha256","transfer","geometry",...(processMesh?["meshSha256","contactsSha256"]:[])]);
   if(source.processSimulated!==false || source.kind!==(input.dopingMode==="template"?"analytic-template":"suprem-str-import")) throw new Error("source");
   if(input.dopingMode==="suprem" && (typeof source.sourceSha256!=="string" || !/^[a-f0-9]{64}$/u.test(source.sourceSha256) || source.transfer!=="barycentric-active-doping" || source.geometry!=="template-remesh")) throw new Error("process-source");
+  if(processMesh) {
+    for(const key of ["sourceSha256","meshSha256","contactsSha256"])if(typeof source[key]!=="string" || !/^[a-f0-9]{64}$/u.test(source[key]))throw new Error("mesh-source");
+    if(source.transfer!=="original-node-active-doping" || source.geometry!=="original-silicon-oxide-mesh")throw new Error("mesh-transfer");
+  }
   const regions=exactRecord(r.regions,["silicon","oxide"]);
   for(const name of ["silicon","oxide"]) {
     const keys=["xUm","yUm","potentialV",...(name==="silicon"?["electronsCm3","holesCm3","netDopingCm3"]:[])];
@@ -38,8 +44,8 @@ export function decodeMosResult(value:unknown):MosResult {
       const arr=region[key]; if(!Array.isArray(arr) || arr.length!==count) throw new Error("mesh-array");
       arr.forEach(v=>boundedNumber(v,key==="electronsCm3" || key==="holesCm3"?Number.MIN_VALUE:-1e30,1e30));
     }
-    (region.xUm as number[]).forEach(v=>boundedNumber(v,-1e-9,input.gateLengthUm+1+1e-9));
-    (region.yUm as number[]).forEach(v=>boundedNumber(v,name==="silicon"?-1e-9:-input.oxideNm*.001-1e-9,name==="silicon"?.500000001:1e-9));
+    (region.xUm as number[]).forEach(v=>boundedNumber(v,processMesh?-100:-1e-9,processMesh?100:input.gateLengthUm+1+1e-9));
+    (region.yUm as number[]).forEach(v=>boundedNumber(v,processMesh?-100:(name==="silicon"?-1e-9:-input.oxideNm*.001-1e-9),processMesh?100:(name==="silicon"?.500000001:1e-9)));
     if(!Array.isArray(region.triangles) || region.triangles.length<2 || region.triangles.length>10000) throw new Error("triangles");
     for(const tri of region.triangles) {
       if(!Array.isArray(tri) || tri.length!==3 || new Set(tri).size!==3 || tri.some(v=>!Number.isInteger(v) || v<0 || v>=count)) throw new Error("triangle");
@@ -52,6 +58,19 @@ export function decodeMosResult(value:unknown):MosResult {
   const checks=exactRecord(r.checks,["maxCurrentToleranceRatio","siliconNodes"]);
   boundedNumber(checks.maxCurrentToleranceRatio,0,1);
   if(checks.siliconNodes!==(regions.silicon as MosRegion).xUm.length) throw new Error("nodes");
+  if(processMesh){
+    const meshChecks=exactRecord(r.meshChecks,["triangleCounts","areasUm2","nodalDopingTransferredExactly"]);
+    const counts=exactRecord(meshChecks.triangleCounts,["silicon","oxide"]),areas=exactRecord(meshChecks.areasUm2,["silicon","oxide"]);
+    if(meshChecks.nodalDopingTransferredExactly!==true)throw new Error("mesh-preservation");
+    for(const name of ["silicon","oxide"]){const region=regions[name] as MosRegion;if(counts[name]!==region.triangles.length)throw new Error("mesh-count");boundedNumber(areas[name],Number.MIN_VALUE,40000);}
+    const contacts=exactRecord(r.contactSegmentsUm,["source","drain","body","gate"]);
+    for(const name of Object.keys(contacts)){
+      const edges=contacts[name];if(!Array.isArray(edges) || edges.length<1 || edges.length>2000)throw new Error("contact-size");
+      const region=regions[name==="gate"?"oxide":"silicon"] as MosRegion;
+      const nodes=new Set(region.xUm.map((x,i)=>`${x.toPrecision(13)},${region.yUm[i].toPrecision(13)}`));
+      for(const edge of edges){if(!Array.isArray(edge) || edge.length!==2)throw new Error("contact-edge");for(const xy of edge){if(!Array.isArray(xy) || xy.length!==2)throw new Error("contact-xy");xy.forEach(v=>boundedNumber(v,-100,100));if(!nodes.has(`${xy[0].toPrecision(13)},${xy[1].toPrecision(13)}`))throw new Error("contact-coordinate");}}
+    }
+  }
   return r as unknown as MosResult;
 }
 export interface MosJob {requestId:string;state:"running"|"complete"|"cancelled"|"failed";result?:MosResult}

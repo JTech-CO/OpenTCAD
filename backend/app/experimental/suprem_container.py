@@ -55,13 +55,13 @@ def decode_output(source):
     if len(lines)!=4: raise ValueError("suprem-file-count")
     return structure,profile,files
 
-async def execute_container(runtime,image,output,*,gate_length=1.,dose=1e14,energy=30.,minutes=10.,temperature=950.,timeout=120):
+async def execute_container(runtime,image,output,*,gate_length=1.,dose=1e14,energy=30.,minutes=10.,temperature=950.,gate_oxide_nm=0.,mesh_refinement=1,timeout=120):
     if runtime not in ("docker","podman"): raise ValueError("runtime")
     executable=shutil.which(runtime)
     if not executable: raise ValueError("runtime-missing")
     name="opentcad-exp-suprem-"+uuid4().hex
     argv=command(executable,image,name)
-    script=deck(gate_length,dose,energy,minutes,temperature)
+    script=deck(gate_length,dose,energy,minutes,temperature,gate_oxide_nm,mesh_refinement)
     output=Path(output).resolve();output.mkdir(parents=False,exist_ok=False)
     launch=asyncio.create_task(asyncio.create_subprocess_exec(*argv,stdin=asyncio.subprocess.PIPE,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT))
     process=None
@@ -113,12 +113,14 @@ def main():
     parser.add_argument("--runtime",choices=("docker","podman"),required=True)
     parser.add_argument("--image",required=True)
     parser.add_argument("--output",type=Path,required=True)
+    parser.add_argument("--gate-oxide-nm",type=float,default=0.)
+    parser.add_argument("--lateral-refinement",dest="mesh_refinement",type=int,choices=(1,2),default=1,help="Refine x spacing only; y spacing remains unchanged")
     for name,default in (("gate-length",1.),("dose",1e14),("energy",30.),("minutes",10.),("temperature",950.)):
         parser.add_argument("--"+name,type=float,default=default)
     args=parser.parse_args()
     try:
         print(json.dumps(asyncio.run(execute_container(args.runtime,args.image,args.output,gate_length=args.gate_length,
-            dose=args.dose,energy=args.energy,minutes=args.minutes,temperature=args.temperature)),sort_keys=True));return 0
+            dose=args.dose,energy=args.energy,minutes=args.minutes,temperature=args.temperature,gate_oxide_nm=args.gate_oxide_nm,mesh_refinement=args.mesh_refinement)),sort_keys=True));return 0
     except (Exception,KeyboardInterrupt):
         print("SUPREM container failed; no validated process result. Verify the local image, runtime restrictions and supported process commands.")
         return 1

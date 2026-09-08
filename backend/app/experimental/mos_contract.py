@@ -20,7 +20,7 @@ def validate_mos(value):
     if type(value["refinement"]) is not int or value["refinement"] not in (1, 2):
         raise ValueError("mos-mesh-range")
     result["refinement"] = value["refinement"]
-    if value["dopingMode"] not in ("template", "suprem"):
+    if value["dopingMode"] not in ("template", "suprem", "suprem-mesh"):
         raise ValueError("mos-doping-mode")
     result["dopingMode"] = value["dopingMode"]
     return result

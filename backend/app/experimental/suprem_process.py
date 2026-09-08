@@ -16,18 +16,21 @@ import tempfile
 from .contract import canonical, digest
 from .suprem import read_structure
 
-def deck(gate_length=1., dose=1e14, energy=30., minutes=10., temperature=950.):
+def deck(gate_length=1., dose=1e14, energy=30., minutes=10., temperature=950., gate_oxide_nm=0., mesh_refinement=1):
     values = (gate_length,dose,energy,minutes,temperature)
     bounds = ((.5,2),(1e13,1e15),(10,80),(1,30),(850,1050))
     if any(type(v) not in (int,float) or not math.isfinite(v) or not a<=v<=b for v,(a,b) in zip(values,bounds)):
         raise ValueError("process-input-range")
     length, left, right = gate_length+1,.5,.5+gate_length
+    if type(gate_oxide_nm) not in (int,float) or not math.isfinite(gate_oxide_nm) or not (gate_oxide_nm==0 or 5<=gate_oxide_nm<=30):raise ValueError("gate-oxide-range")
+    if type(mesh_refinement) is not int or mesh_refinement not in (1,2):raise ValueError("process-mesh-refinement")
+    gate_stage="" if gate_oxide_nm==0 else f"deposit oxide thick={gate_oxide_nm*.001:.12g}\netch oxide left p1.x={left:.12g}\netch oxide right p1.x={right:.12g}\n"
     # Fixed rectangular silicon and temporary implant mask. The gate dielectric
     # is added by DEVSIM, not claimed as a SUPREM-grown oxide.
-    return f"""line x loc=0 spacing=0.05 tag=left
-line x loc={left:.12g} spacing=0.025
-line x loc={right:.12g} spacing=0.025
-line x loc={length:.12g} spacing=0.05 tag=right
+    return f"""line x loc=0 spacing={.05/mesh_refinement:.12g} tag=left
+line x loc={left:.12g} spacing={.025/mesh_refinement:.12g}
+line x loc={right:.12g} spacing={.025/mesh_refinement:.12g}
+line x loc={length:.12g} spacing={.05/mesh_refinement:.12g} tag=right
 line y loc=0 spacing=0.005 tag=top
 line y loc=0.15 spacing=0.02
 line y loc=0.5 spacing=0.05 tag=bottom
@@ -41,17 +44,17 @@ etch oxide right p1.x={right:.12g}
 implant phosphorus dose={dose:.12g} energy={energy:.12g}
 etch oxide all
 diffuse time={minutes:.12g} temp={temperature:.12g}
-structure out=process.str
+{gate_stage}structure out=process.str
 quit
 """
 
-async def execute(executable, data_directory, output, *, gate_length=1., dose=1e14, energy=30., minutes=10., temperature=950., timeout=120):
+async def execute(executable, data_directory, output, *, gate_length=1., dose=1e14, energy=30., minutes=10., temperature=950., gate_oxide_nm=0., mesh_refinement=1, timeout=120):
     executable=Path(executable).resolve(strict=True)
     data_directory=Path(data_directory).resolve(strict=True)
     if not executable.is_file(): raise ValueError("suprem-executable")
     data={k:data_directory/name for k,name in {"SUP4KEYFILE":"suprem.uk","SUP4MODELRC":"modelrc","SUP4IMPDATA":"sup4gs.imp"}.items()}
     if not all(p.is_file() for p in data.values()): raise ValueError("suprem-data")
-    script=deck(gate_length,dose,energy,minutes,temperature)
+    script=deck(gate_length,dose,energy,minutes,temperature,gate_oxide_nm,mesh_refinement)
     # A new explicit output directory only; never overwrite existing results.
     output=Path(output).resolve()
     output.mkdir(parents=False,exist_ok=False)
@@ -105,12 +108,14 @@ def main():
     parser.add_argument("--executable",type=Path,required=True)
     parser.add_argument("--data-directory",type=Path,required=True)
     parser.add_argument("--output",type=Path,required=True)
+    parser.add_argument("--gate-oxide-nm",type=float,default=0.)
+    parser.add_argument("--lateral-refinement",dest="mesh_refinement",type=int,choices=(1,2),default=1,help="Refine x spacing only; y spacing remains unchanged")
     for name,default in (("gate-length",1.),("dose",1e14),("energy",30.),("minutes",10.),("temperature",950.)):
         parser.add_argument("--"+name,type=float,default=default)
     args=parser.parse_args()
     try:
         record=asyncio.run(execute(args.executable,args.data_directory,args.output,gate_length=args.gate_length,
-            dose=args.dose,energy=args.energy,minutes=args.minutes,temperature=args.temperature))
+            dose=args.dose,energy=args.energy,minutes=args.minutes,temperature=args.temperature,gate_oxide_nm=args.gate_oxide_nm,mesh_refinement=args.mesh_refinement))
         print(json.dumps(record,sort_keys=True)); return 0
     except (Exception,KeyboardInterrupt):
         print("SUPREM process failed; no validated result. Check installation, permissions, deck support and output directory.")

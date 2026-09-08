@@ -56,6 +56,8 @@ def compare(previous, current):
 
 def compare_mos(previous,current):
     if previous["dopingSource"]!=current["dopingSource"]: raise ValueError("process-source-mismatch")
+    if previous.get("contactSegmentsUm")!=current.get("contactSegmentsUm") or previous.get("meshChecks")!=current.get("meshChecks"):
+        raise ValueError("process-geometry-mismatch")
     passed=True
     tolerances={"xUm":1e-12,"yUm":1e-12,"potentialV":1e-8,"electronsCm3":1e-3,"holesCm3":1e-3,"netDopingCm3":1e-3}
     for region in ("silicon","oxide"):
@@ -71,13 +73,19 @@ def main():
     parser = argparse.ArgumentParser(description="Recompute a saved experimental result; never grants product approval")
     parser.add_argument("record", type=Path)
     parser.add_argument("--suprem-structure",type=Path)
+    parser.add_argument("--suprem-contacts",type=Path)
     args = parser.parse_args()
     try:
         previous = read_record(args.record)
         from .suprem import read_structure
         profile=read_structure(args.suprem_structure) if args.suprem_structure else None
-        if previous["input"].get("dopingMode")=="suprem" and (profile is None or profile["sourceSha256"]!=previous["dopingSource"]["sourceSha256"]):
+        if previous["input"].get("dopingMode") in ("suprem","suprem-mesh") and (profile is None or profile["sourceSha256"]!=previous["dopingSource"]["sourceSha256"]):
             raise ValueError("replay-process-source")
+        if previous["input"].get("dopingMode")=="suprem-mesh":
+            if not args.suprem_contacts:raise ValueError("replay-contacts-required")
+            from .process_mesh import prepare_mesh,read_contacts
+            profile["deviceMesh"]=prepare_mesh(profile,read_contacts(args.suprem_contacts))
+            if profile["deviceMesh"]["meshSha256"]!=previous["dopingSource"]["meshSha256"]:raise ValueError("replay-mesh-source")
         current = asyncio.run(run_solver(previous["input"],process_profile=profile))
         report = compare(previous, current)
         print(json.dumps(report, sort_keys=True))

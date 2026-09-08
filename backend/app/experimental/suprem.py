@@ -80,7 +80,11 @@ def parse_structure(source):
         if abs(area)<1e-16: raise ValueError("str-degenerate-cell")
         cells.append({"xy":xy,"doping":[records[i,3] for i in ids]})
     if not cells: raise ValueError("str-no-silicon")
-    return {"sourceSha256":hashlib.sha256(source).hexdigest(),"cells":cells}
+    return {"sourceSha256":hashlib.sha256(source).hexdigest(),"cells":cells,
+            "meshSource":{"points":[[i,*xy] for i,xy in sorted(coords.items())],
+                          "regions":[[i,m] for i,m in sorted(regions.items())],
+                          "triangles":[[i,reg,*ids] for i,(reg,ids) in sorted(triangles.items())],
+                          "siliconDoping":[[i,n] for (i,m),n in sorted(records.items()) if m==3]}}
 
 def read_structure(path):
     with Path(path).open("rb") as stream:

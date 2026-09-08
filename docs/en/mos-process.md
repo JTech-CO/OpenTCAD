@@ -117,7 +117,9 @@ through HTTP and no browser deck is executed. Imported provenance says
 `processSimulated: false`: the importing service did not itself run or attest the
 SUPREM process. A source file hash proves bytes, not authorship or accuracy.
 
-Transfer is limited to active dopants, **not full process geometry/contact import**:
+The default **Imported SUPREM active doping** mode remains doping-only. The separate
+[original mesh mode](process-mesh.md) preserves silicon/oxide triangles and explicit
+electrode boundaries. The following interpolation rules describe the doping-only mode:
 
 - STR coordinates are micrometres; `c` IDs are 1-based, `n` point IDs 0-based.
 - Material comes from `r`; silicon is material 3. Interface values are selected
@@ -154,7 +156,7 @@ absolute tolerances are reported, including 1e-12 A for I-V current. Byte identi
 is reported separately and is not promised across native sparse solvers. Hashes
 are integrity checks, not signatures or validation certificates.
 
-Still pending: cross-platform SUPREM qualification, full process-shaped mesh and contact
-transfer, calibrated MOS benchmarks, product-approved solver images/licenses,
+Still pending: cross-platform SUPREM qualification, general multi-material process
+transfer beyond the supported silicon/oxide mesh, calibrated MOS benchmarks, product-approved solver images/licenses,
 M3 runtime qualifications and physical power-loss qualification. The new code
 does not promote any existing evidence gate or alter the OpenTCAD OG image.
