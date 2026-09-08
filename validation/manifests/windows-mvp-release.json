@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "track": "windows-local-mvp",
+  "status": "candidate-not-released",
+  "m3Approved": false,
+  "productEnabled": false,
+  "distribution": "source-only-user-installed-solvers",
+  "target": "Windows 11 x64",
+  "blockingIssues": ["windows-pn-repeat-hash-difference-unexplained"],
+  "criteria": [
+    "Immediate educational calculator with explicit physical assumptions",
+    "Pinned user-installed DEVSIM PN and 2D MOSFET execution through authenticated loopback HTTP",
+    "Explicit opt-in SUPREM process CLI and hash-bound original silicon/oxide mesh transfer",
+    "Bounded execution and cancellation with Windows descendant cleanup on service termination",
+    "Exclusive local history, restart interruption classification, result hashes and numerical replay",
+    "Offline checksum backup verification and restore into a new directory only",
+    "English and Korean instructions with explicit unverified capability labels",
+    "Exact revision Windows dedicated-host acceptance and developer release review"
+  ],
+  "unverifiedOrDeferred": [
+    "Physical abrupt power-loss durability",
+    "Independent external qualification",
+    "macOS and Linux product qualification",
+    "M3 Docker/Podman product grants",
+    "OS-protected rollback prevention for MVP history",
+    "Authenticated or encrypted MVP backup and automatic scheduled backup",
+    "Redistributed solver images, rights approvals and calibrated numerical corpus"
+  ],
+  "releaseReview": {"approved": false, "reviewer": null, "revision": null, "evidence": []}
+}

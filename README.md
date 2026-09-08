@@ -33,6 +33,15 @@ The static build runs analytical calculations, not native solvers. The explicitl
 
 ## Run the device laboratory
 
+For Windows-first persisted jobs and offline backup/restore, use the separate
+[Windows local MVP candidate](docs/en/windows-mvp.md). Its scope does not approve
+M3, physical power-loss durability, or other operating systems.
+
+```bash
+npm run local:mvp -- doctor
+npm run local:mvp -- serve
+```
+
 See the [MVP laboratory guide](docs/en/mvp-laboratory.md) for Windows/macOS/Linux installation, physical assumptions, limits and reproducibility. The browser calculator needs only `npm ci` and `npm run dev`. After installing the pinned experimental Python requirements:
 
 ```bash

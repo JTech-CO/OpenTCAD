@@ -27,6 +27,8 @@ async def run_solver(value, timeout=120, process_profile=None):
     allowed = {"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "HOME", "USERPROFILE"}
     environment = {k: v for k, v in os.environ.items() if k.upper() in allowed}
     environment.update(PYTHONUTF8="1", PYTHONNOUSERSITE="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    if sys.platform == "win32":
+        environment["OPENTCAD_CONTROLLED_CHILD"] = "1"
     if sys.platform.startswith("linux"):
         # A separately installed CPython may need its own shared libpython.
         # Do not inherit arbitrary LD_LIBRARY_PATH from request or shell input.
@@ -42,6 +44,7 @@ async def run_solver(value, timeout=120, process_profile=None):
     except asyncio.CancelledError:
         # Cancellation during process creation must not orphan the native child.
         process = await launch
+        process.stdin.close()
         if process.returncode is None:
             try:
                 process.kill()
@@ -49,7 +52,19 @@ async def run_solver(value, timeout=120, process_profile=None):
                 pass
         await process.wait()
         raise
+    child_job = None
     async def communicate():
+        nonlocal child_job
+        if sys.platform == "win32":
+            # The real worker announces itself before reading input. A venv
+            # launcher PID alone does not identify the process doing the solve.
+            import re
+            ready = await process.stdout.readline()
+            match = re.fullmatch(rb"OPENTCAD_READY_PID=([1-9][0-9]{0,9})\r?\n", ready)
+            if match is None:
+                raise RuntimeError("solver-startup-protocol")
+            from .windows_job import ChildJob
+            child_job = ChildJob(int(match[1]))
         process.stdin.write(canonical({"input":payload,"processProfile":process_profile}) if payload.get("dopingMode") in ("suprem","suprem-mesh") else canonical(payload))
         await process.stdin.drain()
         process.stdin.close()
@@ -75,12 +90,17 @@ async def run_solver(value, timeout=120, process_profile=None):
     try:
         return await asyncio.wait_for(communicate(), timeout)
     finally:
-        if process.returncode is None:
-            try:
-                process.kill()
-            except ProcessLookupError:
-                pass
-        await process.wait()
+        process.stdin.close()
+        try:
+            if child_job is not None:
+                child_job.close()
+        finally:
+            if process.returncode is None:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+            await process.wait()
 
 def job_id(value):
     if not isinstance(value, str) or str(UUID(value)) != value:
@@ -91,13 +111,26 @@ class LaboratoryApi(LocalBrokerApi):
     """Explicit separate application; never invokes LocalBrokerApi's M3 routes.
 
     Reuses the HTTP server's loopback/Host/Origin/Bearer/size checks. Only one
-    child process may run. History is bounded and session-local, not durable.
+    child process may run. Optional MVP history is not M3 durable authority.
     """
-    def __init__(self, runner=run_solver, process_profile=None):
-        self.jobs = {}
+    def __init__(self, runner=run_solver, process_profile=None, store=None):
+        self.store = store
+        self.storage_failed = False
+        self.jobs = store.load(recover=True) if store else {}
         self.tasks = {}
         self.runner = runner
         self.process_profile = process_profile
+
+    def _persist(self, record):
+        if self.store is not None:
+            try:
+                self.store.save(record)
+            except Exception:
+                self.storage_failed = True
+                record.pop("result", None)
+                record.update(state="failed", error="history-write-failed")
+                return False
+        return True
 
     async def _run(self, identifier, inputs):
         record = self.jobs[identifier]
@@ -108,12 +141,16 @@ class LaboratoryApi(LocalBrokerApi):
             record.update(state="cancelled")
         except Exception:
             record.update(state="failed", error="solver-failed")
+        finally:
+            self._persist(record)
 
     async def handle(self, method, path, body):
         try:
             if method == "GET" and path == "/v1/lab/status":
                 return 200, {"schemaVersion": 1, "mode": "experimental", "model": MODEL, "models":[MODEL,MOS_MODEL], "supremProfileSha256":self.process_profile["sourceSha256"] if self.process_profile else None, "supremMeshSha256":self.process_profile.get("deviceMesh",{}).get("meshSha256") if self.process_profile else None, "productEnabled": False}
             if method == "POST" and path == "/v1/lab/jobs":
+                if self.storage_failed:
+                    return 503, {"error":"history-unavailable"}
                 value = strict_json(body)
                 if not isinstance(value, dict) or set(value) != {"requestId", "input"}:
                     raise ValueError("request-shape")
@@ -131,8 +168,12 @@ class LaboratoryApi(LocalBrokerApi):
                 if len(self.jobs) >= 32:
                     return 409, {"error": "session-full"}
                 self.jobs[identifier] = {"requestId": identifier, "inputSha256": digest(inputs), "state": "running"}
+                if not self._persist(self.jobs[identifier]):
+                    return 503, {"error":"history-unavailable"}
                 self.tasks[identifier] = asyncio.create_task(self._run(identifier, inputs))
                 return 200, self.jobs[identifier]
+            if method == "GET" and path == "/v1/lab/jobs":
+                return 200, {"jobs":[{k:v for k,v in record.items() if k!="result"} for record in self.jobs.values()]}
             parts = path.split("/")
             if len(parts) in {5, 6} and parts[1:4] == ["v1", "lab", "jobs"]:
                 identifier = job_id(parts[4])
@@ -143,12 +184,14 @@ class LaboratoryApi(LocalBrokerApi):
                 if method == "POST" and len(parts) == 6 and parts[5] == "cancel":
                     if strict_json(body) != {}:
                         raise ValueError("cancel-body")
-                    task = self.tasks[identifier]
-                    if not task.done():
+                    task = self.tasks.get(identifier)
+                    if task is not None and not task.done():
                         task.cancel()
                         await asyncio.gather(task, return_exceptions=True)
                         # Includes cancellation before the coroutine's first instruction.
-                        self.jobs[identifier].update(state="cancelled")
+                        if self.jobs[identifier]["state"] == "running":
+                            self.jobs[identifier].update(state="cancelled")
+                        self._persist(self.jobs[identifier])
                     return 200, self.jobs[identifier]
             return 404, {"error": "route-not-found"}
         except (ValueError, TypeError, KeyError, RecursionError):
@@ -159,8 +202,12 @@ class LaboratoryApi(LocalBrokerApi):
             if not task.done():
                 task.cancel()
         await asyncio.gather(*self.tasks.values(), return_exceptions=True)
+        for record in self.jobs.values():
+            if record["state"] == "running":
+                record.update(state="cancelled")
+                self._persist(record)
 
-async def serve(args):
+async def serve(args, store=None):
     if importlib.metadata.version("devsim") != "2.11.0":
         raise RuntimeError("Install experimental/requirements.txt first")
     # Run a real solve before claiming the service is ready. No mock fallback.
@@ -172,7 +219,7 @@ async def serve(args):
         if profile is None:raise ValueError("contacts-require-structure")
         from .process_mesh import prepare_mesh,read_contacts
         profile["deviceMesh"]=prepare_mesh(profile,read_contacts(args.suprem_contacts))
-    api = LaboratoryApi(process_profile=profile)
+    api = LaboratoryApi(process_profile=profile, store=store)
     server = LocalApiServer(api, secrets.token_bytes(32), LocalApiBind("127.0.0.1", args.port),
                             static_assets=LocalStaticAssets(args.assets), maximum_body_bytes=8192,
                             maximum_connections=8, request_timeout_seconds=10)

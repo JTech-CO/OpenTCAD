@@ -18,6 +18,7 @@
     "local:preview": "node tools/run-local-service.mjs preview",
     "local:serve": "node tools/run-local-service.mjs serve",
     "local:lab": "node tools/run-laboratory.mjs",
+    "local:mvp": "node tools/run-laboratory.mjs --windows-mvp",
     "test:mvp:solver": "node tools/run-laboratory.mjs --test",
     "test:mvp": "npm run test --workspace @opentcad/web -- src/mvp",
     "lint": "npm run lint --workspace @opentcad/web",

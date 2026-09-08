@@ -10,10 +10,12 @@ if (!existsSync(python)) {
   process.exit(1);
 }
 const test = process.argv.includes("--test");
-const child = spawn(python, test ? ["-m", "unittest", "backend.tests.experimental.test_numerical", "backend.tests.experimental.test_mos", "backend.tests.experimental.test_process_mesh", "-v"]
+const mvp = process.argv[2] === "--windows-mvp";
+const child = spawn(python, test ? ["-m", "unittest", "backend.tests.experimental.test_numerical", "backend.tests.experimental.test_service", "backend.tests.experimental.test_mos", "backend.tests.experimental.test_process_mesh", "backend.tests.experimental.test_windows_mvp", "-v"]
+  : mvp ? ["-m", "backend.app.experimental.windows_mvp", ...process.argv.slice(3)]
   : ["-m", "backend.app.experimental.service", "--enable-experimental-devsim", ...process.argv.slice(2)], {
   cwd: root, shell: false, windowsHide: true, stdio: "inherit",
-  env: { ...process.env, PYTHONUTF8: "1", ...(test ? { OPENTCAD_TEST_DEVSIM: "1" } : {}) },
+  env: { ...process.env, PYTHONUTF8: "1", ...(test ? { OPENTCAD_TEST_DEVSIM: "1" } : {}), ...(mvp ? {OPENTCAD_MVP_PARENT_PID:String(process.pid)} : {}) },
 });
 child.on("error", () => { console.error("Experimental Python process could not start."); process.exitCode = 1; });
 child.on("exit", code => { process.exitCode = code ?? 1; });

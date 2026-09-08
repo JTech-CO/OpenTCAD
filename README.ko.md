@@ -33,6 +33,15 @@ OpenTCAD은 반도체 공정과 소자 시뮬레이션 개념을 학습하기 �
 
 ## 소자 실험실 실행
 
+Windows에서 작업 기록 저장과 오프라인 백업·복원을 사용하려면 별도의
+[Windows 로컬 MVP 후보](docs/ko/windows-mvp.md)를 이용합니다. M3, 물리적 전원 차단
+내구성이나 다른 운영체제의 승인을 뜻하지 않습니다.
+
+```bash
+npm run local:mvp -- doctor
+npm run local:mvp -- serve
+```
+
 Windows·macOS·Linux 설치, 물리적 가정, 한계, 재현 절차는 [MVP 실험실 안내](docs/ko/mvp-laboratory.md)를 확인하세요. 브라우저 계산기는 `npm ci`, `npm run dev`로 시작합니다. 버전 고정된 실험용 Python 의존성을 설치한 뒤에는 다음과 같이 실행합니다.
 
 ```bash

@@ -119,6 +119,8 @@ def solve_pn(value):
 
 def main():
     try:
+        if sys.platform == "win32" and os.environ.get("OPENTCAD_CONTROLLED_CHILD") == "1":
+            print("OPENTCAD_READY_PID=" + str(os.getpid()), flush=True)
         data = strict_json(sys.stdin.buffer.read(4_194_305), maximum_bytes=4_194_304)
         profile = None
         if isinstance(data, dict) and set(data)=={"input","processProfile"}:
