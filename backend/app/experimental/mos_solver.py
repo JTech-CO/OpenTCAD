@@ -11,7 +11,7 @@ import platform
 
 from .contract import digest
 from .mos_contract import MODEL, validate_mos
-from .solver import EPS, KB, Q, VT, load_devsim
+from .solver import EPS, KB, Q, VT, load_devsim, machine_type
 
 def geometry(p):
     """Conforming triangular Si/oxide mesh in cm, no external mesher needed."""
@@ -152,7 +152,7 @@ def solve_mos(value, process_profile=None):
     result = {"format":"opentcad-mos-result", "schemaVersion":1, "model":MODEL, "input":p,
               "inputSha256":digest(p), "solver":"DEVSIM", "solverVersion":"2.11.0",
               "templateSha256":hashlib.sha256(b"".join((Path(__file__).parent/name).read_bytes() for name in ("mos_solver.py","mos_contract.py","suprem.py","solver.py","process_mesh.py"))).hexdigest(),
-              "environment":{"python":platform.python_version(),"os":platform.system(),"machine":platform.machine()},
+              "environment":{"python":platform.python_version(),"os":platform.system(),"machine":machine_type()},
               "units":{"length":"um","potential":"V","density":"cm^-3","current":"A"},
               "constants":{"temperatureK":300,"gateOffsetV":.45,"muN":400,"muP":200,"niCm3":1e10},
               "dopingSource":provenance,"regions":regions,"iv":iv,"contactCurrentsA":currents,

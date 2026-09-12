@@ -11,6 +11,23 @@
 
 ## 새로운 관측 수집
 
+### 새 실패 원본과 수정
+
+9월 12일 전용 Windows 인수 시험에서 서브에이전트 없이 과거 해시 쌍이 재현되었습니다.
+[원본 쌍과 비교 기록](../../validation/experimental/pn-metadata-20260912/comparison.json)에서
+수치 배열과 검사는 모두 같고 `environment.machine`만 `AMD64`와 빈 문자열로
+달랐습니다. 두 결과의 무결성 해시도 검증했습니다. Python 3.14의 Windows 장비
+조회는 WMI 실패 시 프로세서 환경변수로 대체하지만 제한된 솔버 환경에는 해당
+변수가 없습니다. 이번에 확인한 것은 수치 오차가 아닌 메타데이터 불안정입니다.
+과거 사용자 보고는 보존하되, 재현된 해시 쌍의 설명은 이 새 증거로 갱신합니다.
+PN과 MOS 모두 Windows `GetNativeSystemInfo`를 사용하도록 수정했고 알 수 없는
+아키텍처는 빈 값 대신 실패로 처리합니다. 해시 검사, 물리식과 수치 허용오차는
+변경하지 않았습니다. 소스 지문이 바뀌므로 수정 전후 결과 재실행에는 각 결과와
+일치하는 소스 리비전이 필요합니다.
+
+근거: [Python platform.machine](https://docs.python.org/3.14/library/platform.html#platform.machine),
+[Windows GetNativeSystemInfo](https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getnativesysteminfo).
+
 이미 설치한 버전 고정 DEVSIM 환경과 새로운 절대 경로 출력 폴더를 사용합니다.
 솔버 다운로드, 임의 스크립트 실행 또는 승인 플래그 변경은 하지 않습니다.
 

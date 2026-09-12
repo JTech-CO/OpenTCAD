@@ -3,6 +3,8 @@ import copy
 import tempfile
 from pathlib import Path
 import unittest
+import os
+import sys
 from unittest.mock import patch
 
 from backend.app.experimental.contract import DEFAULT, MODEL, canonical, digest, validate_input
@@ -28,6 +30,16 @@ def seal(record):
 
 
 class DifferenceTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "Windows native metadata")
+    def test_machine_metadata_survives_wmi_failure_and_absent_or_spoofed_environment(self):
+        from backend.app.experimental.solver import machine_type
+        expected = machine_type()
+        self.assertIn(expected, {"AMD64", "ARM64", "x86", "ia64"})
+        with patch.dict(os.environ, {}, clear=True), patch("platform.machine", return_value=""):
+            self.assertEqual(machine_type(), expected)
+        with patch.dict(os.environ, {"PROCESSOR_ARCHITECTURE":"spoof", "PROCESSOR_ARCHITEW6432":"spoof"}), patch("platform.machine", side_effect=OSError("WMI unavailable")):
+            self.assertEqual(machine_type(), expected)
+
     def test_exact_small_difference_and_out_of_tolerance_are_distinct(self):
         before = result()
         self.assertTrue(difference(before, copy.deepcopy(before))['canonicalEqual'])

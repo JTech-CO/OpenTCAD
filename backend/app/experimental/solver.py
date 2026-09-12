@@ -20,6 +20,31 @@ EPS = 11.7 * 8.8541878128e-14  # F/cm
 VT = KB * 300 / Q
 _dll_handles = []
 
+def machine_type():
+    """Stable native architecture, without WMI or inherited environment fallback."""
+    if sys.platform != "win32":
+        return platform.machine()
+    import ctypes
+    from ctypes import wintypes
+    class SystemInfo(ctypes.Structure):
+        _fields_ = [("architecture", wintypes.WORD), ("reserved", wintypes.WORD),
+                    ("pageSize", wintypes.DWORD), ("minimumAddress", ctypes.c_void_p),
+                    ("maximumAddress", ctypes.c_void_p), ("activeMask", ctypes.c_size_t),
+                    ("processors", wintypes.DWORD), ("processorType", wintypes.DWORD),
+                    ("granularity", wintypes.DWORD), ("level", wintypes.WORD),
+                    ("revision", wintypes.WORD)]
+    query = ctypes.WinDLL("kernel32", use_last_error=True).GetNativeSystemInfo
+    query.argtypes = [ctypes.POINTER(SystemInfo)]
+    query.restype = None
+    info = SystemInfo()
+    info.architecture = 0xffff
+    query(ctypes.byref(info))
+    names = {0: "x86", 6: "ia64", 9: "AMD64", 12: "ARM64"}
+    if info.architecture not in names:
+        raise RuntimeError("unknown-native-architecture")
+    return names[info.architecture]
+
+
 def load_devsim():
     if importlib.metadata.version("devsim") != "2.11.0":
         raise RuntimeError("unsupported-devsim-version")
@@ -104,7 +129,7 @@ def solve_pn(value):
     result = {"format": "opentcad-solver-result", "schemaVersion": 1, "model": MODEL, "input": p,
               "inputSha256": digest(p), "solver": "DEVSIM", "solverVersion": importlib.metadata.version("devsim"),
               "templateSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-              "environment": {"python": platform.python_version(), "os": platform.system(), "machine": platform.machine()},
+              "environment": {"python": platform.python_version(), "os": platform.system(), "machine": machine_type()},
               "constants": {"temperatureK": 300, "niCm3": 1e10, "muN": 400, "muP": 200, "lifetimeS": 1e-6, "epsilonFcm": EPS, "qC": Q, "kJK": KB},
               "units": {"x": "um", "potential": "V", "density": "cm^-3", "current": "A"},
               "iv": iv, "xUm": x, "potentialV": potential, "electronsCm3": electrons, "holesCm3": holes,

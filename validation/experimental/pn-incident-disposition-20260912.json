@@ -5,6 +5,8 @@
   "status": "closed-as-owner-reported-external-artifact-corruption",
   "blocksWindowsRelease": false,
   "basis": "project-owner-report-in-conversation",
+  "subsequentEvidence": "validation/experimental/pn-metadata-20260912/comparison.json",
+  "subsequentFinding": "A new dedicated-host run reproduced the same digest pair with identical numerical data and only environment.machine differing. See docs/en/pn-repeatability.md; this original owner report is retained as historical context.",
   "reportedCause": "The project owner reports that another Codex subagent modified logs during concurrent work and corrupted some emitted values; similar incidents were observed in other projects.",
   "independentlyReproducedCause": false,
   "originalResultPairAvailable": false,

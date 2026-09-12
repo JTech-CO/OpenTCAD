@@ -11,6 +11,24 @@ runs alone are not the basis for closure. New failures still require investigati
 
 ## Capture a new observation
 
+### New captured failure and fix
+
+During the dedicated Windows acceptance run on September 12, the original digest
+pair was reproduced without subagents. The [raw pair and comparison](../../validation/experimental/pn-metadata-20260912/comparison.json)
+show identical numerical arrays and checks; only `environment.machine` changed
+between `AMD64` and an empty string. Both result integrity hashes verified.
+Python 3.14's Windows machine query uses WMI with a processor-environment fallback;
+the solver's restricted environment lacks those fallback variables. This is a
+metadata instability, not observed numerical drift. It supersedes the earlier
+owner-reported explanation for this reproducible digest pair without rewriting
+the earlier report. PN and MOS now use Windows `GetNativeSystemInfo`; unknown
+architectures fail instead of silently emitting empty metadata. Hash assertions,
+physics and numerical tolerances are unchanged. Source fingerprints change, so
+replay across this fix correctly requires the matching source revision.
+
+References: [Python platform.machine](https://docs.python.org/3.14/library/platform.html#platform.machine),
+[Windows GetNativeSystemInfo](https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getnativesysteminfo).
+
 Use the already installed pinned DEVSIM environment and a new absolute output
 directory. No solver download, arbitrary script or approval flag is involved.
 

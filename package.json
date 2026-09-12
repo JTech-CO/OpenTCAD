@@ -11,6 +11,7 @@
     "frontend"
   ],
   "scripts": {
+    "accept:windows": "node tools/windows-acceptance.mjs",
     "dev": "npm run dev --workspace @opentcad/web",
     "build": "npm run build --workspace @opentcad/web",
     "preview": "npm run preview --workspace @opentcad/web",
