@@ -24,13 +24,7 @@ This inventory covers the direct JavaScript dependencies in the OpenTCAD foundat
 | oxlint | 1.79.0 | MIT | https://github.com/oxc-project/oxc |
 | DefinitelyTyped type packages | lockfile versions | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 
-## Upstream web app / 원본 웹앱
-
-On September 12, 2026, the OpenTCAD project owner reported direct confirmation from the author of [tcad-webapp](https://github.com/ypooh2042/tcad-webapp) that the upstream web app is MIT licensed. This records the owner's report, not an independently verified public license file. Preserve written confirmation, applicable revision and attribution when available. This report does not cover separate solvers or their dependencies.
-
-2026년 9월 12일 OpenTCAD 프로젝트 책임자는 [tcad-webapp](https://github.com/ypooh2042/tcad-webapp) 개발자에게 원본 웹앱의 MIT 라이선스를 직접 확인했다고 설명했습니다. 이는 사용자 보고를 기록한 것이며 공개 라이선스 파일을 독립 검증한 것은 아닙니다. 확보되는 서면 확인, 적용 리비전과 출처를 보존합니다. 별도 솔버와 그 의존성까지 포함하는 확인은 아닙니다.
-
-## Solver distribution / 솔버 배포
+## Solver boundary / 솔버 경계
 
 The foundation release includes no SUPREM-IV.GS, Gmsh, or DEVSIM source or binary. Their terms are not covered by the OpenTCAD MIT License. Any future image or installer must add component-specific source provenance, copyright, complete license text, inclusion decision, and redistribution approval before publication.
 
