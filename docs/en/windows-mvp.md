@@ -2,8 +2,10 @@
 
 [한국어](../ko/windows-mvp.md) · [Solver installation](mvp-laboratory.md)
 
-This is a separate, source-only release track for Windows 11 x64. It preserves
-the original M3 gates rather than waiving them. The committed
+This is a separate, source-only release track for Windows 11 x64. Under the
+[owner-confirmed scope](product-scope.md), specialized hardware and institutional
+qualification are not prerequisites. The original M3 gates remain an optional
+extended-assurance track, not a blocker for this ordinary software release. The committed
 [criteria](../../validation/manifests/windows-mvp-release.json) remain a candidate,
 not a reviewed release. The developer may perform this track's release review;
 it is not independent M3 qualification.
@@ -110,15 +112,19 @@ SUPREM coupling is claimed. Review this evidence before approving or tagging a
 Windows release; green CI alone does not fill in `releaseReview`.
 
 The [local observation](../../validation/experimental/windows-mvp-observation.json)
-records a passing 35-test native suite, but also an earlier unexplained PN repeat
-hash mismatch. Twelve subsequent identical-input trials did not reproduce it.
-The original test was not weakened; this unresolved observation remains a release
-blocker until investigated, rather than being erased by a later green run.
+records a passing 35-test native suite and an earlier PN repeat hash mismatch.
+The owner subsequently reported external log corruption during concurrent Codex
+subagent work. The [incident disposition](../../validation/experimental/pn-incident-disposition-20260912.json)
+removes that historical release blocker on the owner's report, not on an
+independently reproduced cause or a solver fix. Original observations and exact
+assertions remain unchanged. Any new mismatch requires investigation.
 Use the [PN investigation guide](pn-repeatability.md) to retain full repeated
 results and inspect field-level differences without relaxing the acceptance test.
 
-Physical abrupt-power durability, macOS/Linux product qualification, independent
-external review, automatic backup, OS-protected anti-rollback, solver distribution
-rights and calibrated numerical corpus approval remain unverified or deferred.
+Physical abrupt-power durability and independent institutional qualification are
+not required or claimed for this release. macOS/Linux product qualification,
+automatic backup, OS-protected anti-rollback, bundled solver redistribution review
+and externally calibrated numerical accuracy remain unverified or deferred.
+Numerical regression and replay remain required without external corpus approval.
 Original M3 commands, profiles and evidence gates remain unchanged. The OG image
 and public Pages deployment are not changed by this track.

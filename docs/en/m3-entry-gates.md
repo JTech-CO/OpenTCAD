@@ -2,6 +2,11 @@
 
 [한국어](../ko/m3-entry-gates.md)
 
+Scope update (September 12, 2026): this is the retained optional extended-assurance
+track. It is not a prerequisite for the ordinary [OpenTCAD software release](product-scope.md).
+Physical power-cut and institutional qualification are not required for that track.
+The activation state and historical evidence described below remain unchanged.
+
 OpenTCAD now contains the product connection layer for a local service, but product activation remains disabled. Code completion does not substitute for runtime, license, numerical, platform, or physical power-loss evidence.
 
 ## Implemented product path

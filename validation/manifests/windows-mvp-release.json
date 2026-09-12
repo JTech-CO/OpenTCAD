@@ -6,7 +6,18 @@
   "productEnabled": false,
   "distribution": "source-only-user-installed-solvers",
   "target": "Windows 11 x64",
-  "blockingIssues": ["windows-pn-repeat-hash-difference-unexplained"],
+  "blockingIssues": [],
+  "issueDispositions": ["validation/experimental/pn-incident-disposition-20260912.json"],
+  "releaseScope": {
+    "decisionDate": "2026-09-12",
+    "basis": "project-owner-direction",
+    "specializedHardwareRequired": false,
+    "physicalPowerCutQualificationRequired": false,
+    "independentInstitutionRequired": false,
+    "numericalRegressionRequired": true,
+    "softwareInterruptionRecoveryRequired": true,
+    "legacyM3QualificationRequired": false
+  },
   "criteria": [
     "Immediate educational calculator with explicit physical assumptions",
     "Pinned user-installed DEVSIM PN and 2D MOSFET execution through authenticated loopback HTTP",

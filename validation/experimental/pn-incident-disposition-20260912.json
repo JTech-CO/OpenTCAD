@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-12",
+  "issueId": "windows-pn-repeat-hash-difference-unexplained",
+  "status": "closed-as-owner-reported-external-artifact-corruption",
+  "blocksWindowsRelease": false,
+  "basis": "project-owner-report-in-conversation",
+  "reportedCause": "The project owner reports that another Codex subagent modified logs during concurrent work and corrupted some emitted values; similar incidents were observed in other projects.",
+  "independentlyReproducedCause": false,
+  "originalResultPairAvailable": false,
+  "disposition": "Remove this historical incident from the Windows MVP blocker list based on the owner's external-interference report, not on a solver fix or a forensic reconstruction of the missing originals.",
+  "previousObservations": [
+    "validation/experimental/windows-mvp-observation.json",
+    "validation/experimental/pn-repeatability-20260912.json"
+  ],
+  "regressionPolicy": {
+    "exactHashAssertionRetained": true,
+    "numericalTolerancesUnchanged": true,
+    "automaticRawFailureCaptureRetained": true,
+    "newMismatchRequiresInvestigation": true
+  },
+  "releaseApproved": false,
+  "m3Approved": false
+}

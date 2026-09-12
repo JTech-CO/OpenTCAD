@@ -116,6 +116,27 @@ class HistoryTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ScopeTests(unittest.TestCase):
+    def test_owner_scope_and_incident_disposition_do_not_grant_release_approval(self):
+        manifest = json.loads(Path("validation/manifests/windows-mvp-release.json").read_text())
+        scope = manifest["releaseScope"]
+        for key in ("specializedHardwareRequired", "physicalPowerCutQualificationRequired",
+                    "independentInstitutionRequired", "legacyM3QualificationRequired"):
+            self.assertFalse(scope[key])
+        self.assertTrue(scope["numericalRegressionRequired"])
+        self.assertTrue(scope["softwareInterruptionRecoveryRequired"])
+        self.assertEqual(len(manifest["issueDispositions"]), 1)
+        disposition = json.loads(Path(manifest["issueDispositions"][0]).read_text())
+        self.assertNotIn(disposition["issueId"], manifest["blockingIssues"])
+        self.assertFalse(disposition["blocksWindowsRelease"])
+        self.assertEqual(disposition["basis"], "project-owner-report-in-conversation")
+        self.assertFalse(disposition["independentlyReproducedCause"])
+        self.assertTrue(all(disposition["regressionPolicy"].values()))
+        self.assertFalse(disposition["releaseApproved"])
+        self.assertFalse(disposition["m3Approved"])
+        self.assertFalse(manifest["releaseReview"]["approved"])
+        self.assertFalse(manifest["m3Approved"])
+        self.assertFalse(manifest["productEnabled"])
+
     def test_candidate_is_not_m3_and_doctor_does_not_create_state(self):
         report = doctor(Path("not-built"))
         self.assertFalse(report["prerequisitesReady"])

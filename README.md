@@ -4,7 +4,9 @@
 
 ![OpenTCAD social preview](frontend/public/og.png)
 
-OpenTCAD is an open-source, bilingual workspace for learning semiconductor process and device simulation concepts. It connects an illustrative SUPREM-style process flow, device structure, bias conditions, and I–V behavior in one responsive web experience.
+OpenTCAD is an open-source, bilingual semiconductor process and device simulation workspace for ordinary computers. It combines immediate analytical calculations, opt-in local solver execution and a reference UI. Its development direction is a reproducible research and automation platform with dedicated MCP integration; these planned capabilities are not all implemented yet.
+
+See the [product and release scope](docs/en/product-scope.md). Specialized test equipment and institutional qualification are not prerequisites for the ordinary software release. Numerical validation and software recovery tests remain required.
 
 The default public experience is English. Select **한국어** at any time to switch the introduction and workspace to Korean.
 

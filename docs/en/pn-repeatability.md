@@ -2,10 +2,12 @@
 
 [한국어](../ko/pn-repeatability.md) · [Windows MVP](windows-mvp.md)
 
-The September 8 PN byte-identity failure remains unresolved. Its original two
-result files were not retained, so the digest pair alone cannot establish whether
-the difference was numerical, metadata-related, or an encoding difference.
-Subsequent matching runs do not retroactively clear that failure.
+The September 8 PN incident is closed as an owner-reported external log-corruption
+incident, not as a reproduced solver defect. See the
+[September 12 disposition](../../validation/experimental/pn-incident-disposition-20260912.json).
+Its original result pair was not retained, so the cause cannot be independently
+reconstructed. Historical observations remain unchanged; subsequent matching
+runs alone are not the basis for closure. New failures still require investigation.
 
 ## Capture a new observation
 
@@ -52,5 +54,7 @@ observer unit tests only verify diagnostic behavior; they are not solver evidenc
 The [September 12 observation](../../validation/experimental/pn-repeatability-20260912.json)
 records two 48-solve batches without a reproduced mismatch. Current 200-interval
 results match the second historical digest. This narrows the investigation but
-does not establish what produced the first digest. The Windows release remains
-a candidate with the original issue open and dedicated-host review pending.
+does not establish what produced the first digest. The separate owner-reported
+disposition closes the historical blocker; dedicated-host acceptance and release
+review remain pending. The diagnostic report's historical-issue clearance flag
+stays false because this tool never grants closure or release approval.
