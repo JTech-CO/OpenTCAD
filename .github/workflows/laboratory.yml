@@ -27,8 +27,17 @@ jobs:
       - name: Run native numerical and HTTP acceptance tests (not M3 qualification)
         env:
           OPENTCAD_TEST_DEVSIM: '1'
+          OPENTCAD_NUMERICAL_EVIDENCE_DIR: ${{ runner.temp }}/opentcad-pn-evidence
           PYTHONUTF8: '1'
         run: python -m unittest backend.tests.experimental.test_numerical backend.tests.experimental.test_service backend.tests.experimental.test_mos backend.tests.experimental.test_process_mesh backend.tests.experimental.test_windows_mvp -v
+      - name: Preserve numerical mismatch evidence
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pn-repeat-failure-${{ matrix.os }}-${{ github.sha }}
+          path: ${{ runner.temp }}/opentcad-pn-evidence/
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Diagnose native loader on failed numerical checks
         if: failure()
         env:

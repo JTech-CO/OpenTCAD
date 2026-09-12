@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-12",
+  "classification": "non-promoting-pn-repeat-investigation",
+  "baseRevision": "53b4d41b2ba14ae909730a8d67ad977dd39272ec",
+  "releaseApproved": false,
+  "m3Approved": false,
+  "historicalIssueCleared": false,
+  "rootCauseEstablished": false,
+  "host": {"os": "Windows", "machine": "AMD64", "python": "3.14.0", "devsim": "2.11.0"},
+  "solverSourceSha256": "388f874236e08dec0c141c82654a12e0c0ceb2ae93440a3e7fcf67bf3dfb8c69",
+  "schedulePerCycle": [100, 200, 400, 200],
+  "totalSolves": 96,
+  "batches": [
+    {
+      "kind": "initial-unmodified-solver-probe",
+      "cycles": 12,
+      "solves": 48,
+      "sourceStable": true,
+      "uniqueResultHashesByIntervals": {"100": 1, "200": 1, "400": 1},
+      "rawReportSha256": "92eb6c0573ac5c3399a62813c776a250019e4d9874247203ad33165222dab0a8",
+      "localArtifacts": ".experimental-results/pn-investigation-20260912T100456Z"
+    },
+    {
+      "kind": "lossless-observer",
+      "cycles": 12,
+      "solves": 48,
+      "sourceStable": true,
+      "uniqueResultHashesByIntervals": {"100": 1, "200": 1, "400": 1},
+      "numericallyReproducedWithinEachInput": true,
+      "rawReportSha256": "4514946bede3dabaf6e4c8c3bc0594b577e919c7decd85977c4795120c921e82",
+      "reportContentSha256": "6f91d682b3c0c3c5dd103c8e428da3f705b7e849ec3e68ad55419b5449192e3f",
+      "localArtifacts": ".experimental-results/pn-observer-20260912"
+    }
+  ],
+  "current200IntervalResultSha256": "fd2e5dad90dafbbbb3af36662171fb4c5b266f09124565880e6c4f76a804f534",
+  "matchesHistoricalSecondDigest": true,
+  "historicalFirstDigestReproduced": false,
+  "previousObservation": "validation/experimental/windows-mvp-observation.json",
+  "limitations": [
+    "Historical raw result pair was not retained; original difference magnitude and field remain unknown",
+    "No tolerance was relaxed and no solver equation or numeric environment was changed",
+    "Stable repetitions do not clear a historical failure or approve a release",
+    "Not a dedicated-host acceptance or physical power-loss record"
+  ]
+}

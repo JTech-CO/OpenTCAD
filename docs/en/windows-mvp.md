@@ -114,6 +114,8 @@ records a passing 35-test native suite, but also an earlier unexplained PN repea
 hash mismatch. Twelve subsequent identical-input trials did not reproduce it.
 The original test was not weakened; this unresolved observation remains a release
 blocker until investigated, rather than being erased by a later green run.
+Use the [PN investigation guide](pn-repeatability.md) to retain full repeated
+results and inspect field-level differences without relaxing the acceptance test.
 
 Physical abrupt-power durability, macOS/Linux product qualification, independent
 external review, automatic backup, OS-protected anti-rollback, solver distribution

@@ -22,6 +22,13 @@ class NumericalTests(unittest.IsolatedAsyncioTestCase):
         normal = await run_solver(DEFAULT)
         fine = await run_solver({**DEFAULT, "intervals": 400})
         again = await run_solver(DEFAULT)
+        if normal["resultSha256"] != again["resultSha256"]:
+            from backend.app.experimental.repeatability import capture_failure
+            try:
+                evidence = capture_failure(normal, again)
+                print(f"PN repeat mismatch evidence preserved: {evidence}", flush=True)
+            except Exception:
+                print("PN repeat mismatch evidence could not be saved; original equality assertion still applies.", flush=True)
         self.assertEqual(normal["resultSha256"], again["resultSha256"])
         self.assertEqual(normal["iv"], again["iv"])
         with tempfile.TemporaryDirectory() as folder:
