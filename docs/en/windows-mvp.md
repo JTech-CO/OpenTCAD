@@ -6,9 +6,10 @@ This is a separate, source-only release track for Windows 11 x64. Under the
 [owner-confirmed scope](product-scope.md), specialized hardware and institutional
 qualification are not prerequisites. The original M3 gates remain an optional
 extended-assurance track, not a blocker for this ordinary software release. The committed
-[criteria](../../validation/manifests/windows-mvp-release.json) remain a candidate,
-not a reviewed release. The developer may perform this track's release review;
-it is not independent M3 qualification.
+[criteria](../../validation/manifests/windows-mvp-release.json) remain a candidate.
+[Technical acceptance](../../validation/experimental/windows-mcp-acceptance-20260912.json)
+is complete; the owner's final release decision is pending. This is not independent
+M3 qualification. See the [current release scope](product-scope.md).
 
 ## Install and run
 

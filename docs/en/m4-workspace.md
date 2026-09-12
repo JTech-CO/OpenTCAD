@@ -1,12 +1,11 @@
-# M4 workspace: projects, inspection, and comparison
+# Reference workspace: projects, inspection, and comparison
 
 [한국어](../ko/m4-workspace.md)
 
-M4 implements the workspace features that do not require M3 product activation.
-The same frontend is used by the static build and local preview. M3 remains
-unapproved; project files, imported results, and mock actions cannot grant runtime
-authority. This branch's implementation is not a claim that the public `main`
-deployment has already been updated.
+This guide describes the illustrative `#workspace` views, not the executable
+`#lab` laboratory. The same reference UI is available in static and local builds.
+For actual PN/2D solves, start with the [simulation guide](simulation-guide.md).
+Project files, imported results and mock actions do not grant runtime authority.
 
 ## Project workflow
 
@@ -133,12 +132,9 @@ alongside the existing frontend and backend suites. UI tests cover both static
 and local-bootstrap modes, keyboard/pointer actions, import replacement, invalid
 files, comparison limits, and mock cancellation/recovery without network calls.
 
-M4's independent implementation is available. Full native solver integration,
-execution validation, and product activation remain deferred until M3 receives:
-
-1. reviewed Windows/macOS/Linux × Docker/Podman qualification;
-2. the required physical power-cut evidence;
-3. approved solver rights, immutable images, SBOMs, and numerical corpus.
-
-M4 does not modify M3 approval manifests, runtime grants, release profiles, or
-the existing OpenTCAD social-preview image.
+These reference views do not execute solvers. Actual fixed-template simulations
+are available in the separate [local laboratory](mvp-laboratory.md); Windows
+history and recovery use the [local MVP](windows-mvp.md). The reference workspace
+does not inherit those execution features merely by connecting a status endpoint.
+The older M3 OCI product remains separately disabled. Its extended qualification
+is not a prerequisite for the [ordinary Windows release scope](product-scope.md).

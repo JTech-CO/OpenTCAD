@@ -2,6 +2,11 @@
 
 [English](../en/development.md)
 
+기여자를 위한 안내입니다. 일반 사용은 [시뮬레이션 안내](simulation-guide.md)와
+[Windows 설치](windows-mvp.md)부터 확인하세요. 실험용 실험실은 아래의 M3 OCI
+브로커와 별개인 `backend/app/experimental/`의 고정 네이티브 워커를 사용합니다.
+[버전 고정 솔버 환경](mvp-laboratory.md)을 설치한 뒤 `npm run test:mvp:solver`로 검사합니다.
+
 ## 요구사항
 
 - Node.js 22 LTS 또는 24 LTS
@@ -48,7 +53,7 @@ npm run local:preview
 - 정적 참조 데이터에는 눈에 보이는 표기를 넣고 “검증됨”, “수렴”, “솔버 결과” 같은 표현을 사용하지 않습니다.
 - 브라우저 저장소에는 언어와 같은 장치 로컬 환경설정만 보관합니다.
 
-## 로컬 엔진 작업 변경
+## 활성화가 차단된 M3 OCI 엔진 변경
 
 프런트엔드나 API에서 `docker`, `podman`, shell 또는 subprocess를 직접 호출하지 않습니다. 런타임에는 샌드박스 브로커와 활성화된 OCI adapter만 접근할 수 있습니다. 운영자 설정으로 command, image, entrypoint, mount, host path 또는 환경 값을 선택하게 해서는 안 됩니다.
 
@@ -64,3 +69,6 @@ docs/ko/<name>.md
 ```
 
 기능 또는 운영 문서 변경은 두 파일이 같은 계약을 설명해야 완료됩니다. 관리되는 제품 문서는 한·영으로 제공합니다.
+README는 간결하게 유지하고 상세 기능은 시뮬레이션 안내, 운영 절차는 연결된
+문서에 둡니다. [문서 목차](../README.ko.md)에서 현재 안내와 보존된 계약 증거를
+구분합니다. 한국어 본문에는 U+2014를 사용하지 않으며 `npm run check:ko-copy`로 검사합니다.

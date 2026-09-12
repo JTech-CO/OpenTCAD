@@ -2,6 +2,12 @@
 
 [한국어](../ko/development.md)
 
+This is a contributor guide. For ordinary use, start with the
+[simulation guide](simulation-guide.md) and [Windows setup](windows-mvp.md).
+The experimental laboratory uses fixed native workers in `backend/app/experimental/`,
+separate from the M3 OCI broker described below. Test it with `npm run test:mvp:solver`
+after installing the [pinned solver environment](mvp-laboratory.md).
+
 ## Prerequisites
 
 - Node.js 22 LTS or 24 LTS
@@ -55,7 +61,7 @@ for configuration, paths, exit behavior, and the activation order.
 - Static reference data must be visibly labelled and must not use words such as “validated,” “converged,” or “solver result.”
 - Store only device-local preferences, such as locale, in browser storage.
 
-## Changing local-engine work
+## Changing the gated M3 OCI engine
 
 Do not add a direct `docker`, `podman`, shell, or subprocess call from the
 frontend or API. The sandbox broker and activated OCI adapter are the only
@@ -79,3 +85,7 @@ docs/ko/<name>.md
 ```
 
 A functional or operational documentation change is incomplete until both files describe the same contract. Maintained product documentation is bilingual.
+Keep README concise; detailed capabilities belong in the simulation guide and
+operating instructions in the linked guides. Use [the document index](../README.md)
+to distinguish current guidance from preserved contract evidence. Korean prose
+must not contain U+2014; `npm run check:ko-copy` checks the maintained copy.

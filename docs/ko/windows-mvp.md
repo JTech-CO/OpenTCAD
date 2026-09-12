@@ -6,9 +6,10 @@ Windows 11 x64를 대상으로 하는 별도의 소스 배포 릴리스 트랙�
 [사용자가 확인한 범위](product-scope.md)에 따라 전용 장비와 기관 자격 검증은
 필수 조건이 아닙니다. 기존 M3 게이트는 선택적 추가 신뢰성 검증 트랙으로 보존하며
 일반 소프트웨어 릴리스를 차단하는 조건으로 사용하지 않습니다.
-[릴리스 기준](../../validation/manifests/windows-mvp-release.json)은 아직 검토 전
-후보 상태입니다. 개발자가 이 트랙의 릴리스 검토를 맡을 수 있지만, 독립적인
-M3 자격 검증은 아닙니다.
+[릴리스 기준](../../validation/manifests/windows-mvp-release.json)은 아직 후보 상태입니다.
+[기술 인수](../../validation/experimental/windows-mcp-acceptance-20260912.json)는 완료했으며
+책임자의 최종 릴리스 결정을 기다립니다. 독립적인 M3 자격 검증은 아닙니다.
+[현재 릴리스 범위](product-scope.md)를 참고하세요.
 
 ## 설치와 실행
 

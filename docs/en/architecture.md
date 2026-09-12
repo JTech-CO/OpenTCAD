@@ -1,115 +1,46 @@
 # OpenTCAD architecture
 
-[한국어](../ko/architecture.md)
+[한국어](../ko/architecture.md) · [Documentation](../README.md) · [Simulation guide](simulation-guide.md)
 
-## Product modes
+## Current execution paths
 
-OpenTCAD deliberately separates a safe static experience, a blocked local
-preview, and an evidence-activated solver product.
+| Path | Implementation | Execution boundary |
+|---|---|---|
+| Browser calculator | React and a code-owned analytical NMOS model | Runs in the browser, including GitHub Pages |
+| Reference workspace | Illustrative project and result-inspection UI | No solver submission; mock lifecycle only |
+| Experimental laboratory | Authenticated loopback HTTP and fixed native DEVSIM templates | Explicit PN/2D MOS submissions, one active solve |
+| Windows local MVP | Laboratory plus exclusive SQLite history, recovery and offline backup | Windows process containment; fixed templates only |
+| SUPREM process CLI | Explicit native or local container invocation, structure/contact transfer | Separate trusted-user opt-in; not a browser deck endpoint |
+| M3 OCI product | Broker, runtime adapters and evidence-bound release profiles | Implemented separately, activation disabled |
 
-| Mode | Where it runs | Can execute a deck? | Purpose |
-|---|---|---:|---|
-| Static preview | GitHub Pages or any static host | No | Explore the workflow, UI, terminology, and deterministic reference visuals |
-| Local blocked preview | Loopback-only same-origin web server | No | Exercise the product connection UI without state, credentials, or a runtime |
-| Activated local product | Loopback-only local web server plus OCI runtime | Only after release activation | Single-user process and device simulation |
-| Shared/server | Managed host with authentication and quotas | Yes, after sandbox validation | Classroom, lab, or maintained server use |
+These paths share the web interface but do not share every guarantee. The current laboratory is not the M3 sandbox broker. A shared multi-user solver service is not implemented.
 
-The static build contains no runtime credentials, engine socket, subprocess
-bridge, uploaded code execution, or hidden solver endpoint. Editing the deck
-in static mode changes browser memory only. The blocked local preview serves
-the same assets and a redacted status endpoint, but creates no durable state
-and contacts no native service.
+## Laboratory data flow
 
-## Target local flow
+The browser sends bounded numerical inputs to the same-origin loopback API. The service starts a fixed solver worker, reports job state and returns validated result records. It does not accept uploaded Python, shell commands or arbitrary process decks. Failure does not substitute analytical or reference data for solver output.
 
-```text
-Browser
-  │ same-origin HTTP
-  ▼
-Local API and static host
-  ├─ strict bearer HTTP codecs
-  ├─ bounded execution and control lanes
-  └─ redacted product status
-             │ typed requests
-             ▼
-      Local product service
-  ├─ recovery-first startup
-  ├─ maintenance and backup coordinator
-  ├─ native credential store
-  └─ durable SQLite state and fencing
-             │ SandboxSpec only
-             ▼
-        Sandbox broker
-             │ validated OCI operations
-             ▼
- Docker or rootless Podman adapter
-             │
-   per-job managed volume
-      ├─ approved process engine
-      ├─ approved remeshing engine
-      └─ approved device engine
-```
+The service issues a private per-launch URL fragment. The browser consumes and removes it and keeps the token in memory only. Reopening the original private URL restores access after refresh. Tokens must not be shared or persisted in project/result files.
 
-The API does not execute simulators. The worker does not construct raw runtime
-commands. Only the sandbox broker can reach the runtime, and it accepts a
-typed, allowlisted request rather than arbitrary image, command, environment,
-or mount values. The local service uses standard-library HTTP and SQLite; it
-does not require FastAPI, PostgreSQL, or Redis.
+The Windows MVP adds exclusive state-directory ownership, SQLite job history, service/launcher termination cleanup and interruption classification on restart. Backup is offline and checksum-verified, not authenticated or encrypted. These controls do not protect against a malicious process with the same user's file access or establish physical power-loss durability. See [Windows operation](windows-mvp.md).
 
-## Product activation boundary
+## Process transfer and automation
 
-The product command checks the evidence-bound M3 manifest before reading
-assets, creating local directories, opening credentials or databases, probing
-an OCI runtime, or binding a socket. A second, code-owned release profile must
-match the manifest digest, backend, images, and entrypoints exactly. The
-committed release-profile set is empty, so changing operator configuration or
-the manifest alone cannot activate execution.
+SUPREM runs through an explicit CLI using a separately installed trusted solver. The device service reads selected process/contact files at startup, verifies their supported structure and serves a fixed snapshot. Doping-only and original-mesh transfer are different modes; see [process coupling](mos-process.md) and [mesh transfer](process-mesh.md).
 
-After activation, one per-user instance runs at a time. It completes durable
-recovery before API admission, starts the scheduled-backup coordinator, and
-publishes only a secret-free endpoint record. Static assets and API responses
-share one numeric loopback origin. The browser receives an ephemeral secret in
-a URL fragment, removes the fragment immediately, and stores the secret in
-memory only.
+The [stdio MCP bridge](mcp.md) connects to the same authenticated numeric-loopback service. It is read-only by default. Explicit execution permission exposes fixed PN/MOS submission and cancellation, not arbitrary scripts, paths or an automatic sweep queue.
 
-## Non-negotiable sandbox policy
+## Separate M3 track
 
-Every real solver job must fail closed unless the runtime can enforce all of the following:
+The evidence-gated OCI product has durable ownership/fencing, a broker, Docker/Podman adapters, credential integration and maintenance/backup contracts. Its committed release profiles remain empty. The product command refuses activation before side effects; changing a manifest alone cannot enable it.
 
-- no network;
-- all Linux capabilities dropped;
-- no-new-privileges;
-- read-only root filesystem;
-- fixed non-root UID/GID;
-- exactly one isolated writable job volume;
-- CPU, memory, PID, time, file-count, and output limits;
-- no host namespace, device, runtime socket, or arbitrary bind mount;
-- digest-pinned image and fixed entrypoint allowlists.
+These contracts and their stricter runtime qualification are preserved as a separate track, not presented as guarantees of the current local MVP. See [M3 service](m3-local-service.md). Do not remove its validation checks or grant runtime authority while changing user documentation.
 
-A SUPREM input deck is treated as arbitrary shell-capable input, not as a harmless domain-specific language. The browser never passes user content into an argv, image name, host path, environment key, or entrypoint.
+## Code ownership
 
-## Static reference-data contract
+- `frontend/src/mvp/`: calculator, laboratory and result-history UI.
+- `backend/app/experimental/`: fixed PN/MOS workers, process transfer, Windows MVP and MCP.
+- `backend/app/product/`, `runtime/`, `broker/`, `service/`: separate gated OCI service and contracts.
+- `validation/`: numerical observations, evidence and contract checks.
+- `docs/en/`, `docs/ko/`: paired user and maintainer guides.
 
-The current UI uses deterministic, code-owned reference-preview values so the complete product shape can be reviewed before solver distribution is approved. Reference visuals are always labelled **not solver output**. They are not numerical baselines, cannot be exported as validated results, and must never be presented as converged data.
-
-When a local engine is connected later, every result will carry provenance: app revision, runtime backend and architecture, image digests, engine versions, input hashes, convergence warnings, fallback decisions, and skipped points.
-
-## Repository direction
-
-```text
-frontend/                 Static-compatible React application and local connection UI
-docs/en/ and docs/ko/     Paired product and engineering documentation
-.github/workflows/        CI and GitHub Pages deployment
-
-backend/app/product/      Evidence gates and code-owned release profiles
-backend/app/runtime/      Docker, Podman, policy, stable errors, native fencing
-backend/app/broker/       Durable lifecycle, cancellation, recovery, archive, backup
-backend/app/service/      Loopback host, worker, credentials, scheduler, CLI
-config/                   Strict operator configuration example
-validation/               External observations, comparators, schemas, and contract records
-```
-
-The runtime and service implementation is present and contract-tested, but the
-committed product remains disabled. Docker or Podman is contacted only by an
-activated product host. No third-party solver binary, approved solver image,
-or numerical release corpus is distributed in this repository.
+Static assets contain no native solver. Reference data, analytical estimates, imports and real solver results must retain distinct provenance labels. For supported functionality rather than component internals, start with the [simulation guide](simulation-guide.md).
