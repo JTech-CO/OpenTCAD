@@ -47,6 +47,9 @@ closes this historical release blocker on that stated basis. The missing origina
 result pair prevents independent forensic confirmation. Original observations
 remain untouched. Exact-hash assertions, numerical tolerances and raw failure
 capture remain in force; a new mismatch requires its own investigation.
+The subsequent dedicated-host run captured that same digest pair with identical
+numerics and differing machine metadata. The [new finding and fix](pn-repeatability.md)
+supersedes the earlier explanation for the reproducible pair.
 
 ## Upstream and solver licensing
 
@@ -64,6 +67,11 @@ reproducibility remain software quality requirements, without requiring an
 external institution to approve a corpus.
 
 ## Next development sequence (planned, not completed)
+
+Implementation update: dedicated Windows automated acceptance is recorded in
+[the review](../../validation/experimental/windows-review-20260912.json). Browser
+history reopening/comparison and the initial [local MCP bridge](mcp.md) are now
+implemented. Broader workflow expansion and automatic sweep execution remain future work.
 
 1. Finish ordinary Windows acceptance and release review.
 2. Improve the integrated process/device workflow, history/reopening, parameter

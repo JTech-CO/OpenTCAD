@@ -25,6 +25,7 @@ import type { ImportedResult } from "./m4/results";
 import "./m4/workspace.css";
 import { LandingPage } from "./LandingPage";
 import { Laboratory } from "./mvp/Laboratory";
+import { consumeExperiment } from "./mvp/solver-client";
 import {
   fetchLocalProductStatus,
   type LocalProductStatus,
@@ -62,6 +63,7 @@ function getInitialSurface(): AppSurface {
 }
 
 function App({ localBootstrap = null, experimentToken = null }: AppProps) {
+  const [laboratoryToken, setLaboratoryToken] = useState(experimentToken);
   const [locale, setLocale] = useState<Locale>(getInitialLocale);
   const [surface, setSurface] = useState<AppSurface>(getInitialSurface);
   const [view, setView] = useState<WorkspaceView>("process");
@@ -97,6 +99,7 @@ function App({ localBootstrap = null, experimentToken = null }: AppProps) {
 
   useEffect(() => {
     const syncSurface = () => {
+      if (window.location.hash.startsWith("#experiment=")) setLaboratoryToken(consumeExperiment());
       setSurface(getInitialSurface());
     };
 
@@ -183,7 +186,7 @@ function App({ localBootstrap = null, experimentToken = null }: AppProps) {
     );
   }
 
-  if (surface === "lab") return <Laboratory locale={locale} onLocaleChange={setLocale} onWorkspace={openWorkspace} onOverview={openOverview} experimentToken={experimentToken} />;
+  if (surface === "lab") return <Laboratory locale={locale} onLocaleChange={setLocale} onWorkspace={openWorkspace} onOverview={openOverview} experimentToken={laboratoryToken} />;
 
   return (
     <div className="app-shell" data-ui="precision-cad">

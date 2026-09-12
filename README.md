@@ -4,7 +4,7 @@
 
 ![OpenTCAD social preview](frontend/public/og.png)
 
-OpenTCAD is an open-source, bilingual semiconductor process and device simulation workspace for ordinary computers. It combines immediate analytical calculations, opt-in local solver execution and a reference UI. Its development direction is a reproducible research and automation platform with dedicated MCP integration; these planned capabilities are not all implemented yet.
+OpenTCAD is an open-source, bilingual semiconductor process and device simulation workspace for ordinary computers. It combines immediate analytical calculations, opt-in local solver execution and a reference UI. Its development direction is a reproducible research and automation platform; an initial dedicated local MCP bridge is implemented, with broader research capabilities still in development.
 
 See the [product and release scope](docs/en/product-scope.md). Specialized test equipment and institutional qualification are not prerequisites for the ordinary software release. Numerical validation and software recovery tests remain required.
 
@@ -22,6 +22,8 @@ This source includes a working educational device laboratory and a separate refe
 - a real 2D DEVSIM MOSFET template with editable geometry/bias, triangular-mesh potential/carrier/doping maps and drain I-V curves;
 - experimental SUPREM active-doping import and a fixed-deck process CLI, with a real Podman SUPREM-to-2D-DEVSIM observation;
 - original SUPREM silicon/oxide mesh transfer with explicit, source-hash-bound electrode edges, geometry checks and replay;
+- local run-history reopening, stored PN/2D results, provenance-aware final-current comparison and result export;
+- a [local stdio MCP bridge](docs/en/mcp.md), read-only by default, with opt-in submit/cancel and bounded non-executing sweep plans;
 - process, device, curve-comparison, and runtime-boundary views;
 - project-file save/import, illustrative deck diagnostics, editable bias settings, and deterministic reference visuals;
 - material/terminal selection, cross-section zoom and pan, and read-only JSON/CSV result import and comparison;

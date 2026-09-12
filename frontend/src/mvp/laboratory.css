@@ -30,3 +30,6 @@
 .mos-map .m4-toolbar { align-items: center; }
 .mos-map input[type="checkbox"] { width: 1.2rem; height: 1.2rem; margin-right: .6rem; }
 .mos-hash { overflow-wrap: anywhere; }
+.lab-workflow { position: sticky; top: 0; z-index: 2; padding: .65rem; background: #0b1c24; border: 1px solid #31505a; flex-wrap: wrap; }
+.laboratory [id^="lab-"] { scroll-margin-top: 6rem; }
+.history-result { border-top: 1px solid #31505a; margin-top: 1rem; padding-top: 1rem; }

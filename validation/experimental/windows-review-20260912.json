@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "revision": "9588d50da9274bc27044ca13cecebffe9bb0c6c8",
+  "dedicatedHost": {"confirmedBy": "project-owner-in-conversation", "platform": "Windows", "architecture": "x64", "osRelease": "10.0.26200"},
+  "automatedAcceptance": {
+    "passed": true,
+    "sourceUnchanged": true,
+    "localEvidenceDirectory": ".experimental-results/windows-acceptance-20260912-metadata",
+    "logs": [
+      {"name": "check.log", "sha256": "db5d502c40cbeda994b42e8972a7be0875ec523894b7eef7e8a0f7d4248c3fa1"},
+      {"name": "local-mvp.log", "sha256": "cda5d637cadc02063da9e4e0345fc2f0bce549990d1e60d98243cbf68a4990ab"},
+      {"name": "test-mvp-solver.log", "sha256": "c3a04a5b069d4405f6955a9f34b5df94b8ea68e68145a80083b761432b9ece77"}
+    ]
+  },
+  "pnFinding": "Reproduced original digest pair differs only in environment.machine; Windows native metadata lookup replaces the unstable WMI/environment fallback. Numerical equations and assertions unchanged.",
+  "review": {"performedBy": "coding-agent", "status": "automated-criteria-passed-human-release-decision-pending", "releaseApproved": false},
+  "remaining": ["Browser workflow acceptance for integrated history and MCP changes", "Re-run exact-revision acceptance after subsequent implementation", "Project-owner final release decision and publication"],
+  "m3Approved": false,
+  "physicalPowerCutRequired": false
+}

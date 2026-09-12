@@ -54,7 +54,11 @@ filesystem security boundary.
 Each directory holds at most 32 jobs, with records bounded to 1 MiB each. Nothing
 is silently evicted. At capacity, stop the service, back up/export the results,
 and use a new directory. Reusing an ID with different inputs remains a conflict.
-Browser refresh does not automatically reload history into the current editor.
+Use **History / compare** and **Refresh history** to reopen stored PN/2D results,
+inspect provenance, compare compatible final-current values and export a result.
+This is read-only and does not replace editor inputs or execute a new solve.
+Browser refresh removes the in-memory access token; reopen the private service
+URL to authenticate again. No token is stored in browser persistent storage.
 After stopping the service, retrieve records using:
 
 ```powershell
@@ -111,6 +115,13 @@ tamper rejection and restore into a new directory. Include process-file hashes i
 SUPREM coupling is claimed. Review this evidence before approving or tagging a
 Windows release; green CI alone does not fill in `releaseReview`.
 
+From a clean checkout, `npm run accept:windows -- --output C:\absolute\new-evidence`
+runs the full check, doctor and native solver suite sequentially. It captures
+revision, host, logs and hashes and fails if the source changes. The output is an
+automated observation, never a self-issued release approval. Use an ignored
+evidence directory such as a new child of `.experimental-results`.
+For AI clients, see the [local MCP guide](mcp.md).
+
 The [local observation](../../validation/experimental/windows-mvp-observation.json)
 records a passing 35-test native suite and an earlier PN repeat hash mismatch.
 The owner subsequently reported external log corruption during concurrent Codex
@@ -118,6 +129,9 @@ subagent work. The [incident disposition](../../validation/experimental/pn-incid
 removes that historical release blocker on the owner's report, not on an
 independently reproduced cause or a solver fix. Original observations and exact
 assertions remain unchanged. Any new mismatch requires investigation.
+The subsequent dedicated-host run reproduced the exact digest pair: only machine
+metadata differed. The [captured finding and fix](pn-repeatability.md) now explains
+this pair; a native Windows metadata query replaces the WMI fallback.
 Use the [PN investigation guide](pn-repeatability.md) to retain full repeated
 results and inspect field-level differences without relaxing the acceptance test.
 

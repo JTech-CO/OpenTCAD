@@ -11,7 +11,7 @@ if (!existsSync(python)) {
 }
 const test = process.argv.includes("--test");
 const mvp = process.argv[2] === "--windows-mvp";
-const child = spawn(python, test ? ["-m", "unittest", "backend.tests.experimental.test_numerical", "backend.tests.experimental.test_service", "backend.tests.experimental.test_mos", "backend.tests.experimental.test_process_mesh", "backend.tests.experimental.test_windows_mvp", "-v"]
+const child = spawn(python, test ? ["-m", "unittest", "backend.tests.experimental.test_numerical", "backend.tests.experimental.test_service", "backend.tests.experimental.test_mos", "backend.tests.experimental.test_process_mesh", "backend.tests.experimental.test_windows_mvp", "backend.tests.experimental.test_repeatability", "backend.tests.experimental.test_mcp_server", "-v"]
   : mvp ? ["-m", "backend.app.experimental.windows_mvp", ...process.argv.slice(3)]
   : ["-m", "backend.app.experimental.service", "--enable-experimental-devsim", ...process.argv.slice(2)], {
   cwd: root, shell: false, windowsHide: true, stdio: "inherit",
