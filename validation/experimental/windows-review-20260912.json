@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "subsequentReview": "validation/experimental/windows-mcp-acceptance-20260912.json",
   "revision": "9588d50da9274bc27044ca13cecebffe9bb0c6c8",
   "dedicatedHost": {"confirmedBy": "project-owner-in-conversation", "platform": "Windows", "architecture": "x64", "osRelease": "10.0.26200"},
   "automatedAcceptance": {

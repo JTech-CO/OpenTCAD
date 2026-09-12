@@ -37,5 +37,5 @@
     "Authenticated or encrypted MVP backup and automatic scheduled backup",
     "Redistributed solver images, rights approvals and calibrated numerical corpus"
   ],
-  "releaseReview": {"approved": false, "reviewer": null, "revision": null, "evidence": []}
+  "releaseReview": {"approved": false, "reviewer": null, "revision": "8b84ce7c341a656476d24078f0398af9601aa541", "evidence": ["validation/experimental/windows-mcp-acceptance-20260912.json"]}
 }

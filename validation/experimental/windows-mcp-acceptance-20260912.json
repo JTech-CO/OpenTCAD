@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "implementationRevision": "8b84ce7c341a656476d24078f0398af9601aa541",
+  "dedicatedHost": {"confirmedBy": "project-owner-in-conversation", "platform": "Windows", "architecture": "x64", "osRelease": "10.0.26200", "node": "v24.19.0", "python": "3.14.0", "devsim": "2.11.0"},
+  "automatedAcceptance": {
+    "passed": true,
+    "sourceUnchanged": true,
+    "startedAt": "2026-09-12T11:14:55.806Z",
+    "finishedAt": "2026-09-12T11:17:52.307Z",
+    "localEvidenceDirectory": ".experimental-results/windows-acceptance-20260912-mcp",
+    "python": {"total": 280, "passed": 263, "skipped": 17},
+    "frontend": {"passed": 90},
+    "nativeSolverWindowsAndMcp": {"passed": 51, "skipped": 0},
+    "logs": [
+      {"name": "check.log", "sha256": "7b2eaae5af32ac7b4de6eff8abbca27b255facb07752debe3b00d5dd2ee9d8a1"},
+      {"name": "local-mvp.log", "sha256": "cda5d637cadc02063da9e4e0345fc2f0bce549990d1e60d98243cbf68a4990ab"},
+      {"name": "test-mvp-solver.log", "sha256": "9697e3537de95da749f908e331a84ad61e7e1c2e54ad4d3d89cbeebad89d1b04"}
+    ]
+  },
+  "browserAcceptance": {
+    "passed": true,
+    "method": "existing Playwright 1.62.1 and headless Chromium, same-origin requests only",
+    "localEvidenceDirectory": ".experimental-results/browser-qa-8b84ce7",
+    "reportSha256": "231030b528ca0713f604f796a11e98fa4988e059b2ffeb1bff3dc10188bab17b",
+    "checks": ["parameter-driven calculator", "real PN and 2D MOS solves", "stored result reopening", "English and Korean result comparison", "390px viewport without whole-page overflow", "same-tab reauthentication without persistent token storage"],
+    "screenshots": ["history-en.png", "history-ko.png", "history-mobile.png"]
+  },
+  "technicalReview": {
+    "performedBy": "coding-agent",
+    "status": "implementation-accepted-for-owner-release-decision",
+    "checks": ["PN digest instability reproduced as machine metadata only and fixed without changing physics or tolerances", "MCP is read-only by default with explicit execution enablement", "MCP cannot select arbitrary hosts, commands, scripts or file paths", "MCP stdio-to-authenticated-HTTP-to-native-DEVSIM result path passed", "history reads do not execute solvers or overwrite editor inputs", "frozen M0/M2 evidence and OG image preserved"],
+    "remaining": ["Project-owner final release/version decision", "Explicit main merge, release tag and public Pages publication"]
+  },
+  "limitations": ["Source-only; user-installed solvers", "MCP sweep planning is not automatic queued execution", "No arbitrary SUPREM decks through MCP", "No physical power-loss or external institution qualification claim", "No full M3 or other-platform product qualification claim"],
+  "releaseApproved": false,
+  "m3Approved": false
+}

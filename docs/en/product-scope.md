@@ -66,20 +66,21 @@ inventory, applicable notices and redistribution review. Numerical regression an
 reproducibility remain software quality requirements, without requiring an
 external institution to approve a corpus.
 
-## Next development sequence (planned, not completed)
+## Development sequence and status
 
 Implementation update: dedicated Windows automated acceptance is recorded in
-[the review](../../validation/experimental/windows-review-20260912.json). Browser
+[the review](../../validation/experimental/windows-mcp-acceptance-20260912.json). Browser
 history reopening/comparison and the initial [local MCP bridge](mcp.md) are now
 implemented. Broader workflow expansion and automatic sweep execution remain future work.
 
-1. Finish ordinary Windows acceptance and release review.
-2. Improve the integrated process/device workflow, history/reopening, parameter
-   sweeps, comparison and export UI.
-3. Add a dedicated local MCP interface over the validated job service: capability
-   discovery, input schema, submit/status/cancel, result/provenance retrieval and
-   bounded sweeps. Start with read-only access; require explicit authorization for
-   computation and writes. Do not expose arbitrary shell, Python or file paths.
+1. Automated Windows and browser acceptance plus technical review are complete
+   for the recorded implementation revision. Owner release/version approval remains.
+2. History reopening, comparison, export and workflow navigation are implemented;
+   broader process/device editing and automatic sweep execution remain future work.
+3. The dedicated local MCP implements capability discovery, input schemas,
+   submit/status/cancel, results/provenance and bounded sweep planning. Read-only
+   is the default; computation/cancellation require explicit startup authorization.
+   Arbitrary shell, Python and file paths are not exposed.
 4. Expand supported materials, structures, physical models and numerical reference
    cases; qualify each claimed capability and platform with reproducible tests.
 
